@@ -1,0 +1,1219 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import DashboardLayout from "@/components/DashboardLayout";
+import MatchCountdown from "@/components/MatchCountdown";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { 
+  Users, 
+  MessageCircle, 
+  MapPin,
+  Sparkles,
+  Crown,
+  Search,
+  UserPlus,
+  RefreshCw,
+  Info,
+  Calendar,
+  Stethoscope,
+  Heart,
+  Clock,
+  CheckCircle2
+} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+
+interface GroupMember {
+  user_id: string;
+  profile: {
+    full_name: string | null;
+    avatar_url: string | null;
+    city: string | null;
+    neighborhood: string | null;
+    gender: string | null;
+  };
+  preferences?: {
+    specialty: string | null;
+    sports?: string[] | null;
+    social_style?: string[] | null;
+    culture_interests?: string[] | null;
+    lifestyle?: string[] | null;
+    availability_slots?: string[] | null;
+  };
+}
+
+interface MatchDetails {
+  sharedInterests: string[];
+  specialtyMatch: {
+    type: 'same' | 'related' | 'different';
+    value: string;
+  };
+  locationMatch: {
+    city: string;
+    sameNeighborhood: boolean;
+    neighborhood?: string;
+  };
+  sharedAvailability: string[];
+}
+
+interface MatchGroup {
+  id: string;
+  name: string | null;
+  group_type: string;
+  gender_composition: string | null;
+  status: string;
+  match_week: string;
+  created_at: string;
+  members: GroupMember[];
+  conversation_id?: string;
+  average_score?: number;
+  matchDetails?: MatchDetails;
+}
+
+interface AvailableGroup extends MatchGroup {
+  member_count: number;
+  average_score?: number;
+}
+
+const Matches = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const [groups, setGroups] = useState<MatchGroup[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<AvailableGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const [joiningGroup, setJoiningGroup] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<MatchGroup | null>(null);
+  const [matchDetails, setMatchDetails] = useState<MatchDetails | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  const fetchGroups = async () => {
+    if (!user) return;
+
+    try {
+      // Get all groups the user is a member of
+      const { data: memberData, error: memberError } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id);
+
+      if (memberError) throw memberError;
+
+      if (!memberData || memberData.length === 0) {
+        setGroups([]);
+        setLoading(false);
+        return;
+      }
+
+      const groupIds = memberData.map((m) => m.group_id);
+
+      // Get group details
+      const { data: groupsData, error: groupsError } = await supabase
+        .from("match_groups")
+        .select("*")
+        .in("id", groupIds)
+        .eq("status", "active")
+        .order("match_week", { ascending: false });
+
+      if (groupsError) throw groupsError;
+
+      // For each group, get members with their profiles
+      const enrichedGroups: MatchGroup[] = await Promise.all(
+        (groupsData || []).map(async (group) => {
+          // Get all members of this group
+          const { data: membersData } = await supabase
+            .from("group_members")
+            .select("user_id")
+            .eq("group_id", group.id);
+
+          const memberUserIds = (membersData || []).map((m) => m.user_id);
+
+          // Get profiles for all members (except current user)
+          const otherMemberIds = memberUserIds.filter((id) => id !== user.id);
+          
+          const members: GroupMember[] = await Promise.all(
+            otherMemberIds.map(async (memberId) => {
+              try {
+                const [profileRes, prefsRes] = await Promise.all([
+                  supabase.from("profiles").select("full_name, avatar_url, city, neighborhood, gender").eq("user_id", memberId).maybeSingle(),
+                  supabase.from("onboarding_preferences").select("specialty, sports, social_style, culture_interests, lifestyle, availability_slots").eq("user_id", memberId).maybeSingle(),
+                ]);
+
+                return {
+                  user_id: memberId,
+                  profile: (profileRes.data as any) || { full_name: null, avatar_url: null, city: null, neighborhood: null, gender: null },
+                  preferences: (prefsRes.data as any) || undefined,
+                };
+              } catch (error) {
+                // If there's an error (e.g., RLS policy issue), return minimal data
+                console.warn(`Error fetching data for user ${memberId}:`, error);
+                return {
+                  user_id: memberId,
+                  profile: { full_name: null, avatar_url: null, city: null, neighborhood: null, gender: null },
+                  preferences: undefined,
+                };
+              }
+            })
+          );
+
+          // Get conversation if exists
+          const { data: convoData } = await supabase
+            .from("group_conversations")
+            .select("id")
+            .eq("group_id", group.id)
+            .maybeSingle();
+
+          // Calculate average compatibility score with current user
+          let averageScore = 0;
+          if (otherMemberIds.length > 0) {
+            const scores = await Promise.all(
+              otherMemberIds.map(async (memberId) => {
+                const { data: scoreResult } = await supabase.rpc("calculate_match_score", {
+                  user_a_id: user.id,
+                  user_b_id: memberId,
+                });
+                return Number(scoreResult || 0);
+              })
+            );
+            averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+          }
+
+          return {
+            ...group,
+            members,
+            conversation_id: convoData?.id,
+            average_score: averageScore,
+          };
+        })
+      );
+
+      // Sort groups by average compatibility score (best matches first)
+      enrichedGroups.sort((a, b) => (b.average_score || 0) - (a.average_score || 0));
+      
+      // Log best match for debugging
+      if (enrichedGroups.length > 0 && enrichedGroups[0].average_score) {
+        console.log(`Best match group: ${enrichedGroups[0].average_score}% compatibility`);
+      }
+      
+      setGroups(enrichedGroups);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGroups();
+  }, [user]);
+
+  const startGroupChat = async (group: MatchGroup) => {
+    if (group.conversation_id) {
+      navigate(`/group-chat/${group.conversation_id}`);
+    } else {
+      // Create conversation
+      const { data: newConvo, error } = await supabase
+        .from("group_conversations")
+        .insert({ group_id: group.id })
+        .select()
+        .single();
+
+      if (newConvo && !error) {
+        navigate(`/group-chat/${newConvo.id}`);
+      }
+    }
+  };
+
+  const getGroupTypeLabel = (group: MatchGroup) => {
+    if (group.group_type === "mixed") {
+      return group.gender_composition === "2F3M" ? "2♀ 3♂" : "3♀ 2♂";
+    }
+    return group.gender_composition === "all_female" ? "All Female" : "All Male";
+  };
+
+  const fetchAvailableGroups = async () => {
+    if (!user) return;
+    setLoadingAvailable(true);
+
+    try {
+      // Get groups the user is already a member of
+      const { data: memberData } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id);
+
+      const userGroupIds = new Set((memberData || []).map((m) => m.group_id));
+
+      // Get all active groups
+      const { data: allGroups, error } = await supabase
+        .from("match_groups")
+        .select("*")
+        .eq("status", "active")
+        .order("match_week", { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      // Filter out groups user is already in and enrich with member info
+      const enrichedGroups: AvailableGroup[] = await Promise.all(
+        (allGroups || [])
+          .filter((group) => !userGroupIds.has(group.id))
+          .map(async (group) => {
+            // Get member count
+            const { data: membersData } = await supabase
+              .from("group_members")
+              .select("user_id")
+              .eq("group_id", group.id);
+
+            const memberCount = (membersData || []).length;
+
+            // Get member profiles for preview
+            const memberUserIds = (membersData || []).slice(0, 4).map((m) => m.user_id);
+            
+            const members: GroupMember[] = await Promise.all(
+              memberUserIds.map(async (memberId) => {
+                try {
+                  const [profileRes, prefsRes] = await Promise.all([
+                    supabase.from("profiles").select("full_name, avatar_url, city, gender").eq("user_id", memberId).maybeSingle(),
+                    supabase.from("onboarding_preferences").select("specialty").eq("user_id", memberId).maybeSingle(),
+                  ]);
+
+                  return {
+                    user_id: memberId,
+                    profile: (profileRes.data as any) || { full_name: null, avatar_url: null, city: null, gender: null },
+                    preferences: (prefsRes.data as any) || undefined,
+                  };
+                } catch (error) {
+                  // If there's an error (e.g., RLS policy issue), return minimal data
+                  console.warn(`Error fetching data for user ${memberId}:`, error);
+                  return {
+                    user_id: memberId,
+                    profile: { full_name: null, avatar_url: null, city: null, gender: null },
+                    preferences: undefined,
+                  };
+                }
+              })
+            );
+
+            // Calculate average compatibility score with current user
+            let averageScore = 0;
+            if (memberUserIds.length > 0) {
+              const scores = await Promise.all(
+                memberUserIds.map(async (memberId) => {
+                  const { data: scoreResult } = await supabase.rpc("calculate_match_score", {
+                    user_a_id: user.id,
+                    user_b_id: memberId,
+                  });
+                  return Number(scoreResult || 0);
+                })
+              );
+              averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+            }
+
+            return {
+              ...group,
+              members,
+              member_count: memberCount,
+              average_score: averageScore,
+            };
+          })
+      );
+
+      // Sort by average compatibility score
+      enrichedGroups.sort((a, b) => (b.average_score || 0) - (a.average_score || 0));
+      setAvailableGroups(enrichedGroups);
+    } catch (error) {
+      console.error("Error fetching available groups:", error);
+      toast({
+        title: "Error",
+        description: "Could not load available groups",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAvailable(false);
+    }
+  };
+
+  const handleJoinGroup = async (group: AvailableGroup) => {
+    if (!user) return;
+    
+    setJoiningGroup(group.id);
+    try {
+      // Check if group is full (assuming max 5 members)
+      if (group.member_count >= 5) {
+        toast({
+          title: "Group Full",
+          description: "This group has reached maximum capacity",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Add user to group
+      const { error } = await supabase
+        .from("group_members")
+        .insert({
+          group_id: group.id,
+          user_id: user.id,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: "You've joined the group successfully",
+      });
+
+      // Refresh both lists
+      fetchGroups();
+      fetchAvailableGroups();
+    } catch (error: any) {
+      console.error("Error joining group:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Could not join group",
+        variant: "destructive",
+      });
+    } finally {
+      setJoiningGroup(null);
+    }
+  };
+
+  const getWeekLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 7) return "This Week";
+    if (diffDays < 14) return "Last Week";
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const formatSlot = (slot: string) => {
+    const slotMap: Record<string, string> = {
+      fri_evening: "Fri Evening",
+      sat_morning: "Sat Morning",
+      sat_afternoon: "Sat Afternoon",
+      sat_evening: "Sat Evening",
+      sun_morning: "Sun Morning",
+      sun_afternoon: "Sun Afternoon",
+      sun_evening: "Sun Evening",
+      weekday_eve: "Weekday Evenings",
+    };
+    return slotMap[slot] || slot.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const getSpecialtyCluster = (specialties: string[]): string => {
+    if (specialties.length === 0) return "General";
+    
+    // Count specialty occurrences
+    const counts: Record<string, number> = {};
+    specialties.forEach(s => {
+      if (s) counts[s] = (counts[s] || 0) + 1;
+    });
+    
+    // Find most common specialty
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const mostCommon = sorted[0]?.[0];
+    
+    if (!mostCommon) return "General";
+    
+    // If all have same specialty, return it
+    if (sorted.length === 1) return mostCommon;
+    
+    // If majority share same specialty, return it
+    if (sorted[0][1] >= specialties.length * 0.6) return mostCommon;
+    
+    // Otherwise, return a cluster name based on common categories
+    const primaryCare = ["Family Medicine", "General Practice", "Internal Medicine"];
+    const surgical = ["Surgery", "Orthopedics", "Plastic Surgery", "Neurosurgery"];
+    const medical = ["Cardiology", "Pulmonology", "Gastroenterology", "Nephrology", "Endocrinology"];
+    
+    if (specialties.some(s => primaryCare.includes(s))) return "Primary Care";
+    if (specialties.some(s => surgical.includes(s))) return "Surgical";
+    if (specialties.some(s => medical.includes(s))) return "Medical";
+    
+    return mostCommon;
+  };
+
+  const getGroupTheme = (group: MatchGroup | AvailableGroup): string => {
+    // Collect all interests from group members
+    const allInterests: string[] = [];
+    group.members.forEach(member => {
+      if (member.preferences) {
+        if (member.preferences.sports) allInterests.push(...member.preferences.sports);
+        if (member.preferences.social_style) allInterests.push(...member.preferences.social_style);
+        if (member.preferences.culture_interests) allInterests.push(...member.preferences.culture_interests);
+        if (member.preferences.lifestyle) allInterests.push(...member.preferences.lifestyle);
+      }
+    });
+    
+    // Count interest occurrences
+    const counts: Record<string, number> = {};
+    allInterests.forEach(interest => {
+      counts[interest] = (counts[interest] || 0) + 1;
+    });
+    
+    // Find most common interest theme
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const topInterest = sorted[0]?.[0];
+    
+    // Map interests to themes
+    const themeMap: Record<string, string> = {
+      "Fitness": "Active",
+      "Running": "Active",
+      "Gym": "Active",
+      "Yoga": "Wellness",
+      "Meditation": "Wellness",
+      "Reading": "Intellectual",
+      "Books": "Intellectual",
+      "Travel": "Adventure",
+      "Hiking": "Adventure",
+      "Outdoor": "Adventure",
+      "Music": "Creative",
+      "Art": "Creative",
+      "Photography": "Creative",
+      "Cooking": "Culinary",
+      "Food": "Culinary",
+      "Coffee": "Social",
+      "Networking": "Professional",
+      "Business": "Professional",
+    };
+    
+    if (topInterest && themeMap[topInterest]) {
+      return themeMap[topInterest];
+    }
+    
+    // Default themes based on group characteristics
+    if (group.gender_composition === "all_female") return "Women's Circle";
+    if (group.gender_composition === "all_male") return "Men's Circle";
+    if (group.group_type === "mixed") return "Diverse";
+    
+    return "Community";
+  };
+
+  const formatGroupName = (group: MatchGroup | AvailableGroup): string => {
+    const cities = Array.from(new Set(group.members.map(m => m.profile.city).filter(Boolean)));
+    const city = cities[0] || "Unknown";
+    
+    const specialties = group.members
+      .map(m => m.preferences?.specialty)
+      .filter(Boolean) as string[];
+    const specialtyCluster = getSpecialtyCluster(specialties);
+    
+    const theme = getGroupTheme(group);
+    
+    // Extract base name (remove any existing city/specialty/theme if present)
+    const baseName = group.name || `Group ${group.id.slice(0, 6)}`;
+    const cleanBaseName = baseName.split(' • ')[0].trim();
+    
+    return `${cleanBaseName} ${city} • ${specialtyCluster} • ${theme}`;
+  };
+
+  const fetchMatchDetails = async (group: MatchGroup) => {
+    if (!user) return;
+    setLoadingDetails(true);
+    setSelectedGroup(group);
+    
+    try {
+      // Get current user's preferences
+      const { data: userPrefs } = await supabase
+        .from("onboarding_preferences")
+        .select("specialty, sports, social_style, culture_interests, lifestyle, availability_slots")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("city, neighborhood")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!userPrefs) {
+        setMatchDetails(null);
+        return;
+      }
+
+      // Collect all interests from group members
+      const allInterests: string[] = [];
+      const specialties: string[] = [];
+      const cities: string[] = [];
+      const neighborhoods: string[] = [];
+      const allAvailability: string[] = [];
+
+      group.members.forEach((member) => {
+        if (member.preferences) {
+          if (member.preferences.sports) allInterests.push(...member.preferences.sports);
+          if (member.preferences.social_style) allInterests.push(...member.preferences.social_style);
+          if (member.preferences.culture_interests) allInterests.push(...member.preferences.culture_interests);
+          if (member.preferences.lifestyle) allInterests.push(...member.preferences.lifestyle);
+          if (member.preferences.specialty) specialties.push(member.preferences.specialty);
+          if (member.preferences.availability_slots) allAvailability.push(...member.preferences.availability_slots);
+        }
+        if (member.profile.city) cities.push(member.profile.city);
+        if (member.profile.neighborhood) neighborhoods.push(member.profile.neighborhood);
+      });
+
+      // Find shared interests with current user
+      const userInterests = [
+        ...(userPrefs.sports || []),
+        ...(userPrefs.social_style || []),
+        ...(userPrefs.culture_interests || []),
+        ...(userPrefs.lifestyle || []),
+      ];
+      const sharedInterests = userInterests.filter((interest) => allInterests.includes(interest));
+      const uniqueSharedInterests = Array.from(new Set(sharedInterests)).slice(0, 5);
+
+      // Determine specialty match
+      let specialtyMatch: { type: 'same' | 'related' | 'different'; value: string } = {
+        type: 'different',
+        value: 'Various',
+      };
+      if (userPrefs.specialty) {
+        const memberSpecialties = Array.from(new Set(specialties));
+        if (memberSpecialties.includes(userPrefs.specialty)) {
+          specialtyMatch = { type: 'same', value: userPrefs.specialty };
+        } else if (memberSpecialties.length === 1) {
+          specialtyMatch = { type: 'related', value: memberSpecialties[0] };
+        } else if (memberSpecialties.length > 0) {
+          specialtyMatch = { type: 'related', value: `${memberSpecialties.length} specialties` };
+        }
+      }
+
+      // Determine location match
+      const uniqueCities = Array.from(new Set(cities));
+      const uniqueNeighborhoods = Array.from(new Set(neighborhoods));
+      const locationMatch = {
+        city: uniqueCities[0] || userProfile?.city || "Unknown",
+        sameNeighborhood: userProfile?.neighborhood && uniqueNeighborhoods.includes(userProfile.neighborhood),
+        neighborhood: userProfile?.neighborhood || uniqueNeighborhoods[0] || undefined,
+      };
+
+      // Find shared availability
+      const userAvailability = userPrefs.availability_slots || [];
+      const sharedAvailability = userAvailability.filter((slot) => allAvailability.includes(slot));
+      const uniqueSharedAvailability = Array.from(new Set(sharedAvailability));
+
+      const details: MatchDetails = {
+        sharedInterests: uniqueSharedInterests,
+        specialtyMatch,
+        locationMatch,
+        sharedAvailability: uniqueSharedAvailability,
+      };
+      
+      setMatchDetails(details);
+      
+      // Also update the group in the list with these details
+      setGroups(prevGroups => 
+        prevGroups.map(g => 
+          g.id === group.id ? { ...g, matchDetails: details } : g
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching match details:", error);
+      setMatchDetails(null);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto px-6 py-8">
+          <Skeleton className="h-10 w-48 mb-6" />
+          <Skeleton className="h-32 rounded-2xl mb-6" />
+          <div className="space-y-4">
+            <Skeleton className="h-40 rounded-2xl" />
+            <Skeleton className="h-40 rounded-2xl" />
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <main className="container mx-auto px-6 py-8">
+        <div className="mb-6">
+          <h1 className="font-display text-2xl font-bold">Your Matches</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Connect with physicians who share your interests
+          </p>
+        </div>
+
+        {/* Countdown Section */}
+        <div className="mb-8">
+          <MatchCountdown />
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="your-groups" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+            <TabsTrigger value="your-groups">
+              <Users className="h-4 w-4 mr-2" />
+              Your Groups
+            </TabsTrigger>
+            <TabsTrigger value="find-groups" onClick={fetchAvailableGroups}>
+              <Search className="h-4 w-4 mr-2" />
+              Find Groups
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Your Groups Tab */}
+          <TabsContent value="your-groups" className="space-y-6">
+          {/* Best Match Highlight */}
+          {groups.length > 0 && groups[0].average_score && groups[0].average_score >= 70 && (
+            <Card className="border-2 border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-2xl overflow-hidden shadow-xl">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg">
+                      <Crown className="h-8 w-8 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-display text-xl font-bold text-foreground">
+                          Best Match Group
+                        </h3>
+                        <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0">
+                          {Math.round(groups[0].average_score)}% Match
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {formatGroupName(groups[0])} • {getGroupTypeLabel(groups[0])}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => startGroupChat(groups[0])}
+                    className="bg-gradient-gold hover:opacity-90"
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Start Chat
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {groups.length === 0 ? (
+            <Card className="border-0 shadow-lg rounded-2xl">
+              <CardContent className="py-12 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary flex items-center justify-center">
+                  <Sparkles className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="font-display text-lg font-semibold mb-2">No groups yet</h3>
+                <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
+                  Groups are formed every Thursday. Complete your profile and preferences to be included in the next matching round!
+                </p>
+                <Button onClick={() => navigate("/onboarding")}>
+                  Complete Profile
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            groups.map((group, index) => {
+              // Get unique city and neighborhood from members
+              const cities = Array.from(new Set(group.members.map(m => m.profile.city).filter(Boolean)));
+              const neighborhoods = Array.from(new Set(group.members.map(m => m.profile.neighborhood).filter(Boolean)));
+              const city = cities[0] || "Unknown";
+              const area = neighborhoods[0] || null;
+              const isThisWeek = getWeekLabel(group.match_week) === "This Week";
+
+              return (
+                <Card 
+                  key={group.id} 
+                  className={`border-0 shadow-lg shadow-foreground/5 rounded-2xl overflow-hidden ${
+                    index === 0 && group.average_score && group.average_score >= 70 
+                      ? 'ring-2 ring-yellow-500/50' 
+                      : ''
+                  }`}
+                >
+                  <CardContent className="p-0">
+                    {/* Group Header */}
+                    <div className="px-5 py-4 border-b border-border/50">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center">
+                            <Users className="h-5 w-5 text-primary-foreground" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-display font-semibold text-foreground">
+                                {formatGroupName(group)}
+                              </h3>
+                              {index === 0 && group.average_score && group.average_score >= 70 && (
+                                <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0">
+                                  <Crown className="h-3 w-3 mr-1" />
+                                  Best Match
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                              <Badge variant="secondary" className="text-xs">
+                                <MapPin className="h-3 w-3 mr-1" />
+                                {city}
+                                {area && ` • ${area}`}
+                              </Badge>
+                              {isThisWeek && (
+                                <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
+                                  This Week
+                                </Badge>
+                              )}
+                              {group.gender_composition && (
+                                <Badge variant="outline" className="text-xs">
+                                  {getGroupTypeLabel(group)}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Members Row */}
+                    <div className="px-5 py-4 border-b border-border/50">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {group.members.map((member) => {
+                          const initials = member.profile.full_name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase() || "U";
+
+                          return (
+                            <div 
+                              key={member.user_id}
+                              className="flex flex-col items-center p-3 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
+                              onClick={() => navigate(`/u/${member.user_id}`)}
+                            >
+                              <Avatar className="h-14 w-14 mb-2 ring-2 ring-background shadow-lg">
+                                <AvatarImage src={member.profile.avatar_url || undefined} />
+                                <AvatarFallback className="bg-gradient-gold text-primary-foreground font-display font-bold">
+                                  {initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium text-xs text-center truncate w-full">
+                                {member.profile.full_name || "Anonymous"}
+                              </span>
+                              {member.preferences?.specialty && (
+                                <span className="text-xs text-muted-foreground truncate w-full text-center mt-0.5">
+                                  {member.preferences.specialty}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Why this match & Suggested meetup times */}
+                    <div className="px-5 py-4 space-y-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchMatchDetails(group)}
+                        className="w-full"
+                      >
+                        <Info className="h-4 w-4 mr-2" />
+                        Why this match?
+                      </Button>
+
+                      {/* Suggested meetup times */}
+                      {group.matchDetails && group.matchDetails.sharedAvailability.length > 0 && (
+                        <div className="pt-3 border-t border-border/50">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium text-foreground">Suggested meetup times</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {group.matchDetails.sharedAvailability.slice(0, 3).map((slot) => (
+                              <Badge key={slot} variant="secondary" className="px-3 py-1">
+                                {formatSlot(slot)}
+                              </Badge>
+                            ))}
+                          </div>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            Create Poll
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="px-5 py-4 border-t border-border/50 flex gap-3">
+                      <Button 
+                        onClick={() => startGroupChat(group)}
+                        className="flex-1 bg-gradient-gold hover:opacity-90"
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Group Chat
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Plan Meetup
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+          </TabsContent>
+
+          {/* Find Groups Tab */}
+          <TabsContent value="find-groups" className="space-y-6">
+            {/* Best Available Match Highlight */}
+            {!loadingAvailable && availableGroups.length > 0 && availableGroups[0].average_score && availableGroups[0].average_score >= 60 && (
+              <Card className="border-2 border-green-500/50 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl overflow-hidden shadow-xl">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
+                        <Sparkles className="h-8 w-8 text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-display text-xl font-bold text-foreground">
+                            Top Recommended Group
+                          </h3>
+                          <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+                            {Math.round(availableGroups[0].average_score)}% Match
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {formatGroupName(availableGroups[0])} • {availableGroups[0].member_count}/5 members
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => handleJoinGroup(availableGroups[0])}
+                      disabled={joiningGroup === availableGroups[0].id || availableGroups[0].member_count >= 5}
+                      className="bg-gradient-gold hover:opacity-90"
+                    >
+                      {joiningGroup === availableGroups[0].id ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Joining...
+                        </>
+                      ) : availableGroups[0].member_count >= 5 ? (
+                        "Full"
+                      ) : (
+                        <>
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Join Now
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {loadingAvailable ? (
+              <div className="space-y-4">
+                <Skeleton className="h-40 rounded-2xl" />
+                <Skeleton className="h-40 rounded-2xl" />
+              </div>
+            ) : availableGroups.length === 0 ? (
+              <Card className="border-0 shadow-lg rounded-2xl">
+                <CardContent className="py-12 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary flex items-center justify-center">
+                    <Search className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-display text-lg font-semibold mb-2">No groups available</h3>
+                  <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
+                    All groups are full or you're already a member of all available groups. Check back later for new matches!
+                  </p>
+                  <Button variant="outline" onClick={fetchAvailableGroups}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              availableGroups.map((group) => (
+                <Card 
+                  key={group.id} 
+                  className="border-0 shadow-lg shadow-foreground/5 rounded-2xl overflow-hidden"
+                >
+                  <CardContent className="p-0">
+                    {/* Group Header */}
+                    <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="font-display font-semibold text-foreground">
+                            {formatGroupName(group)}
+                          </h3>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Badge variant="secondary" className="text-xs">
+                              {getGroupTypeLabel(group)}
+                            </Badge>
+                            <span>•</span>
+                            <span>{group.member_count}/5 members</span>
+                            {group.average_score && (
+                              <>
+                                <span>•</span>
+                                <span className="text-green-600 font-medium">
+                                  {Math.round(group.average_score)}% match
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => handleJoinGroup(group)}
+                        disabled={joiningGroup === group.id || group.member_count >= 5}
+                      >
+                        {joiningGroup === group.id ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Joining...
+                          </>
+                        ) : group.member_count >= 5 ? (
+                          "Full"
+                        ) : (
+                          <>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Join Group
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Members Preview */}
+                    {group.members.length > 0 && (
+                      <div className="p-5">
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Group Members:
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          {group.members.map((member) => {
+                            const initials = member.profile.full_name
+                              ?.split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase() || "U";
+
+                            return (
+                              <div 
+                                key={member.user_id}
+                                className="flex flex-col items-center p-4 rounded-xl bg-secondary/50"
+                              >
+                                <Avatar className="h-16 w-16 mb-3 ring-2 ring-background shadow-lg">
+                                  <AvatarImage src={member.profile.avatar_url || undefined} />
+                                  <AvatarFallback className="bg-gradient-gold text-primary-foreground font-display font-bold text-lg">
+                                    {initials}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium text-sm text-center truncate w-full">
+                                  {member.profile.full_name || "Anonymous"}
+                                </span>
+                                {member.preferences?.specialty && (
+                                  <span className="text-xs text-muted-foreground truncate w-full text-center">
+                                    {member.preferences.specialty}
+                                  </span>
+                                )}
+                                {member.profile.city && (
+                                  <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                    <MapPin className="h-3 w-3" />
+                                    {member.profile.city}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {group.member_count > 4 && (
+                            <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-secondary/30">
+                              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3">
+                                <span className="text-2xl font-bold text-muted-foreground">
+                                  +{group.member_count - 4}
+                                </span>
+                              </div>
+                              <span className="text-xs text-muted-foreground text-center">
+                                More members
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Why this match Modal */}
+        <Dialog open={!!selectedGroup} onOpenChange={(open) => !open && setSelectedGroup(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-display text-2xl">
+                Why this match?
+              </DialogTitle>
+              <DialogDescription>
+                Understanding how this group was matched based on your preferences
+              </DialogDescription>
+            </DialogHeader>
+
+            {loadingDetails ? (
+              <div className="py-8 flex items-center justify-center">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (() => {
+              const details = matchDetails || selectedGroup?.matchDetails;
+              if (!details) {
+                return (
+                  <div className="py-8 text-center">
+                    <p className="text-muted-foreground">Unable to load match details</p>
+                  </div>
+                );
+              }
+              return (
+              <div className="space-y-6 py-4">
+                {/* Interests Overlap */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Heart className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-foreground">Interests Alignment</h4>
+                      <p className="text-xs text-muted-foreground">Highest weight in matching</p>
+                    </div>
+                  </div>
+                  {details.sharedInterests.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pl-14">
+                      {details.sharedInterests.map((interest) => (
+                        <Badge key={interest} variant="secondary" className="px-3 py-1.5">
+                          {interest}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground pl-14">No shared interests found</p>
+                  )}
+                </div>
+
+                {/* Specialty */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                      <Stethoscope className="h-5 w-5 text-accent" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-foreground">Specialty</h4>
+                      <p className="text-xs text-muted-foreground">Medical specialty similarity</p>
+                    </div>
+                  </div>
+                  <div className="pl-14">
+                    <Badge 
+                      variant={details.specialtyMatch.type === 'same' ? 'default' : 'secondary'}
+                      className="px-3 py-1.5"
+                    >
+                      {details.specialtyMatch.type === 'same' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                      {details.specialtyMatch.value}
+                      {details.specialtyMatch.type === 'same' && ' (Same)'}
+                      {details.specialtyMatch.type === 'related' && ' (Related)'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <MapPin className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-foreground">Location</h4>
+                      <p className="text-xs text-muted-foreground">Same city required; neighborhood/area matters</p>
+                    </div>
+                  </div>
+                  <div className="pl-14">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="px-3 py-1.5">
+                        {details.locationMatch.city}
+                      </Badge>
+                      {details.locationMatch.neighborhood && (
+                        <>
+                          <span className="text-muted-foreground">•</span>
+                          <Badge 
+                            variant={details.locationMatch.sameNeighborhood ? 'default' : 'outline'}
+                            className="px-3 py-1.5"
+                          >
+                            {details.locationMatch.neighborhood}
+                            {details.locationMatch.sameNeighborhood && (
+                              <CheckCircle2 className="h-3 w-3 ml-1" />
+                            )}
+                          </Badge>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Availability */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-accent" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-foreground">Availability Overlap</h4>
+                      <p className="text-xs text-muted-foreground">Fri–Sun time slots</p>
+                    </div>
+                  </div>
+                  {details.sharedAvailability.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pl-14">
+                      {details.sharedAvailability.map((slot) => (
+                        <Badge key={slot} variant="secondary" className="px-3 py-1.5">
+                          {formatSlot(slot)}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground pl-14">No overlapping availability found</p>
+                  )}
+                </div>
+              </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
+      </main>
+    </DashboardLayout>
+  );
+};
+
+export default Matches;
