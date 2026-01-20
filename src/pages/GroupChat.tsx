@@ -6,10 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2, X, Stethoscope } from "lucide-react";
+import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Message {
   id: string;
@@ -17,7 +15,6 @@ interface Message {
   content: string;
   created_at: string;
   is_ai?: boolean;
-  is_deleted?: boolean | null;
 }
 
 interface Member {
@@ -41,7 +38,6 @@ const GroupChat = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
-  const [showMembersDialog, setShowMembersDialog] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +76,7 @@ const GroupChat = () => {
         setGroupName(groupData.name || `Group ${groupData.id.slice(0, 6)}`);
       }
 
-      // Get group members with full profile data (including current user)
+      // Get group members with full profile data
       const { data: membersData } = await supabase
         .from("group_members")
         .select("user_id")
@@ -89,47 +85,29 @@ const GroupChat = () => {
       if (membersData) {
         const memberProfiles = await Promise.all(
           membersData.map(async (m) => {
-            try {
-              const [profileRes, prefsRes] = await Promise.all([
-                supabase
-                  .from("profiles")
-                  .select("full_name, avatar_url, city")
-                  .eq("user_id", m.user_id)
-                  .maybeSingle(),
-                supabase
-                  .from("onboarding_preferences")
-                  .select("specialty")
-                  .eq("user_id", m.user_id)
-                  .maybeSingle(),
-              ]);
-              
-              return {
-                user_id: m.user_id,
-                full_name: profileRes.data?.full_name || null,
-                avatar_url: profileRes.data?.avatar_url || null,
-                city: profileRes.data?.city || null,
-                specialty: prefsRes.data?.specialty || null,
-              };
-            } catch (error) {
-              // If there's an error (e.g., RLS policy issue), return minimal data
-              console.warn(`Error fetching data for user ${m.user_id}:`, error);
-              return {
-                user_id: m.user_id,
-                full_name: null,
-                avatar_url: null,
-                city: null,
-                specialty: null,
-              };
-            }
+            const [profileRes, prefsRes] = await Promise.all([
+              supabase
+                .from("profiles")
+                .select("full_name, avatar_url, city")
+                .eq("user_id", m.user_id)
+                .single(),
+              supabase
+                .from("onboarding_preferences")
+                .select("specialty")
+                .eq("user_id", m.user_id)
+                .single(),
+            ]);
+            
+            return {
+              user_id: m.user_id,
+              full_name: profileRes.data?.full_name || null,
+              avatar_url: profileRes.data?.avatar_url || null,
+              city: profileRes.data?.city || null,
+              specialty: prefsRes.data?.specialty || null,
+            };
           })
         );
-        // Sort members: current user first, then others
-        const sortedMembers = memberProfiles.sort((a, b) => {
-          if (a.user_id === user.id) return -1;
-          if (b.user_id === user.id) return 1;
-          return 0;
-        });
-        setMembers(sortedMembers);
+        setMembers(memberProfiles);
       }
 
       // Get messages (exclude deleted messages)
@@ -334,12 +312,8 @@ const GroupChat = () => {
             <span className="hidden sm:inline">Suggest Places</span>
           </Button>
 
-          {/* Member Avatars - Clickable to show all members */}
-          <div 
-            className="flex -space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => setShowMembersDialog(true)}
-            title="View all members"
-          >
+          {/* Member Avatars */}
+          <div className="flex -space-x-2">
             {members.slice(0, 4).map((member) => {
               const initials = member.full_name
                 ?.split(" ")
@@ -466,77 +440,6 @@ const GroupChat = () => {
           </Button>
         </div>
       </div>
-
-      {/* Members Dialog - Show all members */}
-      <Dialog open={showMembersDialog} onOpenChange={setShowMembersDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Group Members ({members.length})
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            {members.map((member) => {
-              const initials = member.full_name
-                ?.split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase() || "U";
-              
-              const isCurrentUser = member.user_id === user?.id;
-
-              return (
-                <div
-                  key={member.user_id}
-                  className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                    isCurrentUser 
-                      ? 'bg-primary/5 border border-primary/20' 
-                      : 'hover:bg-secondary/50 cursor-pointer'
-                  }`}
-                  onClick={() => {
-                    if (!isCurrentUser) {
-                      navigate(`/u/${member.user_id}`);
-                      setShowMembersDialog(false);
-                    }
-                  }}
-                >
-                  <Avatar className="h-12 w-12 border-2 border-background">
-                    <AvatarImage src={member.avatar_url || undefined} />
-                    <AvatarFallback className="bg-gradient-gold text-primary-foreground font-display font-bold">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-sm truncate">
-                        {member.full_name || "Anonymous"}
-                      </h4>
-                      {isCurrentUser && (
-                        <Badge variant="secondary" className="text-xs">You</Badge>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1 mt-1">
-                      {member.specialty && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Stethoscope className="h-3 w-3" />
-                          {member.specialty}
-                        </p>
-                      )}
-                      {member.city && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {member.city}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

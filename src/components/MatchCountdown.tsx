@@ -16,11 +16,11 @@ const getNextThursday = (): Date => {
   
   const nextThursday = new Date(now);
   nextThursday.setDate(now.getDate() + daysUntilThursday);
-  nextThursday.setHours(12, 0, 0, 0); // Noon on Thursday
+  nextThursday.setHours(16, 0, 0, 0); // 4 PM on Thursday
   
-  // If it's Thursday and before noon, use today
-  if (dayOfWeek === 4 && now.getHours() < 12) {
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+  // If it's Thursday and before 4 PM, use today
+  if (dayOfWeek === 4 && now.getHours() < 16) {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 16, 0, 0, 0);
   }
   
   return nextThursday;
@@ -110,7 +110,7 @@ const MatchCountdown = () => {
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-4">
-          New groups are formed every Thursday at noon
+          New groups are formed every Thursday at 4 PM
         </p>
       </CardContent>
     </Card>

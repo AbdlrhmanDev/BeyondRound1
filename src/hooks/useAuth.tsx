@@ -19,63 +19,99 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Function to check if user is banned/suspended
-    const checkUserStatus = async (userId: string | undefined) => {
+    let isMounted = true;
+    let statusCheckCache: Map<string, boolean> = new Map();
+
+    // Function to check if user is banned/suspended with caching
+    const checkUserStatus = async (userId: string | undefined): Promise<boolean> => {
       if (!userId) return false;
       
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("status")
-        .eq("user_id", userId)
-        .maybeSingle();
-      
-      if (profile && (profile.status === "banned" || profile.status === "suspended")) {
-        // Sign out banned/suspended users
-        await supabase.auth.signOut();
-        return true;
+      // تحسين: استخدام cache لتجنب استدعاءات مكررة
+      if (statusCheckCache.has(userId)) {
+        return statusCheckCache.get(userId) || false;
       }
-      return false;
+      
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("status")
+          .eq("user_id", userId)
+          .maybeSingle();
+        
+        const isBanned = !!(profile && (profile.status === "banned" || profile.status === "suspended"));
+        
+        // حفظ في cache
+        statusCheckCache.set(userId, isBanned);
+        
+        if (isBanned && isMounted) {
+          // Sign out banned/suspended users
+          await supabase.auth.signOut();
+        }
+        
+        return isBanned;
+      } catch (error) {
+        console.error("Error checking user status:", error);
+        return false;
+      }
     };
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!isMounted) return;
+        
         if (session?.user) {
           // Check if user is banned/suspended
           const isBanned = await checkUserStatus(session.user.id);
           if (isBanned) {
             // User is banned, don't set session
-            setSession(null);
-            setUser(null);
-            setLoading(false);
+            if (isMounted) {
+              setSession(null);
+              setUser(null);
+              setLoading(false);
+            }
             return;
           }
         }
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        
+        if (isMounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
       }
     );
 
-    // THEN check for existing session
+    // THEN check for existing session (only once on mount)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
+      
       if (session?.user) {
         // Check if user is banned/suspended
         const isBanned = await checkUserStatus(session.user.id);
         if (isBanned) {
           // User is banned, don't set session
-          setSession(null);
-          setUser(null);
-          setLoading(false);
+          if (isMounted) {
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+          }
           return;
         }
       }
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      
+      if (isMounted) {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+      statusCheckCache.clear();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {

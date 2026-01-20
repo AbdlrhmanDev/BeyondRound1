@@ -22,7 +22,6 @@ import {
   MapPin,
   Sparkles,
   Crown,
-  Search,
   UserPlus,
   RefreshCw,
   Info,
@@ -34,6 +33,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import GroupEvaluationSurvey from "@/components/GroupEvaluationSurvey";
 
 interface GroupMember {
   user_id: string;
@@ -82,23 +82,19 @@ interface MatchGroup {
   matchDetails?: MatchDetails;
 }
 
-interface AvailableGroup extends MatchGroup {
-  member_count: number;
-  average_score?: number;
-}
 
 const Matches = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [groups, setGroups] = useState<MatchGroup[]>([]);
-  const [availableGroups, setAvailableGroups] = useState<AvailableGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingAvailable, setLoadingAvailable] = useState(false);
-  const [joiningGroup, setJoiningGroup] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<MatchGroup | null>(null);
   const [matchDetails, setMatchDetails] = useState<MatchDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [surveyGroupId, setSurveyGroupId] = useState<string>("");
+  const [surveyMatchWeek, setSurveyMatchWeek] = useState<string>("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -160,8 +156,8 @@ const Matches = () => {
 
                 return {
                   user_id: memberId,
-                  profile: (profileRes.data as any) || { full_name: null, avatar_url: null, city: null, neighborhood: null, gender: null },
-                  preferences: (prefsRes.data as any) || undefined,
+                  profile: profileRes.data || { full_name: null, avatar_url: null, city: null, neighborhood: null, gender: null },
+                  preferences: prefsRes.data || undefined,
                 };
               } catch (error) {
                 // If there's an error (e.g., RLS policy issue), return minimal data
@@ -183,18 +179,35 @@ const Matches = () => {
             .maybeSingle();
 
           // Calculate average compatibility score with current user
+          // تحسين: حساب النتيجة فقط إذا كان هناك أعضاء، وتخزين مؤقت للنتائج
           let averageScore = 0;
           if (otherMemberIds.length > 0) {
-            const scores = await Promise.all(
-              otherMemberIds.map(async (memberId) => {
-                const { data: scoreResult } = await supabase.rpc("calculate_match_score", {
-                  user_a_id: user.id,
-                  user_b_id: memberId,
-                });
-                return Number(scoreResult || 0);
-              })
-            );
-            averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+            // تحسين: معالجة متوازية مع حد أقصى للاستدعاءات المتزامنة
+            const batchSize = 5; // معالجة 5 أعضاء في كل مرة
+            const scores: number[] = [];
+            
+            for (let i = 0; i < otherMemberIds.length; i += batchSize) {
+              const batch = otherMemberIds.slice(i, i + batchSize);
+              const batchScores = await Promise.all(
+                batch.map(async (memberId) => {
+                  try {
+                    const { data: scoreResult } = await supabase.rpc("calculate_match_score", {
+                      user_a_id: user.id,
+                      user_b_id: memberId,
+                    });
+                    return Number(scoreResult || 0);
+                  } catch (error) {
+                    console.warn(`Error calculating score for ${memberId}:`, error);
+                    return 0;
+                  }
+                })
+              );
+              scores.push(...batchScores);
+            }
+            
+            averageScore = scores.length > 0 
+              ? scores.reduce((a, b) => a + b, 0) / scores.length 
+              : 0;
           }
 
           return {
@@ -214,7 +227,35 @@ const Matches = () => {
         console.log(`Best match group: ${enrichedGroups[0].average_score}% compatibility`);
       }
       
-      setGroups(enrichedGroups);
+      // Show only the first (best) group
+      const firstGroup = enrichedGroups.slice(0, 1);
+      setGroups(firstGroup);
+
+      // Check if survey should be shown for the first group
+      if (firstGroup.length > 0) {
+        const group = firstGroup[0];
+        const now = new Date();
+        const matchDate = new Date(group.match_week);
+        matchDate.setHours(16, 0, 0, 0); // Thursday 4 PM
+        const thursdayEvening = new Date(matchDate);
+        thursdayEvening.setHours(20, 0, 0, 0); // Thursday 8 PM
+        
+        if (now >= thursdayEvening) {
+          // Check if user already submitted evaluation
+          const { data: existingEvaluation } = await supabase
+            .from("group_evaluations" as never)
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("group_id", group.id)
+            .maybeSingle();
+          
+          if (!existingEvaluation) {
+            setSurveyGroupId(group.id);
+            setSurveyMatchWeek(group.match_week);
+            setShowSurvey(true);
+          }
+        }
+      }
     } catch (error) {
       console.error("Error fetching groups:", error);
     } finally {
@@ -223,7 +264,10 @@ const Matches = () => {
   };
 
   useEffect(() => {
-    fetchGroups();
+    if (user) {
+      fetchGroups();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const startGroupChat = async (group: MatchGroup) => {
@@ -250,153 +294,6 @@ const Matches = () => {
     return group.gender_composition === "all_female" ? "All Female" : "All Male";
   };
 
-  const fetchAvailableGroups = async () => {
-    if (!user) return;
-    setLoadingAvailable(true);
-
-    try {
-      // Get groups the user is already a member of
-      const { data: memberData } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user.id);
-
-      const userGroupIds = new Set((memberData || []).map((m) => m.group_id));
-
-      // Get all active groups
-      const { data: allGroups, error } = await supabase
-        .from("match_groups")
-        .select("*")
-        .eq("status", "active")
-        .order("match_week", { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-
-      // Filter out groups user is already in and enrich with member info
-      const enrichedGroups: AvailableGroup[] = await Promise.all(
-        (allGroups || [])
-          .filter((group) => !userGroupIds.has(group.id))
-          .map(async (group) => {
-            // Get member count
-            const { data: membersData } = await supabase
-              .from("group_members")
-              .select("user_id")
-              .eq("group_id", group.id);
-
-            const memberCount = (membersData || []).length;
-
-            // Get member profiles for preview
-            const memberUserIds = (membersData || []).slice(0, 4).map((m) => m.user_id);
-            
-            const members: GroupMember[] = await Promise.all(
-              memberUserIds.map(async (memberId) => {
-                try {
-                  const [profileRes, prefsRes] = await Promise.all([
-                    supabase.from("profiles").select("full_name, avatar_url, city, gender").eq("user_id", memberId).maybeSingle(),
-                    supabase.from("onboarding_preferences").select("specialty").eq("user_id", memberId).maybeSingle(),
-                  ]);
-
-                  return {
-                    user_id: memberId,
-                    profile: (profileRes.data as any) || { full_name: null, avatar_url: null, city: null, gender: null },
-                    preferences: (prefsRes.data as any) || undefined,
-                  };
-                } catch (error) {
-                  // If there's an error (e.g., RLS policy issue), return minimal data
-                  console.warn(`Error fetching data for user ${memberId}:`, error);
-                  return {
-                    user_id: memberId,
-                    profile: { full_name: null, avatar_url: null, city: null, gender: null },
-                    preferences: undefined,
-                  };
-                }
-              })
-            );
-
-            // Calculate average compatibility score with current user
-            let averageScore = 0;
-            if (memberUserIds.length > 0) {
-              const scores = await Promise.all(
-                memberUserIds.map(async (memberId) => {
-                  const { data: scoreResult } = await supabase.rpc("calculate_match_score", {
-                    user_a_id: user.id,
-                    user_b_id: memberId,
-                  });
-                  return Number(scoreResult || 0);
-                })
-              );
-              averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-            }
-
-            return {
-              ...group,
-              members,
-              member_count: memberCount,
-              average_score: averageScore,
-            };
-          })
-      );
-
-      // Sort by average compatibility score
-      enrichedGroups.sort((a, b) => (b.average_score || 0) - (a.average_score || 0));
-      setAvailableGroups(enrichedGroups);
-    } catch (error) {
-      console.error("Error fetching available groups:", error);
-      toast({
-        title: "Error",
-        description: "Could not load available groups",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingAvailable(false);
-    }
-  };
-
-  const handleJoinGroup = async (group: AvailableGroup) => {
-    if (!user) return;
-    
-    setJoiningGroup(group.id);
-    try {
-      // Check if group is full (assuming max 5 members)
-      if (group.member_count >= 5) {
-        toast({
-          title: "Group Full",
-          description: "This group has reached maximum capacity",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Add user to group
-      const { error } = await supabase
-        .from("group_members")
-        .insert({
-          group_id: group.id,
-          user_id: user.id,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success!",
-        description: "You've joined the group successfully",
-      });
-
-      // Refresh both lists
-      fetchGroups();
-      fetchAvailableGroups();
-    } catch (error: any) {
-      console.error("Error joining group:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Could not join group",
-        variant: "destructive",
-      });
-    } finally {
-      setJoiningGroup(null);
-    }
-  };
 
   const getWeekLabel = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -456,7 +353,7 @@ const Matches = () => {
     return mostCommon;
   };
 
-  const getGroupTheme = (group: MatchGroup | AvailableGroup): string => {
+  const getGroupTheme = (group: MatchGroup): string => {
     // Collect all interests from group members
     const allInterests: string[] = [];
     group.members.forEach(member => {
@@ -512,7 +409,7 @@ const Matches = () => {
     return "Community";
   };
 
-  const formatGroupName = (group: MatchGroup | AvailableGroup): string => {
+  const formatGroupName = (group: MatchGroup): string => {
     const cities = Array.from(new Set(group.members.map(m => m.profile.city).filter(Boolean)));
     const city = cities[0] || "Unknown";
     
@@ -534,25 +431,47 @@ const Matches = () => {
     if (!user) return;
     setLoadingDetails(true);
     setSelectedGroup(group);
+    setMatchDetails(null); // Reset previous details
     
     try {
+      // Check if group has members
+      if (!group.members || group.members.length === 0) {
+        console.warn("Group has no members");
+        setLoadingDetails(false);
+        return;
+      }
+
       // Get current user's preferences
-      const { data: userPrefs } = await supabase
+      const { data: userPrefs, error: prefsError } = await supabase
         .from("onboarding_preferences")
         .select("specialty, sports, social_style, culture_interests, lifestyle, availability_slots")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      const { data: userProfile } = await supabase
+      if (prefsError) {
+        console.error("Error fetching user preferences:", prefsError);
+      }
+
+      const { data: userProfile, error: profileError } = await supabase
         .from("profiles")
         .select("city, neighborhood")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (!userPrefs) {
-        setMatchDetails(null);
-        return;
+      if (profileError) {
+        console.error("Error fetching user profile:", profileError);
       }
+
+      // Use default values if preferences are missing
+      const defaultPrefs = {
+        specialty: null,
+        sports: [],
+        social_style: [],
+        culture_interests: [],
+        lifestyle: [],
+        availability_slots: [],
+      };
+      const effectivePrefs = userPrefs || defaultPrefs;
 
       // Collect all interests from group members
       const allInterests: string[] = [];
@@ -563,23 +482,23 @@ const Matches = () => {
 
       group.members.forEach((member) => {
         if (member.preferences) {
-          if (member.preferences.sports) allInterests.push(...member.preferences.sports);
-          if (member.preferences.social_style) allInterests.push(...member.preferences.social_style);
-          if (member.preferences.culture_interests) allInterests.push(...member.preferences.culture_interests);
-          if (member.preferences.lifestyle) allInterests.push(...member.preferences.lifestyle);
+          if (member.preferences.sports) allInterests.push(...(member.preferences.sports || []));
+          if (member.preferences.social_style) allInterests.push(...(member.preferences.social_style || []));
+          if (member.preferences.culture_interests) allInterests.push(...(member.preferences.culture_interests || []));
+          if (member.preferences.lifestyle) allInterests.push(...(member.preferences.lifestyle || []));
           if (member.preferences.specialty) specialties.push(member.preferences.specialty);
-          if (member.preferences.availability_slots) allAvailability.push(...member.preferences.availability_slots);
+          if (member.preferences.availability_slots) allAvailability.push(...(member.preferences.availability_slots || []));
         }
-        if (member.profile.city) cities.push(member.profile.city);
-        if (member.profile.neighborhood) neighborhoods.push(member.profile.neighborhood);
+        if (member.profile?.city) cities.push(member.profile.city);
+        if (member.profile?.neighborhood) neighborhoods.push(member.profile.neighborhood);
       });
 
       // Find shared interests with current user
       const userInterests = [
-        ...(userPrefs.sports || []),
-        ...(userPrefs.social_style || []),
-        ...(userPrefs.culture_interests || []),
-        ...(userPrefs.lifestyle || []),
+        ...(effectivePrefs.sports || []),
+        ...(effectivePrefs.social_style || []),
+        ...(effectivePrefs.culture_interests || []),
+        ...(effectivePrefs.lifestyle || []),
       ];
       const sharedInterests = userInterests.filter((interest) => allInterests.includes(interest));
       const uniqueSharedInterests = Array.from(new Set(sharedInterests)).slice(0, 5);
@@ -589,11 +508,18 @@ const Matches = () => {
         type: 'different',
         value: 'Various',
       };
-      if (userPrefs.specialty) {
-        const memberSpecialties = Array.from(new Set(specialties));
-        if (memberSpecialties.includes(userPrefs.specialty)) {
-          specialtyMatch = { type: 'same', value: userPrefs.specialty };
+      if (effectivePrefs.specialty) {
+        const memberSpecialties = Array.from(new Set(specialties.filter(s => s)));
+        if (memberSpecialties.includes(effectivePrefs.specialty)) {
+          specialtyMatch = { type: 'same', value: effectivePrefs.specialty };
         } else if (memberSpecialties.length === 1) {
+          specialtyMatch = { type: 'related', value: memberSpecialties[0] };
+        } else if (memberSpecialties.length > 0) {
+          specialtyMatch = { type: 'related', value: `${memberSpecialties.length} specialties` };
+        }
+      } else if (specialties.length > 0) {
+        const memberSpecialties = Array.from(new Set(specialties.filter(s => s)));
+        if (memberSpecialties.length === 1) {
           specialtyMatch = { type: 'related', value: memberSpecialties[0] };
         } else if (memberSpecialties.length > 0) {
           specialtyMatch = { type: 'related', value: `${memberSpecialties.length} specialties` };
@@ -601,16 +527,16 @@ const Matches = () => {
       }
 
       // Determine location match
-      const uniqueCities = Array.from(new Set(cities));
-      const uniqueNeighborhoods = Array.from(new Set(neighborhoods));
+      const uniqueCities = Array.from(new Set(cities.filter(c => c)));
+      const uniqueNeighborhoods = Array.from(new Set(neighborhoods.filter(n => n)));
       const locationMatch = {
         city: uniqueCities[0] || userProfile?.city || "Unknown",
-        sameNeighborhood: userProfile?.neighborhood && uniqueNeighborhoods.includes(userProfile.neighborhood),
+        sameNeighborhood: userProfile?.neighborhood ? uniqueNeighborhoods.includes(userProfile.neighborhood) : false,
         neighborhood: userProfile?.neighborhood || uniqueNeighborhoods[0] || undefined,
       };
 
       // Find shared availability
-      const userAvailability = userPrefs.availability_slots || [];
+      const userAvailability = effectivePrefs.availability_slots || [];
       const sharedAvailability = userAvailability.filter((slot) => allAvailability.includes(slot));
       const uniqueSharedAvailability = Array.from(new Set(sharedAvailability));
 
@@ -632,6 +558,11 @@ const Matches = () => {
     } catch (error) {
       console.error("Error fetching match details:", error);
       setMatchDetails(null);
+      toast({
+        title: "Error",
+        description: "Failed to load match details. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoadingDetails(false);
     }
@@ -669,14 +600,10 @@ const Matches = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="your-groups" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+          <TabsList className="grid w-full max-w-md grid-cols-1 mb-6">
             <TabsTrigger value="your-groups">
               <Users className="h-4 w-4 mr-2" />
               Your Groups
-            </TabsTrigger>
-            <TabsTrigger value="find-groups" onClick={fetchAvailableGroups}>
-              <Search className="h-4 w-4 mr-2" />
-              Find Groups
             </TabsTrigger>
           </TabsList>
 
@@ -886,192 +813,6 @@ const Matches = () => {
           )}
           </TabsContent>
 
-          {/* Find Groups Tab */}
-          <TabsContent value="find-groups" className="space-y-6">
-            {/* Best Available Match Highlight */}
-            {!loadingAvailable && availableGroups.length > 0 && availableGroups[0].average_score && availableGroups[0].average_score >= 60 && (
-              <Card className="border-2 border-green-500/50 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl overflow-hidden shadow-xl">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
-                        <Sparkles className="h-8 w-8 text-white" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-display text-xl font-bold text-foreground">
-                            Top Recommended Group
-                          </h3>
-                          <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
-                            {Math.round(availableGroups[0].average_score)}% Match
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {formatGroupName(availableGroups[0])} • {availableGroups[0].member_count}/5 members
-                        </p>
-                      </div>
-                    </div>
-                    <Button 
-                      onClick={() => handleJoinGroup(availableGroups[0])}
-                      disabled={joiningGroup === availableGroups[0].id || availableGroups[0].member_count >= 5}
-                      className="bg-gradient-gold hover:opacity-90"
-                    >
-                      {joiningGroup === availableGroups[0].id ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Joining...
-                        </>
-                      ) : availableGroups[0].member_count >= 5 ? (
-                        "Full"
-                      ) : (
-                        <>
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          Join Now
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            
-            {loadingAvailable ? (
-              <div className="space-y-4">
-                <Skeleton className="h-40 rounded-2xl" />
-                <Skeleton className="h-40 rounded-2xl" />
-              </div>
-            ) : availableGroups.length === 0 ? (
-              <Card className="border-0 shadow-lg rounded-2xl">
-                <CardContent className="py-12 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary flex items-center justify-center">
-                    <Search className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-display text-lg font-semibold mb-2">No groups available</h3>
-                  <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
-                    All groups are full or you're already a member of all available groups. Check back later for new matches!
-                  </p>
-                  <Button variant="outline" onClick={fetchAvailableGroups}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              availableGroups.map((group) => (
-                <Card 
-                  key={group.id} 
-                  className="border-0 shadow-lg shadow-foreground/5 rounded-2xl overflow-hidden"
-                >
-                  <CardContent className="p-0">
-                    {/* Group Header */}
-                    <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center">
-                          <Users className="h-5 w-5 text-primary-foreground" />
-                        </div>
-                        <div>
-                          <h3 className="font-display font-semibold text-foreground">
-                            {formatGroupName(group)}
-                          </h3>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Badge variant="secondary" className="text-xs">
-                              {getGroupTypeLabel(group)}
-                            </Badge>
-                            <span>•</span>
-                            <span>{group.member_count}/5 members</span>
-                            {group.average_score && (
-                              <>
-                                <span>•</span>
-                                <span className="text-green-600 font-medium">
-                                  {Math.round(group.average_score)}% match
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <Button 
-                        onClick={() => handleJoinGroup(group)}
-                        disabled={joiningGroup === group.id || group.member_count >= 5}
-                      >
-                        {joiningGroup === group.id ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            Joining...
-                          </>
-                        ) : group.member_count >= 5 ? (
-                          "Full"
-                        ) : (
-                          <>
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Join Group
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Members Preview */}
-                    {group.members.length > 0 && (
-                      <div className="p-5">
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Group Members:
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          {group.members.map((member) => {
-                            const initials = member.profile.full_name
-                              ?.split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase() || "U";
-
-                            return (
-                              <div 
-                                key={member.user_id}
-                                className="flex flex-col items-center p-4 rounded-xl bg-secondary/50"
-                              >
-                                <Avatar className="h-16 w-16 mb-3 ring-2 ring-background shadow-lg">
-                                  <AvatarImage src={member.profile.avatar_url || undefined} />
-                                  <AvatarFallback className="bg-gradient-gold text-primary-foreground font-display font-bold text-lg">
-                                    {initials}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium text-sm text-center truncate w-full">
-                                  {member.profile.full_name || "Anonymous"}
-                                </span>
-                                {member.preferences?.specialty && (
-                                  <span className="text-xs text-muted-foreground truncate w-full text-center">
-                                    {member.preferences.specialty}
-                                  </span>
-                                )}
-                                {member.profile.city && (
-                                  <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                    <MapPin className="h-3 w-3" />
-                                    {member.profile.city}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {group.member_count > 4 && (
-                            <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-secondary/30">
-                              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3">
-                                <span className="text-2xl font-bold text-muted-foreground">
-                                  +{group.member_count - 4}
-                                </span>
-                              </div>
-                              <span className="text-xs text-muted-foreground text-center">
-                                More members
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
         </Tabs>
 
         {/* Why this match Modal */}
@@ -1211,6 +952,16 @@ const Matches = () => {
             })()}
           </DialogContent>
         </Dialog>
+
+        {/* Evaluation Survey */}
+        {surveyGroupId && surveyMatchWeek && (
+          <GroupEvaluationSurvey
+            groupId={surveyGroupId}
+            matchWeek={surveyMatchWeek}
+            open={showSurvey}
+            onOpenChange={setShowSurvey}
+          />
+        )}
       </main>
     </DashboardLayout>
   );

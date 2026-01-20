@@ -17,7 +17,6 @@ import PublicProfile from "./pages/PublicProfile";
 import Matches from "./pages/Matches";
 import Chat from "./pages/Chat";
 import GroupChat from "./pages/GroupChat";
-import Discover from "./pages/Discover";
 import PlaceSuggestions from "./pages/PlaceSuggestions";
 import About from "./pages/About";
 import FAQ from "./pages/FAQ";
@@ -64,7 +63,6 @@ const App = () => (
             <Route path="/matches" element={<Matches />} />
             <Route path="/chat/:conversationId" element={<Chat />} />
             <Route path="/group-chat/:conversationId" element={<GroupChat />} />
-            <Route path="/discover" element={<Discover />} />
             <Route path="/places" element={<PlaceSuggestions />} />
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<FAQ />} />

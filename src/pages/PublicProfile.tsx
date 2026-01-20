@@ -12,8 +12,6 @@ import {
   Stethoscope, 
   MapPin, 
   Sparkles, 
-  MessageCircle,
-  UserPlus,
   Heart
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +22,8 @@ interface PublicProfile {
   full_name: string | null;
   avatar_url: string | null;
   city: string | null;
+  neighborhood: string | null;
+  languages: string[] | null;
 }
 
 interface PublicPreferences {
@@ -31,6 +31,11 @@ interface PublicPreferences {
   career_stage: string | null;
   interests: string[] | null;
   friendship_type: string[] | null;
+  sports: string[] | null;
+  social_style: string[] | null;
+  culture_interests: string[] | null;
+  lifestyle: string[] | null;
+  availability_slots: string[] | null;
 }
 
 const PublicProfile = () => {
@@ -41,8 +46,6 @@ const PublicProfile = () => {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [preferences, setPreferences] = useState<PublicPreferences | null>(null);
   const [loading, setLoading] = useState(true);
-  const [matchStatus, setMatchStatus] = useState<string | null>(null);
-  const [sendingMatch, setSendingMatch] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -51,31 +54,20 @@ const PublicProfile = () => {
       try {
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("id, user_id, full_name, avatar_url")
+          .select("id, user_id, full_name, avatar_url, city, neighborhood, languages")
           .eq("user_id", userId)
           .maybeSingle();
 
         if (profileError) throw profileError;
-        if (profileData) setProfile({ ...profileData, city: null } as PublicProfile);
+        if (profileData) setProfile(profileData as PublicProfile);
 
         const { data: prefsData } = await supabase
           .from("onboarding_preferences")
-          .select("specialty, career_stage, interests, friendship_type")
+          .select("specialty, career_stage, interests, friendship_type, sports, social_style, culture_interests, lifestyle, availability_slots")
           .eq("user_id", userId)
           .maybeSingle();
 
         if (prefsData) setPreferences(prefsData);
-
-        // Check if there's an existing match
-        if (user && user.id !== userId) {
-          const { data: matchData } = await (supabase as any)
-            .from("matches")
-            .select("status")
-            .or(`and(user_id.eq.${user.id},matched_user_id.eq.${userId}),and(user_id.eq.${userId},matched_user_id.eq.${user.id})`)
-            .maybeSingle();
-
-          if (matchData) setMatchStatus(matchData.status);
-        }
       } catch (error) {
         console.error("Error fetching profile:", error);
         toast({
@@ -91,68 +83,6 @@ const PublicProfile = () => {
     fetchProfile();
   }, [userId, user, toast]);
 
-  const handleSendMatch = async () => {
-    if (!user || !userId) return;
-
-    setSendingMatch(true);
-    try {
-      const { error } = await (supabase as any).from("matches").insert({
-        user_id: user.id,
-        matched_user_id: userId,
-        status: "pending",
-        match_score: 0,
-      });
-
-      if (error) throw error;
-
-      setMatchStatus("pending");
-      toast({
-        title: "Match Request Sent!",
-        description: "They'll be notified of your interest.",
-      });
-    } catch (error) {
-      console.error("Error sending match:", error);
-      toast({
-        title: "Error",
-        description: "Could not send match request",
-        variant: "destructive",
-      });
-    } finally {
-      setSendingMatch(false);
-    }
-  };
-
-  const handleStartChat = async () => {
-    if (!user || !userId) return;
-
-    // Find or create conversation
-    const { data: existingMatch } = await (supabase as any)
-      .from("matches")
-      .select("id")
-      .or(`and(user_id.eq.${user.id},matched_user_id.eq.${userId}),and(user_id.eq.${userId},matched_user_id.eq.${user.id})`)
-      .eq("status", "accepted")
-      .maybeSingle();
-
-    if (existingMatch) {
-      const { data: existingConvo } = await (supabase as any)
-        .from("conversations")
-        .select("id")
-        .eq("match_id", existingMatch.id)
-        .maybeSingle();
-
-      if (existingConvo) {
-        navigate(`/chat/${existingConvo.id}`);
-      } else {
-        const { data: newConvo } = await (supabase as any)
-          .from("conversations")
-          .insert({ match_id: existingMatch.id })
-          .select()
-          .single();
-
-        if (newConvo) navigate(`/chat/${newConvo.id}`);
-      }
-    }
-  };
 
   if (loading) {
     return (
@@ -201,16 +131,27 @@ const PublicProfile = () => {
 
         <div className="max-w-2xl mx-auto">
           <Card className="border-0 shadow-2xl shadow-foreground/10 rounded-3xl overflow-hidden">
-            <div className="h-32 bg-gradient-gold relative">
+            <div className="h-48 bg-gradient-gold relative overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.3),transparent_50%)]" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-accent/20" />
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.1)_50%,transparent_100%)]" />
             </div>
-            <CardContent className="-mt-16 relative pb-8 px-8">
-              <Avatar className="h-32 w-32 border-4 border-background shadow-xl">
-                <AvatarImage src={profile.avatar_url || undefined} />
-                <AvatarFallback className="bg-gradient-gold text-primary-foreground text-4xl font-display font-bold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+            <CardContent className="-mt-24 relative pb-8 px-8">
+              <div className="relative flex justify-center">
+                <div className="relative group">
+                  <div className="absolute -inset-2 bg-gradient-gold rounded-full opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-300" />
+                  <Avatar className="relative h-48 w-48 border-4 border-background shadow-2xl ring-4 ring-primary/10 hover:ring-primary/20 transition-all duration-300 hover:scale-105 cursor-pointer overflow-hidden">
+                    <AvatarImage 
+                      src={profile.avatar_url || undefined} 
+                      className="object-cover brightness-105 contrast-105"
+                      alt={profile.full_name || "Profile picture"}
+                    />
+                    <AvatarFallback className="bg-gradient-gold text-primary-foreground text-5xl font-display font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
 
               <div className="mt-6">
                 <h1 className="font-display text-3xl font-bold text-foreground">
@@ -227,7 +168,10 @@ const PublicProfile = () => {
                   {profile.city && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="h-4 w-4" />
-                      <span className="text-sm">{profile.city}</span>
+                      <span className="text-sm">
+                        {profile.city}
+                        {profile.neighborhood && ` • ${profile.neighborhood}`}
+                      </span>
                     </div>
                   )}
                   {preferences?.career_stage && (
@@ -275,60 +219,123 @@ const PublicProfile = () => {
                   </div>
                 )}
 
-                {!isOwnProfile && user && (
-                  <div className="mt-8 space-y-4">
-                    <div className="flex gap-3">
-                      {matchStatus === "accepted" ? (
-                        <Button 
-                          onClick={handleStartChat}
-                          className="gap-2"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          Send Message
-                        </Button>
-                      ) : matchStatus === "pending" ? (
-                        <Button disabled variant="secondary" className="gap-2">
-                          <UserPlus className="h-4 w-4" />
-                          Match Pending
-                        </Button>
-                      ) : (
-                        <Button 
-                          onClick={handleSendMatch}
-                          disabled={sendingMatch}
-                          className="gap-2"
-                        >
-                          <UserPlus className="h-4 w-4" />
-                          {sendingMatch ? "Sending..." : "Connect"}
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {/* Info about finding matches */}
-                    <div className="p-4 rounded-lg bg-secondary/50 border border-border/50">
-                      <p className="text-xs font-medium text-muted-foreground mb-2">Find More Matches</p>
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate("/matches")}
-                          className="justify-start h-auto py-2 text-xs"
-                        >
-                          <Users className="h-3 w-3 mr-2" />
-                          View Your Groups
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate("/discover")}
-                          className="justify-start h-auto py-2 text-xs"
-                        >
-                          <Sparkles className="h-3 w-3 mr-2" />
-                          Discover Physicians
-                        </Button>
+                {/* Additional Profile Information */}
+                <div className="mt-6 space-y-4">
+                  {profile.languages && profile.languages.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-3">Languages</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.languages.map((lang) => (
+                          <Badge 
+                            key={lang} 
+                            variant="secondary"
+                            className="px-3 py-1.5 rounded-full text-xs"
+                          >
+                            {lang}
+                          </Badge>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+
+                  {preferences?.sports && preferences.sports.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-3">Sports & Activities</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {preferences.sports.map((sport) => (
+                          <Badge 
+                            key={sport} 
+                            variant="secondary"
+                            className="px-3 py-1.5 rounded-full text-xs"
+                          >
+                            {sport}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {preferences?.culture_interests && preferences.culture_interests.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-3">Cultural Interests</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {preferences.culture_interests.map((interest) => (
+                          <Badge 
+                            key={interest} 
+                            variant="secondary"
+                            className="px-3 py-1.5 rounded-full text-xs"
+                          >
+                            {interest}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {preferences?.lifestyle && preferences.lifestyle.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-3">Lifestyle</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {preferences.lifestyle.map((item) => (
+                          <Badge 
+                            key={item} 
+                            variant="secondary"
+                            className="px-3 py-1.5 rounded-full text-xs"
+                          >
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {preferences?.social_style && preferences.social_style.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-3">Social Style</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {preferences.social_style.map((style) => (
+                          <Badge 
+                            key={style} 
+                            variant="secondary"
+                            className="px-3 py-1.5 rounded-full text-xs"
+                          >
+                            {style}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {preferences?.availability_slots && preferences.availability_slots.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-3">Available Times</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {preferences.availability_slots.map((slot) => {
+                          const slotLabels: Record<string, string> = {
+                            fri_evening: "Friday Evening",
+                            sat_morning: "Saturday Morning",
+                            sat_afternoon: "Saturday Afternoon",
+                            sat_evening: "Saturday Evening",
+                            sun_morning: "Sunday Morning",
+                            sun_afternoon: "Sunday Afternoon",
+                            sun_evening: "Sunday Evening",
+                            weekday_eve: "Weekday Evenings",
+                          };
+                          return (
+                            <Badge 
+                              key={slot} 
+                              variant="outline"
+                              className="px-3 py-1.5 rounded-full text-xs border-primary/30"
+                            >
+                              {slotLabels[slot] || slot.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
 
                 {isOwnProfile && (
                   <div className="mt-8">

@@ -30,12 +30,16 @@ const Auth = () => {
   });
 
   // Redirect if already logged in - admins go to /admin, regular users go to /dashboard
+  // تحسين: عدم انتظار adminLoading إذا لم يكن هناك مستخدم
   useEffect(() => {
-    if (!loading && !adminLoading && user) {
-      if (isAdmin) {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
+    if (!loading && user) {
+      // إذا كان هناك مستخدم، انتظر adminLoading
+      if (!adminLoading) {
+        if (isAdmin) {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
       }
     }
   }, [user, loading, adminLoading, isAdmin, navigate]);

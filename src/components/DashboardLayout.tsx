@@ -9,8 +9,7 @@ import {
   Users, 
   Heart, 
   Sparkles,
-  User,
-  Compass
+  User
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -19,7 +18,6 @@ interface DashboardLayoutProps {
 
 const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: Sparkles },
-  { label: "Discover", path: "/discover", icon: Compass },
   { label: "Matches", path: "/matches", icon: Heart },
   { label: "Profile", path: "/profile", icon: User },
 ];
