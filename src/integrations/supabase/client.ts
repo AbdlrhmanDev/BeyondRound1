@@ -10,11 +10,21 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY |
   import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
 if (!SUPABASE_URL) {
-  throw new Error('Missing Supabase URL. Please set VITE_SUPABASE_URL in your .env file');
+  const error = new Error(
+    'Missing Supabase URL. Please set VITE_SUPABASE_URL in your environment variables. ' +
+    'If deploying to Vercel, add it in Project Settings > Environment Variables.'
+  );
+  console.error('❌ Configuration Error:', error.message);
+  throw error;
 }
 
 if (!SUPABASE_PUBLISHABLE_KEY) {
-  throw new Error('Missing Supabase publishable key. Please set VITE_SUPABASE_PUBLISHABLE_KEY in your .env file');
+  const error = new Error(
+    'Missing Supabase publishable key. Please set VITE_SUPABASE_PUBLISHABLE_KEY in your environment variables. ' +
+    'If deploying to Vercel, add it in Project Settings > Environment Variables.'
+  );
+  console.error('❌ Configuration Error:', error.message);
+  throw error;
 }
 
 // Import the supabase client like this:
