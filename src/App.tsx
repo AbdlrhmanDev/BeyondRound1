@@ -29,6 +29,8 @@ import AdminFeedback from "./pages/admin/AdminFeedback";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminMatches from "./pages/admin/AdminMatches";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
+import AuthCallback from "./pages/AuthCallback";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -49,6 +51,7 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />  
             <Route 
               path="/dashboard" 
               element={
@@ -69,6 +72,8 @@ const App = () => (
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            
+     
             <Route 
               path="/admin" 
               element={

@@ -8,8 +8,9 @@ import {
   Settings, 
   Users, 
   Heart, 
-  Sparkles,
-  User
+  LayoutGrid,
+  User,
+  ArrowRight
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -17,7 +18,7 @@ interface DashboardLayoutProps {
 }
 
 const navItems = [
-  { label: "Dashboard", path: "/dashboard", icon: Sparkles },
+  { label: "Dashboard", path: "/dashboard", icon: LayoutGrid },
   { label: "Matches", path: "/matches", icon: Heart },
   { label: "Profile", path: "/profile", icon: User },
 ];
@@ -42,8 +43,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               className="flex items-center gap-3 cursor-pointer"
               onClick={() => navigate("/dashboard")}
             >
-              <div className="h-9 w-9 rounded-xl bg-gradient-gold flex items-center justify-center shadow-glow-sm">
-                <Sparkles className="h-5 w-5 text-primary-foreground" />
+              <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-display font-bold text-lg">B</span>
               </div>
               <span className="font-display text-xl font-bold text-foreground hidden sm:inline">BeyondRounds</span>
             </div>
@@ -57,7 +58,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   onClick={() => navigate(item.path)}
                   className={`gap-2 rounded-full px-4 ${
                     location.pathname === item.path 
-                      ? "bg-secondary text-foreground" 
+                      ? "bg-primary text-primary-foreground" 
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -86,8 +87,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               onClick={handleSignOut} 
               className="gap-2 text-muted-foreground hover:text-foreground rounded-full"
             >
-              <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Sign Out</span>
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

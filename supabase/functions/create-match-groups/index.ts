@@ -1,4 +1,8 @@
+// Deno Edge Function - these imports are valid in Deno runtime
+// IDE warnings about missing types are expected and won't affect runtime execution
+// @ts-expect-error - Deno types are available at runtime
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-expect-error - Deno types are available at runtime
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -13,7 +17,9 @@ serve(async (req) => {
   }
 
   try {
+    // @ts-expect-error - Deno global is available at runtime
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    // @ts-expect-error - Deno global is available at runtime
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -81,7 +87,7 @@ serve(async (req) => {
     let processedPairs = 0;
 
     for (let i = 0; i < userIds.length; i++) {
-      const batch = [];
+      const batch: Array<{ userA: string; userB: string }> = [];
 
       for (let j = i + 1; j < userIds.length; j++) {
         const userA = userIds[i];
@@ -222,13 +228,41 @@ serve(async (req) => {
       `👥 Found ${usersNotInGroups.length} users not in groups for this week`
     );
 
-    // خلط المستخدمين عشوائياً
-    const shuffledUsers = usersNotInGroups.sort(() => Math.random() - 0.5);
+    // Get waitlist users with priority (from previous weeks)
+    interface WaitlistUser {
+      user_id: string;
+      priority: number;
+      gender: string;
+    }
+    let waitlistUsers: WaitlistUser[] = [];
+    try {
+      const { data, error: rpcError } = await supabase.rpc(
+        "get_waitlist_users_for_matching",
+        { target_week: matchWeekDate }
+      );
+      if (rpcError) {
+        console.warn("⚠️ Waitlist RPC function not available yet (migration may not be applied):", rpcError.message);
+      } else {
+        waitlistUsers = (data as WaitlistUser[]) || [];
+      }
+    } catch (error) {
+      console.warn("⚠️ Could not fetch waitlist users:", error);
+    }
+
+    // Combine waitlist users (with priority) and new users
+    const waitlistUserIds = new Set(waitlistUsers.map((u) => u.user_id));
+    const prioritizedUsers = usersNotInGroups.filter((u) => waitlistUserIds.has(u.user_id));
+    const newUsers = usersNotInGroups.filter((u) => !waitlistUserIds.has(u.user_id));
+
+    // Put waitlist users first, then shuffle new users
+    const shuffledNewUsers = newUsers.sort(() => Math.random() - 0.5);
+    const allUsersToMatch = [...prioritizedUsers, ...shuffledNewUsers];
+
     const usersInGroups = new Set<string>();
     let groupNumber = 1;
     let groupsCreated = 0;
 
-    for (const user of shuffledUsers) {
+    for (const user of allUsersToMatch) {
       if (usersInGroups.has(user.user_id)) continue;
 
       let targetGroup: string | null = null;
@@ -354,6 +388,7 @@ serve(async (req) => {
             gender_composition: genderComp,
             status: "active",
             match_week: matchWeekDate,
+            is_partial_group: false, // Will be updated if needed
           })
           .select()
           .single();
@@ -392,12 +427,183 @@ serve(async (req) => {
       `✅ Created ${groupsCreated} new groups and added ${usersInGroups.size} users`
     );
 
+    // ============================================
+    // Handle remaining unmatched users
+    // ============================================
+    const remainingUsers = allUsersToMatch.filter(
+      (u) => !usersInGroups.has(u.user_id)
+    );
+
+    let waitlistAdded = 0;
+    let partialGroupsCreated = 0;
+
+    if (remainingUsers.length > 0) {
+      console.log(
+        `⚠️ Found ${remainingUsers.length} unmatched users after main matching`
+      );
+
+      // Group remaining users by gender for better matching
+      const remainingByGender = {
+        female: remainingUsers.filter((u) => u.gender === "female"),
+        male: remainingUsers.filter((u) => u.gender === "male" || !u.gender),
+      };
+
+      // Try to create smaller groups (3-4 members)
+      const minGroupSize = 3;
+      const maxGroupSize = 4;
+
+      // Process each gender group
+      for (const [gender, users] of Object.entries(remainingByGender)) {
+        if (users.length >= minGroupSize) {
+          // Create a smaller group
+          const groupSize = Math.min(users.length, maxGroupSize);
+          const groupMembers = users.slice(0, groupSize);
+
+          // Partial groups are always same-gender since we're processing by gender
+          const groupType = "same_gender";
+          const genderComp =
+            gender === "female" ? "all_female" : "all_male";
+
+          const { data: partialGroup, error: partialError } = await supabase
+            .from("match_groups")
+            .insert({
+              name: `Group ${groupNumber} (Small)`,
+              group_type: groupType,
+              gender_composition: genderComp,
+              status: "active",
+              match_week: matchWeekDate,
+              is_partial_group: true,
+            })
+            .select()
+            .single();
+
+          if (!partialError && partialGroup) {
+            // Add all members to the partial group
+            const memberInserts = groupMembers.map((u) => ({
+              group_id: partialGroup.id,
+              user_id: u.user_id,
+            }));
+
+            const { error: membersError } = await supabase
+              .from("group_members")
+              .insert(memberInserts);
+
+            if (!membersError) {
+              groupMembers.forEach((u) => usersInGroups.add(u.user_id));
+              partialGroupsCreated++;
+              groupNumber++;
+
+              // Send notification to partial group members
+              for (const member of groupMembers) {
+                await supabase.from("notifications").insert({
+                  user_id: member.user_id,
+                  type: "system",
+                  title: "Smaller Group This Week",
+                  message: `You've been matched with ${groupSize} members this week. We'll add more members next round!`,
+                  link: "/matches",
+                  metadata: {
+                    group_id: partialGroup.id,
+                    group_size: groupSize,
+                    is_partial: true,
+                  },
+                });
+              }
+
+              console.log(
+                `✅ Created partial group with ${groupSize} ${gender} members`
+              );
+            }
+          }
+        }
+      }
+
+      // Add remaining unmatched users to waitlist
+      const stillUnmatched = remainingUsers.filter(
+        (u) => !usersInGroups.has(u.user_id)
+      );
+
+      if (stillUnmatched.length > 0) {
+        // Get existing waitlist entries to update priority
+        interface WaitlistEntry {
+          user_id: string;
+          priority: number;
+        }
+        const { data: existingWaitlist } = await supabase
+          .from("matching_waitlist")
+          .select("user_id, priority")
+          .in(
+            "user_id",
+            stillUnmatched.map((u) => u.user_id)
+          );
+
+        const existingPriorities = new Map<string, number>();
+        if (existingWaitlist) {
+          for (const entry of existingWaitlist as WaitlistEntry[]) {
+            existingPriorities.set(entry.user_id, entry.priority);
+          }
+        }
+
+        const waitlistInserts = stillUnmatched.map((u) => {
+          const existingPriority = existingPriorities.get(u.user_id) ?? 0;
+          const newPriority = existingPriority + 1; // Increase priority for each week unmatched
+          return {
+            user_id: u.user_id,
+            match_week: matchWeekDate,
+            priority: newPriority,
+            reason: "insufficient_users",
+          };
+        });
+
+        const { error: waitlistError } = await supabase
+          .from("matching_waitlist")
+          .upsert(waitlistInserts, {
+            onConflict: "user_id,match_week",
+          });
+
+        if (!waitlistError) {
+          waitlistAdded = stillUnmatched.length;
+
+          // Send notifications to unmatched users
+          for (const user of stillUnmatched) {
+            const userPriority = existingPriorities.get(user.user_id) ?? 0;
+            const newPriority = userPriority + 1;
+            await supabase.from("notifications").insert({
+              user_id: user.user_id,
+              type: "system",
+              title: "Prioritized for Next Round",
+              message:
+                "We couldn't find a complete group this week, but you're prioritized for next week's matching!",
+              link: "/matches",
+              metadata: {
+                match_week: matchWeekDate,
+                priority: newPriority,
+              },
+            });
+          }
+
+          console.log(
+            `📋 Added ${waitlistAdded} users to waitlist for next round`
+          );
+        }
+      }
+    }
+
+    // Remove users from waitlist who were successfully matched
+    if (usersInGroups.size > 0) {
+      await supabase
+        .from("matching_waitlist")
+        .delete()
+        .in("user_id", Array.from(usersInGroups));
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Successfully created ${groupsCreated} groups for ${usersInGroups.size} users`,
+        message: `Successfully created ${groupsCreated} full groups, ${partialGroupsCreated} partial groups for ${usersInGroups.size} users. ${waitlistAdded} users added to waitlist.`,
         groupsCreated,
+        partialGroupsCreated,
         usersAdded: usersInGroups.size,
+        waitlistAdded,
         matchesCreated,
         matchWeek: matchWeekDate,
         timestamp: new Date().toISOString(),

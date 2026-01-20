@@ -94,14 +94,26 @@ const Profile = () => {
       
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
       
-      const { error: updateError } = await supabase
+      const { error: updateError, data: updatedProfile } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl } as any)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select()
+        .single();
       
       if (updateError) throw updateError;
       
-      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      if (updatedProfile) {
+        setProfile({
+          full_name: updatedProfile.full_name,
+          avatar_url: updatedProfile.avatar_url,
+          city: updatedProfile.city || null,
+          neighborhood: updatedProfile.neighborhood || null,
+          languages: updatedProfile.languages || null,
+          license_url: updatedProfile.license_url || null,
+        });
+      }
+      
       toast({ title: "Profile photo updated!" });
     } catch (error) {
       console.error("Error uploading avatar:", error);
@@ -131,15 +143,79 @@ const Profile = () => {
       
       if (uploadError) throw uploadError;
       
-      const { error: updateError } = await supabase
+      const { error: updateError, data: updatedProfile } = await supabase
         .from('profiles')
         .update({ license_url: filePath } as any)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select()
+        .single();
       
       if (updateError) throw updateError;
       
-      setProfile(prev => prev ? { ...prev, license_url: filePath } : null);
-      toast({ title: "Medical license updated!" });
+      if (updatedProfile) {
+        setProfile({
+          full_name: updatedProfile.full_name,
+          avatar_url: updatedProfile.avatar_url,
+          city: updatedProfile.city || null,
+          neighborhood: updatedProfile.neighborhood || null,
+          languages: updatedProfile.languages || null,
+          license_url: updatedProfile.license_url || null,
+        });
+      }
+      
+      // Check if profile is now complete and mark it
+      if (updatedProfile?.full_name && updatedProfile?.city && filePath) {
+        const { data: existingPrefs } = await supabase
+          .from("onboarding_preferences")
+          .select("completed_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!existingPrefs?.completed_at) {
+          await supabase
+            .from("onboarding_preferences")
+            .upsert({
+              user_id: user.id,
+              completed_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_id'
+            });
+          
+          // Refresh preferences
+          const { data: prefsData } = await supabase
+            .from("onboarding_preferences")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          
+          if (prefsData) {
+            setPreferences(prefsData as any);
+          }
+        }
+      }
+      
+      // Check if profile is now complete
+      const isNowComplete = updatedProfile?.full_name && updatedProfile?.city && filePath;
+      
+      if (isNowComplete) {
+        // Refresh preferences to show completion status
+        const { data: prefsData } = await supabase
+          .from("onboarding_preferences")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        if (prefsData) {
+          setPreferences(prefsData as any);
+        }
+      }
+      
+      toast({ 
+        title: "Medical license updated!",
+        description: isNowComplete
+          ? "✅ Your profile is now complete! Refresh the dashboard to see the changes."
+          : "Make sure to fill in your City and click Save to complete your profile."
+      });
     } catch (error) {
       console.error("Error uploading license:", error);
       toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
@@ -198,33 +274,97 @@ const Profile = () => {
     
     setSaving(true);
     try {
-      const { error } = await supabase
+      // Update profile
+      const { error: profileError, data: updatedProfile } = await supabase
         .from("profiles")
         .update({ 
           full_name: fullName,
           city: city || null,
           neighborhood: neighborhood || null,
         } as any)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      setProfile(prev => prev ? { 
-        ...prev, 
-        full_name: fullName,
-        city: city || null,
-        neighborhood: neighborhood || null,
-      } : null);
+      // Update local state
+      if (updatedProfile) {
+        setProfile({
+          full_name: updatedProfile.full_name,
+          avatar_url: updatedProfile.avatar_url,
+          city: updatedProfile.city || null,
+          neighborhood: updatedProfile.neighborhood || null,
+          languages: updatedProfile.languages || null,
+          license_url: updatedProfile.license_url || null,
+        });
+        setFullName(updatedProfile.full_name || "");
+        setCity(updatedProfile.city || "");
+        setNeighborhood(updatedProfile.neighborhood || "");
+      }
+
+      // Check if profile is complete (has name, city, and license)
+      const isComplete = fullName && city && profile?.license_url;
+      
+      if (isComplete) {
+        // Mark onboarding as complete if not already
+        const { data: existingPrefs } = await supabase
+          .from("onboarding_preferences")
+          .select("completed_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!existingPrefs?.completed_at) {
+          const { error: prefsError } = await supabase
+            .from("onboarding_preferences")
+            .upsert({
+              user_id: user.id,
+              completed_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_id'
+            });
+
+          if (prefsError) {
+            console.error('Error marking profile complete:', prefsError);
+          } else {
+            // Refresh preferences
+            const { data: prefsData } = await supabase
+              .from("onboarding_preferences")
+              .select("*")
+              .eq("user_id", user.id)
+              .maybeSingle();
+            
+            if (prefsData) {
+              setPreferences(prefsData as any);
+            }
+          }
+        }
+      }
       
       toast({
         title: "Profile updated",
-        description: "Your changes have been saved successfully.",
+        description: isComplete 
+          ? "✅ Your profile is now complete! You'll be included in the next matching round. Refresh the dashboard to see the changes."
+          : "Your changes have been saved successfully. Make sure to fill in City and upload your Medical License to complete your profile.",
       });
-    } catch (error) {
+      
+      // If profile is complete, refresh preferences to update UI
+      if (isComplete) {
+        const { data: prefsData } = await supabase
+          .from("onboarding_preferences")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        if (prefsData) {
+          setPreferences(prefsData as any);
+        }
+      }
+    } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: error.message || "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     } finally {

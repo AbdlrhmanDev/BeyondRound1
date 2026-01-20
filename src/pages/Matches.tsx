@@ -80,6 +80,7 @@ interface MatchGroup {
   conversation_id?: string;
   average_score?: number;
   matchDetails?: MatchDetails;
+  is_partial_group?: boolean;
 }
 
 
@@ -95,6 +96,7 @@ const Matches = () => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyGroupId, setSurveyGroupId] = useState<string>("");
   const [surveyMatchWeek, setSurveyMatchWeek] = useState<string>("");
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -106,6 +108,15 @@ const Matches = () => {
     if (!user) return;
 
     try {
+      // Check if profile is complete
+      const { data: preferences } = await supabase
+        .from("onboarding_preferences")
+        .select("completed_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      setIsProfileComplete(!!preferences?.completed_at);
+
       // Get all groups the user is a member of
       const { data: memberData, error: memberError } = await supabase
         .from("group_members")
@@ -122,13 +133,47 @@ const Matches = () => {
 
       const groupIds = memberData.map((m) => m.group_id);
 
-      // Get group details
-      const { data: groupsData, error: groupsError } = await supabase
+      // Get group details (including is_partial_group if column exists)
+      // Note: If migration hasn't been applied, is_partial_group won't exist yet
+      type GroupData = {
+        id: string;
+        name: string | null;
+        group_type: string;
+        gender_composition: string | null;
+        status: string;
+        match_week: string;
+        created_at: string;
+        is_partial_group?: boolean;
+      };
+      let groupsData: GroupData[] | null = null;
+      let groupsError: Error | null = null;
+      
+      // Try to select with is_partial_group first
+      const { data, error } = await supabase
         .from("match_groups")
         .select("*")
         .in("id", groupIds)
         .eq("status", "active")
         .order("match_week", { ascending: false });
+
+      if (error) {
+        // If error mentions is_partial_group, try without it
+        if (error.message?.includes("is_partial_group")) {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("match_groups")
+            .select("*")
+            .in("id", groupIds)
+            .eq("status", "active")
+            .order("match_week", { ascending: false });
+          
+          groupsData = fallbackData;
+          groupsError = fallbackError;
+        } else {
+          groupsError = error;
+        }
+      } else {
+        groupsData = data;
+      }
 
       if (groupsError) throw groupsError;
 
@@ -188,7 +233,7 @@ const Matches = () => {
       });
 
       // Build enriched groups (skip score calculation for now - can be added later if needed)
-      const enrichedGroups: MatchGroup[] = (groupsData || []).map((group) => {
+      const enrichedGroups: MatchGroup[] = (groupsData || []).map((group: GroupData) => {
         const memberUserIds = membersByGroup.get(group.id) || [];
         const otherMemberIds = memberUserIds.filter((id) => id !== user.id);
         
@@ -206,10 +251,17 @@ const Matches = () => {
         }));
 
         return {
-          ...group,
+          id: group.id,
+          name: group.name,
+          group_type: group.group_type,
+          gender_composition: group.gender_composition,
+          status: group.status,
+          match_week: group.match_week,
+          created_at: group.created_at,
           members,
           conversation_id: conversationsMap.get(group.id),
           average_score: undefined, // Skip score calculation for faster loading
+          is_partial_group: group.is_partial_group ?? false,
         };
       });
 
@@ -257,6 +309,25 @@ const Matches = () => {
       fetchGroups();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Refresh completion status when component mounts or user changes
+  useEffect(() => {
+    const checkProfileCompletion = async () => {
+      if (!user) return;
+      
+      const { data: preferences } = await supabase
+        .from("onboarding_preferences")
+        .select("completed_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      setIsProfileComplete(!!preferences?.completed_at);
+    };
+
+    if (user) {
+      checkProfileCompletion();
+    }
   }, [user]);
 
   const startGroupChat = async (group: MatchGroup) => {
@@ -640,12 +711,26 @@ const Matches = () => {
                   <Sparkles className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 className="font-display text-lg font-semibold mb-2">No groups yet</h3>
-                <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
-                  Groups are formed every Thursday. Complete your profile and preferences to be included in the next matching round!
-                </p>
-                <Button onClick={() => navigate("/onboarding")}>
-                  Complete Profile
-                </Button>
+                {isProfileComplete ? (
+                  <>
+                    <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
+                      Groups are formed every Thursday at 4 PM. Your profile is complete and you'll be included in the next matching round!
+                    </p>
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <span>Profile complete - You're all set!</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
+                      Groups are formed every Thursday. Complete your profile and preferences to be included in the next matching round!
+                    </p>
+                    <Button onClick={() => navigate("/onboarding")}>
+                      Complete Profile
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -702,11 +787,29 @@ const Matches = () => {
                                   {getGroupTypeLabel(group)}
                                 </Badge>
                               )}
+                              {group.is_partial_group && (
+                                <Badge variant="secondary" className="text-xs bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">
+                                  <Info className="h-3 w-3 mr-1" />
+                                  Smaller Group
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
+
+                    {/* Partial Group Notice */}
+                    {group.is_partial_group && (
+                      <div className="px-5 py-3 bg-yellow-500/10 border-b border-yellow-500/20">
+                        <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
+                          <Info className="h-4 w-4" />
+                          <span>
+                            Smaller group this week ({group.members.length} members). We'll add more members in the next matching round!
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Members Row */}
                     <div className="px-5 py-4 border-b border-border/50">

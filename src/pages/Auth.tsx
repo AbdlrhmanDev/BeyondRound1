@@ -33,14 +33,25 @@ const Auth = () => {
   // تحسين: عدم انتظار adminLoading إذا لم يكن هناك مستخدم
   useEffect(() => {
     if (!loading && user) {
-      // إذا كان هناك مستخدم، انتظر adminLoading
+      // تحسين: الانتظار بحد أقصى 2 ثانية لـ adminLoading
+      const timeout = setTimeout(() => {
+        if (isAdmin) {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      }, adminLoading ? 2000 : 0);
+      
       if (!adminLoading) {
+        clearTimeout(timeout);
         if (isAdmin) {
           navigate('/admin', { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
         }
       }
+      
+      return () => clearTimeout(timeout);
     }
   }, [user, loading, adminLoading, isAdmin, navigate]);
 

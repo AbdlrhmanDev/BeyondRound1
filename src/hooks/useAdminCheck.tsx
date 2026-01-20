@@ -16,15 +16,24 @@ export const useAdminCheck = () => {
     }
 
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const checkAdminRole = async () => {
       try {
-        const { data, error } = await supabase
+        // تحسين: استخدام timeout لتجنب الانتظار الطويل
+        const checkPromise = supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id)
           .eq("role", "admin")
           .maybeSingle();
+
+        // Timeout بعد 3 ثواني
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error("Timeout")), 3000);
+        });
+
+        const { data, error } = await Promise.race([checkPromise, timeoutPromise]) as any;
 
         if (!isMounted) return;
 
@@ -46,10 +55,15 @@ export const useAdminCheck = () => {
       }
     };
 
-    checkAdminRole();
+    // تحسين: تأخير بسيط للسماح بتحميل الصفحة أولاً
+    const delayId = setTimeout(() => {
+      checkAdminRole();
+    }, 100);
 
     return () => {
       isMounted = false;
+      clearTimeout(delayId);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [user]);
 

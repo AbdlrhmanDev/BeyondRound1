@@ -10,6 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
+interface ExtendedError extends Error {
+  status?: number;
+  code?: string;
+  userCreated?: boolean;
+}
+
 interface QuestionOption {
   id: string;
   label: string;
@@ -615,110 +621,204 @@ const Onboarding = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await signUp(signupData.email, signupData.password, personalInfo.name);
+      const { error, data } = await signUp(signupData.email, signupData.password, personalInfo.name);
       
       if (error) {
-        if (error.message.includes("already registered")) {
+        console.error('Signup error details:', error);
+        
+        // Handle specific error cases
+        const extendedError = error as ExtendedError;
+        if (error.message.includes("already registered") || error.message.includes("already exists")) {
           toast({
             title: "Account exists",
             description: "This email is already registered. Please sign in instead.",
             variant: "destructive",
           });
+        } else if (error.message.includes("confirmation email") || extendedError.code === 'email_send_failed') {
+          // User was created but email failed
+          if (data?.user || extendedError.userCreated) {
+            toast({
+              title: "Account created",
+              description: "Your account was created but we couldn't send a confirmation email. Please check your email settings in Supabase Dashboard or try signing in directly.",
+              variant: "default",
+            });
+            // Try to sign in automatically if user was created
+            setTimeout(() => {
+              navigate("/auth");
+            }, 2000);
+          } else {
+            toast({
+              title: "Email error",
+              description: "There was an issue sending the confirmation email. Please check your email configuration or contact support.",
+              variant: "destructive",
+            });
+          }
+        } else if (error.message.includes("500") || extendedError.status === 500) {
+          // Check console for detailed diagnostics
+          const isTriggerIssue = !data?.user && error.message.includes('confirmation email');
+          toast({
+            title: "Server error",
+            description: isTriggerIssue 
+              ? "Database trigger failed. Please run the verification script in Supabase SQL Editor (see TROUBLESHOOTING_SIGNUP_ERROR.md) or contact support."
+              : "There was a server error creating your account. Check the browser console for details or contact support.",
+            variant: "destructive",
+          });
         } else {
           toast({
             title: "Sign up failed",
-            description: error.message,
+            description: error.message || "An unexpected error occurred. Please try again.",
             variant: "destructive",
           });
         }
+        setIsLoading(false);
         return;
       }
 
       // Save onboarding data
-      const { data: { user: newUser } } = await supabase.auth.getUser();
+      const { data: { user: newUser }, error: getUserError } = await supabase.auth.getUser();
       
-      if (newUser) {
-        let avatarUrl = null;
-        let licenseUrl = null;
-
-        // Upload avatar if provided
-        if (avatarFile) {
-          const fileExt = avatarFile.name.split('.').pop();
-          const filePath = `${newUser.id}/avatar.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, avatarFile, { upsert: true });
-          
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(filePath);
-            avatarUrl = publicUrl;
-          }
-        }
-
-        // Upload license if provided
-        if (licenseFile) {
-          const fileExt = licenseFile.name.split('.').pop();
-          const filePath = `${newUser.id}/license.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('licenses')
-            .upload(filePath, licenseFile, { upsert: true });
-          
-          if (!uploadError) {
-            // For private bucket, store the path (not public URL)
-            licenseUrl = filePath;
-          }
-        }
-
-        // Update profile
-        await supabase
-          .from("profiles")
-          .update({
-            full_name: personalInfo.name || null,
-            neighborhood: personalInfo.neighborhood || null,
-            gender: personalInfo.gender || null,
-            birth_year: personalInfo.birthYear ? parseInt(personalInfo.birthYear) : null,
-            gender_preference: personalInfo.genderPreference || null,
-            nationality: personalInfo.nationality || null,
-            avatar_url: avatarUrl,
-            license_url: licenseUrl,
-          } as any)
-          .eq("user_id", newUser.id);
-
-        // Save preferences
-        await supabase.from("onboarding_preferences").upsert({
-          user_id: newUser.id,
-          specialty: answers.specialty?.[0] || null,
-          specialty_preference: answers.specialty_preference?.[0] || null,
-          career_stage: answers.stage?.[0] || null,
-          sports: answers.sports || [],
-          activity_level: answers.activity_level?.[0] || null,
-          music_preferences: answers.music_preferences || [],
-          movie_preferences: answers.movie_preferences || [],
-          other_interests: answers.other_interests || [],
-          meeting_activities: answers.meeting_activities || [],
-          social_energy: answers.social_energy?.[0] || null,
-          conversation_style: answers.conversation_style?.[0] || null,
-          availability_slots: answers.availability || [],
-          meeting_frequency: answers.meeting_frequency?.[0] || null,
-          goals: answers.goals || [],
-          dietary_preferences: answers.dietary_preferences || [],
-          life_stage: answers.life_stage?.[0] || null,
-          ideal_weekend: answers.ideal_weekend || [],
-          open_to_business: answers.goals?.includes("business") || false,
-          completed_at: new Date().toISOString(),
+      if (!newUser) {
+        // User not authenticated yet - store data in localStorage to save after email confirmation
+        console.warn('⚠️ User not authenticated yet. Storing onboarding data in localStorage.');
+        const onboardingData = {
+          personalInfo,
+          answers,
+          timestamp: new Date().toISOString(),
+        };
+        localStorage.setItem('pending_onboarding_data', JSON.stringify(onboardingData));
+        
+        toast({
+          title: "Check your email",
+          description: "Please confirm your email, then complete your profile when you sign in.",
+          variant: "default",
         });
+        
+        navigate('/auth');
+        return;
+      }
 
-        // Create welcome notification
-        await supabase.from("notifications").insert({
+      // User is authenticated - save data immediately
+      let avatarUrl = null;
+      let licenseUrl = null;
+      const saveErrors: string[] = [];
+
+      // Upload avatar if provided
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${newUser.id}/avatar.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile, { upsert: true });
+        
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          avatarUrl = publicUrl;
+        } else {
+          console.error('Avatar upload error:', uploadError);
+          saveErrors.push('Failed to upload avatar');
+        }
+      }
+
+      // Upload license if provided
+      if (licenseFile) {
+        const fileExt = licenseFile.name.split('.').pop();
+        const filePath = `${newUser.id}/license.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('licenses')
+          .upload(filePath, licenseFile, { upsert: true });
+        
+        if (!uploadError) {
+          // For private bucket, store the path (not public URL)
+          licenseUrl = filePath;
+        } else {
+          console.error('License upload error:', uploadError);
+          saveErrors.push('Failed to upload license');
+        }
+      }
+
+      // Update profile
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: personalInfo.name || null,
+          city: personalInfo.city || null,
+          neighborhood: personalInfo.neighborhood || null,
+          gender: personalInfo.gender || null,
+          birth_year: personalInfo.birthYear ? parseInt(personalInfo.birthYear) : null,
+          gender_preference: personalInfo.genderPreference || null,
+          nationality: personalInfo.nationality || null,
+          avatar_url: avatarUrl,
+          license_url: licenseUrl,
+        })
+        .eq("user_id", newUser.id);
+
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        saveErrors.push(`Profile update failed: ${profileError.message}`);
+      }
+
+      // Save preferences
+      const { error: prefsError } = await supabase.from("onboarding_preferences").upsert({
+        user_id: newUser.id,
+        specialty: answers.specialty?.[0] || null,
+        specialty_preference: answers.specialty_preference?.[0] || null,
+        career_stage: answers.stage?.[0] || null,
+        sports: answers.sports || [],
+        activity_level: answers.activity_level?.[0] || null,
+        music_preferences: answers.music_preferences || [],
+        movie_preferences: answers.movie_preferences || [],
+        other_interests: answers.other_interests || [],
+        meeting_activities: answers.meeting_activities || [],
+        social_energy: answers.social_energy?.[0] || null,
+        conversation_style: answers.conversation_style?.[0] || null,
+        availability_slots: answers.availability || [],
+        meeting_frequency: answers.meeting_frequency?.[0] || null,
+        goals: answers.goals || [],
+        dietary_preferences: answers.dietary_preferences || [],
+        life_stage: answers.life_stage?.[0] || null,
+        ideal_weekend: answers.ideal_weekend || [],
+        open_to_business: answers.goals?.includes("business") || false,
+        completed_at: new Date().toISOString(),
+      });
+
+      if (prefsError) {
+        console.error('Preferences save error:', prefsError);
+        saveErrors.push(`Preferences save failed: ${prefsError.message}`);
+      }
+
+      // Create welcome notification
+      // Note: notifications table exists in database but may not be in generated types
+      // If this fails, it's not critical - user can still proceed
+      // Using type assertion to bypass type checking since table exists but types may be outdated
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: notifError } = await (supabase as any).from("notifications").insert({
           user_id: newUser.id,
           type: "welcome",
           title: "Welcome to BeyondRounds!",
           message: "Complete your profile to start connecting with physicians who share your interests.",
           link: "/profile",
+        });
+
+        if (notifError) {
+          console.error('Notification creation error:', notifError);
+          // Not critical, don't add to saveErrors
+        }
+      } catch (notifErr) {
+        console.warn('Could not create welcome notification (table may not be in types):', notifErr);
+        // Not critical, user can still proceed
+      }
+
+      // Show errors if any
+      if (saveErrors.length > 0) {
+        toast({
+          title: "Some data couldn't be saved",
+          description: saveErrors.join(', '),
+          variant: "destructive",
         });
       }
 
