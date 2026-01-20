@@ -59,15 +59,23 @@ class ErrorBoundary extends Component<Props, State> {
               </div>
               
               {isConfigError && (
-                <div className="rounded-md bg-muted p-3">
+                <div className="rounded-md bg-muted p-3 space-y-3">
                   <p className="text-sm text-muted-foreground">
                     This error usually means environment variables are not configured correctly.
-                    Please ensure the following are set in your deployment platform:
+                    Please ensure the following are set:
                   </p>
-                  <ul className="mt-2 list-disc list-inside text-sm text-muted-foreground space-y-1">
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
                     <li><code className="text-xs bg-background px-1 py-0.5 rounded">VITE_SUPABASE_URL</code></li>
                     <li><code className="text-xs bg-background px-1 py-0.5 rounded">VITE_SUPABASE_PUBLISHABLE_KEY</code></li>
                   </ul>
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      <strong>For local development:</strong> Create a <code className="text-xs bg-background px-1 py-0.5 rounded">.env.local</code> file in the project root.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <strong>For Vercel:</strong> Add these variables in Project Settings → Environment Variables, then redeploy.
+                    </p>
+                  </div>
                 </div>
               )}
 
