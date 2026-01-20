@@ -132,108 +132,97 @@ const Matches = () => {
 
       if (groupsError) throw groupsError;
 
-      // For each group, get members with their profiles
-      const enrichedGroups: MatchGroup[] = await Promise.all(
-        (groupsData || []).map(async (group) => {
-          // Get all members of this group
-          const { data: membersData } = await supabase
-            .from("group_members")
-            .select("user_id")
-            .eq("group_id", group.id);
+      // Get all member IDs for all groups at once
+      const allGroupIds = (groupsData || []).map(g => g.id);
+      const { data: allMembersData } = await supabase
+        .from("group_members")
+        .select("group_id, user_id")
+        .in("group_id", allGroupIds);
 
-          const memberUserIds = (membersData || []).map((m) => m.user_id);
+      // Get all user IDs (excluding current user)
+      const allMemberIds = Array.from(new Set(
+        (allMembersData || [])
+          .map(m => m.user_id)
+          .filter(id => id !== user.id)
+      ));
 
-          // Get profiles for all members (except current user)
-          const otherMemberIds = memberUserIds.filter((id) => id !== user.id);
-          
-          const members: GroupMember[] = await Promise.all(
-            otherMemberIds.map(async (memberId) => {
-              try {
-                const [profileRes, prefsRes] = await Promise.all([
-                  supabase.from("profiles").select("full_name, avatar_url, city, neighborhood, gender").eq("user_id", memberId).maybeSingle(),
-                  supabase.from("onboarding_preferences").select("specialty, sports, social_style, culture_interests, lifestyle, availability_slots").eq("user_id", memberId).maybeSingle(),
-                ]);
+      // Fetch all profiles and preferences in bulk
+      const [profilesRes, prefsRes] = await Promise.all([
+        allMemberIds.length > 0 
+          ? supabase.from("profiles")
+              .select("user_id, full_name, avatar_url, city, neighborhood, gender")
+              .in("user_id", allMemberIds)
+          : { data: [], error: null },
+        allMemberIds.length > 0
+          ? supabase.from("onboarding_preferences")
+              .select("user_id, specialty, sports, social_style, culture_interests, lifestyle, availability_slots")
+              .in("user_id", allMemberIds)
+          : { data: [], error: null }
+      ]);
 
-                return {
-                  user_id: memberId,
-                  profile: profileRes.data || { full_name: null, avatar_url: null, city: null, neighborhood: null, gender: null },
-                  preferences: prefsRes.data || undefined,
-                };
-              } catch (error) {
-                // If there's an error (e.g., RLS policy issue), return minimal data
-                console.warn(`Error fetching data for user ${memberId}:`, error);
-                return {
-                  user_id: memberId,
-                  profile: { full_name: null, avatar_url: null, city: null, neighborhood: null, gender: null },
-                  preferences: undefined,
-                };
-              }
-            })
-          );
-
-          // Get conversation if exists
-          const { data: convoData } = await supabase
-            .from("group_conversations")
-            .select("id")
-            .eq("group_id", group.id)
-            .maybeSingle();
-
-          // Calculate average compatibility score with current user
-          // تحسين: حساب النتيجة فقط إذا كان هناك أعضاء، وتخزين مؤقت للنتائج
-          let averageScore = 0;
-          if (otherMemberIds.length > 0) {
-            // تحسين: معالجة متوازية مع حد أقصى للاستدعاءات المتزامنة
-            const batchSize = 5; // معالجة 5 أعضاء في كل مرة
-            const scores: number[] = [];
-            
-            for (let i = 0; i < otherMemberIds.length; i += batchSize) {
-              const batch = otherMemberIds.slice(i, i + batchSize);
-              const batchScores = await Promise.all(
-                batch.map(async (memberId) => {
-                  try {
-                    const { data: scoreResult } = await supabase.rpc("calculate_match_score", {
-                      user_a_id: user.id,
-                      user_b_id: memberId,
-                    });
-                    return Number(scoreResult || 0);
-                  } catch (error) {
-                    console.warn(`Error calculating score for ${memberId}:`, error);
-                    return 0;
-                  }
-                })
-              );
-              scores.push(...batchScores);
-            }
-            
-            averageScore = scores.length > 0 
-              ? scores.reduce((a, b) => a + b, 0) / scores.length 
-              : 0;
-          }
-
-          return {
-            ...group,
-            members,
-            conversation_id: convoData?.id,
-            average_score: averageScore,
-          };
-        })
+      // Create lookup maps for faster access
+      const profilesMap = new Map(
+        (profilesRes.data || []).map(p => [p.user_id, p])
+      );
+      const prefsMap = new Map(
+        (prefsRes.data || []).map(p => [p.user_id, p])
       );
 
-      // Sort groups by average compatibility score (best matches first)
-      enrichedGroups.sort((a, b) => (b.average_score || 0) - (a.average_score || 0));
+      // Get all conversations at once
+      const { data: conversationsData } = await supabase
+        .from("group_conversations")
+        .select("id, group_id")
+        .in("group_id", allGroupIds);
+
+      const conversationsMap = new Map(
+        (conversationsData || []).map(c => [c.group_id, c.id])
+      );
+
+      // Group members by group_id
+      const membersByGroup = new Map<string, string[]>();
+      (allMembersData || []).forEach(m => {
+        if (!membersByGroup.has(m.group_id)) {
+          membersByGroup.set(m.group_id, []);
+        }
+        membersByGroup.get(m.group_id)!.push(m.user_id);
+      });
+
+      // Build enriched groups (skip score calculation for now - can be added later if needed)
+      const enrichedGroups: MatchGroup[] = (groupsData || []).map((group) => {
+        const memberUserIds = membersByGroup.get(group.id) || [];
+        const otherMemberIds = memberUserIds.filter((id) => id !== user.id);
+        
+        const members: GroupMember[] = otherMemberIds.map((memberId) => ({
+          user_id: memberId,
+          profile: profilesMap.get(memberId) || { 
+            user_id: memberId,
+            full_name: null, 
+            avatar_url: null, 
+            city: null, 
+            neighborhood: null, 
+            gender: null 
+          },
+          preferences: prefsMap.get(memberId) || undefined,
+        }));
+
+        return {
+          ...group,
+          members,
+          conversation_id: conversationsMap.get(group.id),
+          average_score: undefined, // Skip score calculation for faster loading
+        };
+      });
+
+      // Sort groups by match_week (newest first)
+      enrichedGroups.sort((a, b) => 
+        new Date(b.match_week).getTime() - new Date(a.match_week).getTime()
+      );
       
-      // Log best match for debugging
-      if (enrichedGroups.length > 0 && enrichedGroups[0].average_score) {
-        console.log(`Best match group: ${enrichedGroups[0].average_score}% compatibility`);
-      }
-      
-      // Show only the first (best) group
-      const firstGroup = enrichedGroups.slice(0, 1);
-      setGroups(firstGroup);
+      setGroups(enrichedGroups);
 
       // Check if survey should be shown for the first group
-      if (firstGroup.length > 0) {
-        const group = firstGroup[0];
+      if (enrichedGroups.length > 0) {
+        const group = enrichedGroups[0];
         const now = new Date();
         const matchDate = new Date(group.match_week);
         matchDate.setHours(16, 0, 0, 0); // Thursday 4 PM
