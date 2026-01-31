@@ -949,7 +949,11 @@ const Onboarding = () => {
 
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-20 p-6 flex items-center justify-between">
-        <button onClick={handleBack} className="flex items-center gap-2 text-primary-foreground/60 hover:text-primary-foreground transition-colors group">
+        <button 
+          onClick={handleBack} 
+          aria-label="Go back to previous step"
+          className="flex items-center gap-2 text-primary-foreground/60 hover:text-primary-foreground transition-colors group"
+        >
           <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
           <span className="text-sm font-medium">Back</span>
         </button>
@@ -1002,10 +1006,17 @@ const Onboarding = () => {
                     <button
                       type="button"
                       onClick={() => avatarInputRef.current?.click()}
+                      aria-label="Upload profile photo"
                       className="w-full aspect-square rounded-2xl border-2 border-dashed border-primary-foreground/20 hover:border-primary/50 bg-background/10 flex flex-col items-center justify-center transition-all overflow-hidden"
                     >
                       {avatarPreview ? (
-                        <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover" />
+                        <img 
+                          src={avatarPreview} 
+                          alt="Avatar preview" 
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
                       ) : (
                         <>
                           <Camera className="h-8 w-8 text-primary-foreground/40 mb-2" />
@@ -1028,10 +1039,17 @@ const Onboarding = () => {
                     <button
                       type="button"
                       onClick={() => licenseInputRef.current?.click()}
+                      aria-label="Upload medical license"
                       className={`w-full aspect-square rounded-2xl border-2 border-dashed ${licenseFile ? 'border-green-500/50 bg-green-500/10' : 'border-primary-foreground/20 hover:border-primary/50 bg-background/10'} flex flex-col items-center justify-center transition-all overflow-hidden`}
                     >
                       {licensePreview ? (
-                        <img src={licensePreview} alt="License preview" className="w-full h-full object-cover" />
+                        <img 
+                          src={licensePreview} 
+                          alt="License preview" 
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
                       ) : licenseFile ? (
                         <>
                           <FileCheck className="h-8 w-8 text-green-500 mb-2" />
@@ -1204,6 +1222,8 @@ const Onboarding = () => {
                     <button
                       key={option.id}
                       onClick={() => handleSelect(option.id)}
+                      aria-label={`Select ${option.label}`}
+                      aria-pressed={isSelected}
                       className={`relative p-3 rounded-xl border-2 text-left transition-all duration-300 ${
                         isSelected
                           ? 'border-primary bg-primary/10 shadow-glow-sm'

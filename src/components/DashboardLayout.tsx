@@ -51,21 +51,26 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             
             {/* Navigation */}
             <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => (
-                <Button
-                  key={item.path}
-                  variant="ghost"
-                  onClick={() => navigate(item.path)}
-                  className={`gap-2 rounded-full px-4 ${
-                    location.pathname === item.path 
-                      ? "bg-primary text-primary-foreground" 
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Button>
-              ))}
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Button
+                    key={item.path}
+                    variant="ghost"
+                    onClick={() => navigate(item.path)}
+                    className={`group gap-2 rounded-full px-4 transition-all duration-200 ${
+                      isActive 
+                        ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
+                        : "text-muted-foreground hover:text-primary hover:bg-primary/15 hover:shadow-sm"
+                    }`}
+                  >
+                    <item.icon className={`h-4 w-4 transition-transform duration-200 ${
+                      isActive ? "" : "group-hover:scale-110"
+                    }`} />
+                    {item.label}
+                  </Button>
+                );
+              })}
             </nav>
           </div>
           
@@ -74,6 +79,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <Button 
               variant="ghost" 
               size="icon" 
+              aria-label="Open settings"
               className={`rounded-full hover:bg-secondary ${
                 location.pathname === "/settings" ? "bg-secondary" : ""
               }`}
@@ -101,13 +107,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               variant="ghost"
               size="sm"
               onClick={() => navigate(item.path)}
-              className={`flex-col gap-1 h-auto py-2 px-3 ${
+              className={`flex-col gap-1 h-auto py-2 px-3 rounded-xl transition-all duration-200 ${
                 location.pathname === item.path 
-                  ? "text-primary" 
-                  : "text-muted-foreground"
+                  ? "text-primary bg-primary/10" 
+                  : "text-muted-foreground hover:text-primary hover:bg-primary/5"
               }`}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className="h-5 w-5 transition-transform duration-200" />
               <span className="text-xs">{item.label}</span>
             </Button>
           ))}

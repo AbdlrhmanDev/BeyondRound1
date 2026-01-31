@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,7 @@ interface GroupMember {
   profile: {
     full_name: string | null;
     avatar_url: string | null;
+    city: string | null;
   };
 }
 
@@ -52,6 +53,7 @@ interface MatchGroup {
   match_week: string;
   created_at: string;
   members: GroupMember[];
+  allMembers?: GroupMember[]; // All members for city detection
   conversation_id?: string;
   member_count: number;
 }
@@ -71,6 +73,31 @@ const Dashboard = () => {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
+
+  const formatGroupName = useCallback((group: MatchGroup): string => {
+    const allMembers = group.allMembers || group.members;
+    const cities = Array.from(new Set(allMembers.map(m => m.profile.city).filter(Boolean)));
+    const city = cities[0] || "Unknown";
+    
+    // Format match_week date as "Nov 2"
+    let dateStr = "";
+    if (group.match_week) {
+      try {
+        const matchDate = new Date(group.match_week);
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const month = monthNames[matchDate.getMonth()];
+        const day = matchDate.getDate();
+        dateStr = `${month} ${day}`;
+      } catch (e) {
+        dateStr = "Unknown";
+      }
+    } else {
+      dateStr = "Unknown";
+    }
+    
+    return `${dateStr} - ${city}`;
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,10 +169,19 @@ const Dashboard = () => {
               localStorage.removeItem('pending_onboarding_data');
               
               // Refresh data
-              const [profileRes, prefsRes] = await Promise.all([
-                supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-                supabase.from("onboarding_preferences").select("*").eq("user_id", user.id).maybeSingle(),
-              ]);
+              let profileRes = { data: null, error: null };
+              let prefsRes = { data: null, error: null };
+              
+              try {
+                const results = await Promise.all([
+                  supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+                  supabase.from("onboarding_preferences").select("*").eq("user_id", user.id).maybeSingle(),
+                ]);
+                profileRes = results[0];
+                prefsRes = results[1];
+              } catch (err) {
+                console.warn("Error refreshing data:", err);
+              }
 
               if (profileRes.data) setProfile(profileRes.data);
               if (prefsRes.data) setPreferences(prefsRes.data);
@@ -161,11 +197,22 @@ const Dashboard = () => {
           }
         }
 
-        const [profileRes, prefsRes, memberRes] = await Promise.all([
-          supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-          supabase.from("onboarding_preferences").select("*, other_interests, sports, music_preferences, movie_preferences").eq("user_id", user.id).maybeSingle(),
-          supabase.from("group_members").select("group_id").eq("user_id", user.id),
-        ]);
+        let profileRes = { data: null, error: null };
+        let prefsRes = { data: null, error: null };
+        let memberRes = { data: null, error: null };
+        
+        try {
+          const results = await Promise.all([
+            supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+            supabase.from("onboarding_preferences").select("*, other_interests, sports, music_preferences, movie_preferences").eq("user_id", user.id).maybeSingle(),
+            supabase.from("group_members").select("group_id").eq("user_id", user.id),
+          ]);
+          profileRes = results[0];
+          prefsRes = results[1];
+          memberRes = results[2];
+        } catch (err) {
+          console.warn("Error fetching initial data:", err);
+        }
 
         if (profileRes.data) setProfile(profileRes.data);
         if (prefsRes.data) setPreferences(prefsRes.data);
@@ -175,63 +222,112 @@ const Dashboard = () => {
           setGroupsCount(memberRes.data.length);
           const groupIds = memberRes.data.map((m) => m.group_id);
 
-          const { data: groupsData } = await supabase
-            .from("match_groups")
-            .select("*")
-            .in("id", groupIds)
-            .eq("status", "active")
-            .order("match_week", { ascending: false })
-            .limit(1);
+          let groupsData = null;
+          try {
+            const result = await supabase
+              .from("match_groups")
+              .select("*")
+              .in("id", groupIds)
+              .eq("status", "active")
+              .order("match_week", { ascending: false })
+              .limit(1);
+            groupsData = result.data;
+          } catch (err) {
+            console.warn("Error fetching groups:", err);
+          }
 
-          if (groupsData) {
-            const enrichedGroups: MatchGroup[] = await Promise.all(
-              groupsData.map(async (group) => {
-                // Get member user IDs
-                const { data: membersData } = await supabase
+          if (groupsData && groupsData.length > 0) {
+            const allGroupIds = groupsData.map(g => g.id);
+            
+            // Fetch all data in parallel - much faster!
+            let allMembersData = { data: [] as Array<{group_id: string; user_id: string}>, error: null };
+            let allConversationsData = { data: [] as Array<{id: string; group_id: string}>, error: null };
+            
+            try {
+              const results = await Promise.all([
+                supabase
                   .from("group_members")
-                  .select("user_id")
-                  .eq("group_id", group.id);
-
-                const memberUserIds = (membersData || []).map((m) => m.user_id);
-                const otherMemberIds = memberUserIds.filter((id) => id !== user.id).slice(0, 4);
-
-                // Get member profiles
-                const members = await Promise.all(
-                  otherMemberIds.map(async (memberId) => {
-                    const { data: profileData } = await supabase
-                      .from("profiles")
-                      .select("full_name, avatar_url")
-                      .eq("user_id", memberId)
-                      .maybeSingle();
-                    
-                    return {
-                      user_id: memberId,
-                      profile: {
-                        full_name: profileData?.full_name || null,
-                        avatar_url: profileData?.avatar_url || null,
-                      },
-                    };
-                  })
-                );
-
-                // Get conversation ID
-                const { data: convoData } = await supabase
+                  .select("group_id, user_id")
+                  .in("group_id", allGroupIds),
+                supabase
                   .from("group_conversations")
-                  .select("id")
-                  .eq("group_id", group.id)
-                  .maybeSingle();
+                  .select("id, group_id")
+                  .in("group_id", allGroupIds),
+              ]);
+              allMembersData = results[0];
+              allConversationsData = results[1];
+            } catch (err) {
+              console.warn("Error fetching group data:", err);
+            }
 
-                return {
-                  id: group.id,
-                  name: group.name,
-                  match_week: group.match_week,
-                  created_at: group.created_at,
-                  members,
-                  conversation_id: convoData?.id,
-                  member_count: memberUserIds.length,
-                };
-              })
+            // Get all unique member user IDs
+            const allMemberUserIds = Array.from(new Set(
+              (allMembersData.data || []).map(m => m.user_id).filter(id => id !== user.id)
+            ));
+
+            // Fetch all profiles in one batch query
+            let allProfilesData: Array<{user_id: string; full_name: string | null; avatar_url: string | null; city: string | null}> = [];
+            
+            if (allMemberUserIds.length > 0) {
+              try {
+                const result = await supabase
+                  .from("profiles")
+                  .select("user_id, full_name, avatar_url, city")
+                  .in("user_id", allMemberUserIds);
+                allProfilesData = result.data || [];
+              } catch (err) {
+                console.warn("Error fetching profiles:", err);
+              }
+            }
+
+            // Create lookup maps
+            const membersByGroup = new Map<string, string[]>();
+            (allMembersData.data || []).forEach(m => {
+              if (!membersByGroup.has(m.group_id)) {
+                membersByGroup.set(m.group_id, []);
+              }
+              membersByGroup.get(m.group_id)!.push(m.user_id);
+            });
+
+            const conversationsMap = new Map(
+              (allConversationsData.data || []).map(c => [c.group_id, c.id])
             );
+
+            const profilesMap = new Map(
+              (allProfilesData || []).map(p => [p.user_id, p])
+            );
+
+            // Build enriched groups synchronously (no async needed)
+            const enrichedGroups: MatchGroup[] = groupsData.map((group) => {
+              const memberUserIds = membersByGroup.get(group.id) || [];
+              const otherMemberIds = memberUserIds.filter((id) => id !== user.id);
+              const displayMemberIds = otherMemberIds.slice(0, 4);
+
+              const completeProfiles = otherMemberIds.map(memberId => {
+                const profileData = profilesMap.get(memberId);
+                return {
+                  user_id: memberId,
+                  profile: {
+                    full_name: profileData?.full_name || null,
+                    avatar_url: profileData?.avatar_url || null,
+                    city: profileData?.city || null,
+                  },
+                };
+              });
+
+              const members = completeProfiles.filter(m => displayMemberIds.includes(m.user_id));
+
+              return {
+                id: group.id,
+                name: group.name,
+                match_week: group.match_week,
+                created_at: group.created_at,
+                members,
+                allMembers: completeProfiles,
+                conversation_id: conversationsMap.get(group.id),
+                member_count: memberUserIds.length,
+              };
+            });
 
             setGroups(enrichedGroups);
           }
@@ -246,7 +342,10 @@ const Dashboard = () => {
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user, toast, navigate]);
+
+  // Memoize displayed group to prevent unnecessary re-renders
+  const displayedGroup = useMemo(() => groups[0], [groups]);
 
 
   if (authLoading || loading) {
@@ -371,10 +470,19 @@ const Dashboard = () => {
       localStorage.removeItem('pending_onboarding_data');
       
       // Refresh data immediately
-      const [profileRes, prefsRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-        supabase.from("onboarding_preferences").select("*").eq("user_id", user.id).maybeSingle(),
-      ]);
+      let profileRes = { data: null, error: null };
+      let prefsRes = { data: null, error: null };
+      
+      try {
+        const results = await Promise.all([
+          supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase.from("onboarding_preferences").select("*").eq("user_id", user.id).maybeSingle(),
+        ]);
+        profileRes = results[0];
+        prefsRes = results[1];
+      } catch (err) {
+        console.warn("Error refreshing data after manual save:", err);
+      }
 
       if (profileRes.data) setProfile(profileRes.data);
       if (prefsRes.data) setPreferences(prefsRes.data);
@@ -528,9 +636,10 @@ const Dashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="px-6 pb-6">
-                {groups.length > 0 ? (
+                {displayedGroup ? (
                   <div>
-                    {groups.slice(0, 1).map((group) => {
+                    {(() => {
+                      const group = displayedGroup;
                       const groupDate = group.match_week 
                         ? new Date(group.match_week).toLocaleDateString("en-US", {
                             month: "short",
@@ -556,12 +665,12 @@ const Dashboard = () => {
                           <div className="flex items-center gap-4 flex-1 min-w-0">
                             <Avatar className="h-12 w-12 border-0 shadow-md">
                               <AvatarFallback className="bg-primary text-primary-foreground text-sm font-display font-bold">
-                                {group.name?.replace(/[^A-Z]/g, '').slice(0, 2) || 'G1'}
+                                {formatGroupName(group).replace(/[^A-Z]/g, '').slice(0, 2) || 'G1'}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-display font-semibold text-foreground mb-1 truncate">
-                                {group.name || `Group 1`}
+                                {formatGroupName(group)}
                               </h4>
                               <p className="text-sm text-muted-foreground">
                                 {group.member_count} members • {groupDate}
@@ -571,7 +680,7 @@ const Dashboard = () => {
                           <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors" />
                         </div>
                       );
-                    })}
+                    })()}
                   </div>
                 ) : (
                   <div className="text-center py-8">

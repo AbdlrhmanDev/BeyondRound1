@@ -1,11 +1,14 @@
+import { lazy, Suspense } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
-import HowItWorksSection from "@/components/HowItWorksSection";
-import PricingSection from "@/components/PricingSection";
-import FAQSection from "@/components/FAQSection";
-import AboutSection from "@/components/AboutSection";
-import CTASection from "@/components/CTASection";
-import Footer from "@/components/Footer";
+
+// Lazy load below-the-fold sections for faster initial load
+const HowItWorksSection = lazy(() => import("@/components/HowItWorksSection"));
+const PricingSection = lazy(() => import("@/components/PricingSection"));
+const FAQSection = lazy(() => import("@/components/FAQSection"));
+const AboutSection = lazy(() => import("@/components/AboutSection"));
+const CTASection = lazy(() => import("@/components/CTASection"));
+const Footer = lazy(() => import("@/components/Footer"));
 
 const Index = () => {
   return (
@@ -13,13 +16,17 @@ const Index = () => {
       <Header />
       <main>
         <HeroSection />
-        <HowItWorksSection />
-        <PricingSection />
-        <FAQSection />
-        <AboutSection />
-        <CTASection />
+        <Suspense fallback={null}>
+          <HowItWorksSection />
+          <PricingSection />
+          <FAQSection />
+          <AboutSection />
+          <CTASection />
+        </Suspense>
       </main>
-      <Footer />
+      <Suspense fallback={null}>
+        <Footer />
+      </Suspense>
     </div>
   );
 };

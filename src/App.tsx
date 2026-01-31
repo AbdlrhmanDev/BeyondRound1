@@ -1,37 +1,67 @@
+import { lazy, Suspense, useMemo } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import FeedbackButton from "@/components/FeedbackButton";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
-import Onboarding from "./pages/Onboarding";
-import Auth from "./pages/Auth";
-import ForgotPassword from "./pages/ForgotPassword";
-import Dashboard from "./pages/Dashboard";
-import Settings from "./pages/Settings";
-import Profile from "./pages/Profile";
-import PublicProfile from "./pages/PublicProfile";
-import Matches from "./pages/Matches";
-import Chat from "./pages/Chat";
-import GroupChat from "./pages/GroupChat";
-import PlaceSuggestions from "./pages/PlaceSuggestions";
-import About from "./pages/About";
-import FAQ from "./pages/FAQ";
-import Pricing from "./pages/Pricing";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import NotFound from "./pages/NotFound";
-import AdminOverview from "./pages/admin/AdminOverview";
-import AdminFeedback from "./pages/admin/AdminFeedback";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminMatches from "./pages/admin/AdminMatches";
-import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
-import AuthCallback from "./pages/AuthCallback";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const queryClient = new QueryClient();
+// Lazy load non-critical components
+const FeedbackButton = lazy(() => import("@/components/FeedbackButton"));
+
+// Lazy load routes for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Auth = lazy(() => import("./pages/Auth"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Profile = lazy(() => import("./pages/Profile"));
+const PublicProfile = lazy(() => import("./pages/PublicProfile"));
+const Matches = lazy(() => import("./pages/Matches"));
+const Chat = lazy(() => import("./pages/Chat"));
+const GroupChat = lazy(() => import("./pages/GroupChat"));
+const PlaceSuggestions = lazy(() => import("./pages/PlaceSuggestions"));
+const About = lazy(() => import("./pages/About"));
+const FAQ = lazy(() => import("./pages/FAQ"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
+const AdminFeedback = lazy(() => import("./pages/admin/AdminFeedback"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminMatches = lazy(() => import("./pages/admin/AdminMatches"));
+const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen bg-foreground flex items-center justify-center">
+    <div className="space-y-4 w-full max-w-md px-4">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  </div>
+);
+
+// Create QueryClient with optimized defaults for performance
+const createQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1 minute
+      gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      retry: 1,
+    },
+  },
+});
+
+const queryClient = createQueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -45,77 +75,81 @@ const App = () => (
             v7_relativeSplatPath: true,
           }}
         >
-          <FeedbackButton />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />  
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/u/:userId" element={<PublicProfile />} />
-            <Route path="/matches" element={<Matches />} />
-            <Route path="/chat/:conversationId" element={<Chat />} />
-            <Route path="/group-chat/:conversationId" element={<GroupChat />} />
-            <Route path="/places" element={<PlaceSuggestions />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/faq" element={<FAQ />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/privacy" element={<Privacy />} />
-            
-     
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminOverview />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/feedback" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminFeedback />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/users" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminUsers />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/matches" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminMatches />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/audit-logs" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminAuditLogs />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={null}>
+            <FeedbackButton />
+          </Suspense>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />  
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/u/:userId" element={<PublicProfile />} />
+              <Route path="/matches" element={<Matches />} />
+              <Route path="/chat/:conversationId" element={<Chat />} />
+              <Route path="/group-chat/:conversationId" element={<GroupChat />} />
+              <Route path="/places" element={<PlaceSuggestions />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              
+       
+              <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminOverview />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/feedback" 
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminFeedback />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/users" 
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminUsers />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/matches" 
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminMatches />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/audit-logs" 
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminAuditLogs />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

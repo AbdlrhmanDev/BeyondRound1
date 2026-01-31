@@ -240,16 +240,18 @@ const GroupEvaluationSurvey = ({ groupId, matchWeek, open, onOpenChange }: Group
               </Label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setRating(value)}
-                    className={`flex-1 p-4 rounded-xl border-2 transition-all ${
-                      rating === value
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setRating(value)}
+                      aria-label={`Rate ${value} out of 5`}
+                      aria-pressed={rating === value}
+                      className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                        rating === value
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
                     <div className="flex items-center justify-center gap-2">
                       <Star
                         className={`h-6 w-6 ${
@@ -309,10 +311,13 @@ const GroupEvaluationSurvey = ({ groupId, matchWeek, open, onOpenChange }: Group
                         src={url}
                         alt={`Meeting photo ${index + 1}`}
                         className="w-full h-24 object-cover rounded-lg"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <button
                         type="button"
                         onClick={() => removePhotoUrl(index)}
+                        aria-label={`Remove photo ${index + 1}`}
                         className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <X className="h-3 w-3" />
@@ -331,10 +336,13 @@ const GroupEvaluationSurvey = ({ groupId, matchWeek, open, onOpenChange }: Group
                         src={URL.createObjectURL(photo)}
                         alt={`Preview ${index + 1}`}
                         className="w-full h-24 object-cover rounded-lg"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <button
                         type="button"
                         onClick={() => removePhoto(index)}
+                        aria-label={`Remove preview photo ${index + 1}`}
                         className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <X className="h-3 w-3" />

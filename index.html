@@ -8,6 +8,20 @@
     <meta name="author" content="BeyondRounds" />
     <meta name="keywords" content="doctors, friendship, social club, medical professionals, verified doctors, weekly matches" />
 
+    <!-- Performance optimizations - Resource hints for faster loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <!-- Preconnect to Supabase (will be set dynamically if needed) -->
+    <link rel="dns-prefetch" href="https://*.supabase.co" />
+    <!-- Preconnect to Stripe -->
+    <link rel="preconnect" href="https://js.stripe.com" crossorigin />
+    <link rel="dns-prefetch" href="https://js.stripe.com" />
+    <!-- Preconnect to Stripe API -->
+    <link rel="dns-prefetch" href="https://api.stripe.com" />
+    
+    <!-- Preload critical resources for faster FCP and LCP -->
+    <link rel="modulepreload" href="/src/main.tsx" />
+
     <meta property="og:title" content="BeyondRounds | Where Doctors Become Friends" />
     <meta property="og:description" content="Finally, a place to make genuine friendships with people who understand your world. Weekly matches with doctors who share your interests." />
     <meta property="og:type" content="website" />
@@ -23,5 +37,18 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Defer non-critical scripts -->
+    <script>
+      // Preload critical resources after page load
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          // Prefetch likely next pages
+          const link = document.createElement('link');
+          link.rel = 'prefetch';
+          link.href = '/onboarding';
+          document.head.appendChild(link);
+        });
+      }
+    </script>
   </body>
 </html>

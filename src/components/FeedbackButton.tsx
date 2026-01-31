@@ -83,6 +83,7 @@ const FeedbackButton = () => {
         <Button
           className="fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 shadow-lg bg-primary hover:bg-primary/90"
           size="icon"
+          aria-label="Open feedback dialog"
         >
           <MessageCircle className="h-6 w-6" />
         </Button>
@@ -104,6 +105,8 @@ const FeedbackButton = () => {
               <button
                 key={cat.id}
                 onClick={() => setCategory(cat.id)}
+                aria-label={`Select ${cat.label} category`}
+                aria-pressed={category === cat.id}
                 className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all ${
                   category === cat.id
                     ? "border-primary bg-primary/10"

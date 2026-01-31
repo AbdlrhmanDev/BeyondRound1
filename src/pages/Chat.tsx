@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Image as ImageIcon, X, Loader2, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { compressImages } from "@/utils/imageCompression";
+import { ImageViewer } from "@/components/ImageViewer";
 
 interface Message {
   id: string;
@@ -15,6 +17,9 @@ interface Message {
   content: string;
   created_at: string;
   read_at: string | null;
+  media_urls?: Array<{ url: string; type: string; size?: number }>;
+  has_media?: boolean;
+  media_type?: string;
 }
 
 interface OtherUser {
@@ -33,7 +38,17 @@ const Chat = () => {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [viewingImages, setViewingImages] = useState<Array<{ url: string; type: string; size?: number }> | null>(null);
+  const [viewingImageIndex, setViewingImageIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -41,25 +56,37 @@ const Chat = () => {
     }
   }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    const fetchConversation = async () => {
-      if (!conversationId || !user) return;
+  const fetchConversation = useCallback(async () => {
+    if (!conversationId || !user) return;
 
-      try {
-        // Get conversation and match info
-        const { data: convo, error: convoError } = await (supabase as any)
+    try {
+      setLoading(true);
+      
+      // Fetch conversation and messages in parallel for faster loading
+      const [convoRes, messagesRes] = await Promise.all([
+        (supabase as any)
           .from("conversations")
           .select("match_id")
           .eq("id", conversationId)
-          .single();
+          .single(),
+        (supabase as any)
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .or("is_deleted.is.null,is_deleted.eq.false")
+          .order("created_at", { ascending: true })
+          .limit(100), // Limit to last 100 messages for faster loading
+      ]);
 
-        if (convoError) throw convoError;
+      if (convoRes.error) throw convoRes.error;
+      if (messagesRes.data) setMessages(messagesRes.data);
 
-        // Get match to find other user
+      // Get match to find other user (can be done after messages load)
+      if (convoRes.data?.match_id) {
         const { data: match } = await (supabase as any)
           .from("matches")
           .select("user_id, matched_user_id")
-          .eq("id", convo.match_id)
+          .eq("id", convoRes.data.match_id)
           .single();
 
         if (match) {
@@ -73,63 +100,128 @@ const Chat = () => {
 
           if (profile) setOtherUser(profile as any);
         }
-
-        // Fetch messages (exclude deleted messages)
-        const { data: messagesData } = await (supabase as any)
-          .from("messages")
-          .select("*")
-          .eq("conversation_id", conversationId)
-          .or("is_deleted.is.null,is_deleted.eq.false")
-          .order("created_at", { ascending: true });
-
-        if (messagesData) setMessages(messagesData);
-      } catch (error) {
-        console.error("Error fetching conversation:", error);
-        toast({
-          title: "Error",
-          description: "Could not load conversation",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchConversation();
+    } catch (error) {
+      console.error("Error fetching conversation:", error);
+      toast({
+        title: "Error",
+        description: "Could not load conversation",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [conversationId, user, toast]);
+
+  useEffect(() => {
+    fetchConversation();
+  }, [fetchConversation]);
 
   // Subscribe to realtime messages
   useEffect(() => {
     if (!conversationId) return;
 
-    const channel = supabase
-      .channel(`messages-${conversationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
-        }
-      )
-      .subscribe();
+    // Clean up existing channel before creating a new one
+    if (channelRef.current) {
+      try {
+        channelRef.current.unsubscribe();
+        supabase.removeChannel(channelRef.current);
+      } catch (err) {
+        // Silently handle cleanup errors
+      }
+      channelRef.current = null;
+    }
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    
+    try {
+      channel = supabase
+        .channel(`messages-${conversationId}`, {
+          config: {
+            broadcast: { self: false },
+          },
+        })
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          (payload) => {
+            try {
+              setMessages((prev) => {
+                // Avoid duplicates
+                const exists = prev.some(m => m.id === (payload.new as Message).id);
+                if (exists) return prev;
+                return [...prev, payload.new as Message];
+              });
+            } catch (err) {
+              // Silently handle errors in message handler
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "messages",
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          (payload) => {
+            try {
+              // Update the message in the list when media URLs are added
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === payload.new.id ? (payload.new as Message) : msg
+                )
+              );
+            } catch (err) {
+              // Silently handle errors in message handler
+            }
+          }
+        );
+      
+      // Subscribe with error handling
+      try {
+        channel.subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            channelRef.current = channel;
+          }
+        });
+      } catch (subscribeError) {
+        // Silently catch subscription errors - they're often from browser extensions
+      }
+    } catch (err) {
+      // Silently handle channel creation errors
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        try {
+          channelRef.current.unsubscribe();
+          supabase.removeChannel(channelRef.current);
+        } catch (err) {
+          // Silently handle cleanup errors
+        }
+        channelRef.current = null;
+      }
     };
   }, [conversationId]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages - use requestAnimationFrame to avoid forced reflow
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current) {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
+    }
   }, [messages]);
 
-  // Helper function to format date
-  const formatMessageDate = (dateString: string) => {
+  // Memoize helper functions to prevent recreation
+  const formatMessageDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
     const yesterday = new Date(today);
@@ -141,30 +233,294 @@ const Chat = () => {
     if (isToday) return "Today";
     if (isYesterday) return "Yesterday";
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined });
-  };
+  }, []);
 
-  // Helper function to check if messages are from same sender and close in time
-  const shouldGroupMessages = (currentMsg: Message, prevMsg: Message | null) => {
+  const shouldGroupMessages = useCallback((currentMsg: Message, prevMsg: Message | null) => {
     if (!prevMsg) return false;
     const timeDiff = new Date(currentMsg.created_at).getTime() - new Date(prevMsg.created_at).getTime();
     return currentMsg.sender_id === prevMsg.sender_id && timeDiff < 5 * 60 * 1000; // 5 minutes
+  }, []);
+
+  // Memoize filtered messages to prevent recalculation
+  const filteredMessages = useMemo(() => 
+    messages.filter((message) => !message.is_deleted),
+    [messages]
+  );
+
+  const processImageFiles = (files: File[]) => {
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return [];
+    }
+
+    // Limit to 5 images
+    const filesToAdd = imageFiles.slice(0, 5 - selectedImages.length);
+    
+    if (filesToAdd.length < imageFiles.length) {
+      toast({
+        title: "Too many images",
+        description: "You can only send up to 5 images at once",
+        variant: "destructive",
+      });
+    }
+
+    // Check file sizes (max 10MB each)
+    const validFiles = filesToAdd.filter(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: `${file.name} is larger than 10MB`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      return true;
+    });
+
+    return validFiles;
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = processImageFiles(files);
+    
+    if (validFiles.length === 0) return;
+
+    setSelectedImages([...selectedImages, ...validFiles]);
+    
+    // Create previews
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const validFiles = processImageFiles(files);
+    
+    if (validFiles.length === 0) return;
+
+    setSelectedImages([...selectedImages, ...validFiles]);
+    
+    // Create previews
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !user || !conversationId) return;
+    if ((!newMessage.trim() && selectedImages.length === 0) || !user || !conversationId) return;
 
+    const messageContent = newMessage.trim();
+    const hasImages = selectedImages.length > 0;
+    
+    // Clear form immediately for better UX
+    setNewMessage("");
+    const imagesToUpload = [...selectedImages];
+    const previewsToKeep = [...imagePreviews];
+    setSelectedImages([]);
+    setImagePreviews([]);
+    
     setSending(true);
+    
     try {
-      const { error } = await (supabase as any).from("messages").insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        content: newMessage.trim(),
-      });
+      // Create temporary message with local previews for INSTANT display
+      let tempMessageId: string | null = null;
+      
+      if (hasImages) {
+        // Create temporary media URLs from local previews (instant display!)
+        const tempMediaUrls = previewsToKeep.map((preview, index) => ({
+          url: preview, // Use base64 preview for instant display
+          type: imagesToUpload[index]?.type || 'image/jpeg',
+          size: imagesToUpload[index]?.size || 0,
+        }));
+        
+        // Add optimistic message to UI IMMEDIATELY (before DB)
+        const optimisticMessage: Message = {
+          id: `temp-${Date.now()}-${Math.random()}`,
+          sender_id: user.id,
+          content: messageContent || '',
+          created_at: new Date().toISOString(),
+          read_at: null,
+          media_urls: tempMediaUrls,
+          has_media: true,
+          media_type: 'image',
+        };
+        
+        // Show message immediately in UI
+        setMessages((prev) => [...prev, optimisticMessage]);
+        
+        // Send to database in background
+        const { data: messageData, error: insertError } = await (supabase as any)
+          .from("messages")
+          .insert({
+            conversation_id: conversationId,
+            sender_id: user.id,
+            content: messageContent || '',
+            media_urls: tempMediaUrls,
+            has_media: true,
+            media_type: 'image',
+          })
+          .select()
+          .single();
 
-      if (error) throw error;
-      setNewMessage("");
+        if (insertError) {
+          // Remove optimistic message on error
+          setMessages((prev) => prev.filter(msg => msg.id !== optimisticMessage.id));
+          throw insertError;
+        }
+        
+        tempMessageId = messageData.id;
+        
+        // Replace optimistic message with real one
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === optimisticMessage.id ? messageData : msg
+          )
+        );
+        
+      } else {
+        // No images, send normally
+        const { data: messageData, error: insertError } = await (supabase as any)
+          .from("messages")
+          .insert({
+            conversation_id: conversationId,
+            sender_id: user.id,
+            content: messageContent || '',
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+      }
+      
+      // Upload images in background and replace temporary previews (non-blocking)
+      if (hasImages && tempMessageId) {
+        setUploadingImages(true);
+        setUploadProgress({});
+        
+        // Upload in background without blocking UI
+        (async () => {
+          try {
+            // Compress images in parallel (very fast, skips small images)
+            const compressedImages = await compressImages(imagesToUpload);
+            
+            // Upload compressed images in parallel
+            const uploadPromises = compressedImages.map(async (file, index) => {
+              const fileExt = file.name.split('.').pop();
+              const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+              
+              try {
+                const { error: uploadError } = await supabase.storage
+                  .from('message-media')
+                  .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                  });
+                
+                if (uploadError) throw uploadError;
+                
+                const { data: { publicUrl } } = supabase.storage
+                  .from('message-media')
+                  .getPublicUrl(fileName);
+                
+                return {
+                  url: publicUrl,
+                  type: file.type,
+                  size: file.size,
+                };
+              } catch (error) {
+                console.error(`Upload error for image ${index}:`, error);
+                // Return temp preview if upload fails
+                return {
+                  url: previewsToKeep[index],
+                  type: file.type,
+                  size: file.size,
+                };
+              }
+            });
+
+            const mediaUrls = await Promise.all(uploadPromises);
+            
+            // Replace temporary previews with real URLs
+            await (supabase as any)
+              .from("messages")
+              .update({
+                media_urls: mediaUrls,
+              })
+              .eq("id", tempMessageId);
+            
+            // Update local state immediately
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === tempMessageId
+                  ? { ...msg, media_urls: mediaUrls }
+                  : msg
+              )
+            );
+            
+            setUploadProgress({});
+          } catch (error) {
+            console.error("Background upload error:", error);
+            // Don't show error to user, images already visible
+          } finally {
+            setUploadingImages(false);
+          }
+        })();
+      }
+      
     } catch (error) {
       console.error("Error sending message:", error);
+      // Restore form on error
+      setNewMessage(messageContent);
+      setSelectedImages(imagesToUpload);
+      setImagePreviews(previewsToKeep);
       toast({
         title: "Error",
         description: "Could not send message",
@@ -172,6 +528,10 @@ const Chat = () => {
       });
     } finally {
       setSending(false);
+      // Don't set uploadingImages to false here if images are uploading in background
+      if (!hasImages) {
+        setUploadingImages(false);
+      }
     }
   };
 
@@ -253,11 +613,9 @@ const Chat = () => {
             </p>
           </div>
         ) : (
-          messages
-            .filter((message) => !message.is_deleted)
-            .map((message, index) => {
+          filteredMessages.map((message, index) => {
               const isOwn = message.sender_id === user?.id;
-              const prevMessage = index > 0 ? messages.filter(m => !m.is_deleted)[index - 1] : null;
+              const prevMessage = index > 0 ? filteredMessages[index - 1] : null;
               const shouldGroup = shouldGroupMessages(message, prevMessage);
               const showDateSeparator = !prevMessage || formatMessageDate(message.created_at) !== formatMessageDate(prevMessage.created_at);
 
@@ -276,7 +634,53 @@ const Chat = () => {
                         ? "bg-gradient-gold text-white rounded-br-md shadow-md"
                         : "bg-secondary text-foreground rounded-bl-md"
                     }`}>
-                      <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
+                      {/* Display images */}
+                      {(() => {
+                        // Handle both array and JSONB formats, and ensure it's an array
+                        let mediaUrls = message.media_urls;
+                        if (typeof mediaUrls === 'string') {
+                          try {
+                            mediaUrls = JSON.parse(mediaUrls);
+                          } catch (e) {
+                            console.error('Failed to parse media_urls:', e);
+                            mediaUrls = [];
+                          }
+                        }
+                        const hasMedia = message.has_media && Array.isArray(mediaUrls) && mediaUrls.length > 0;
+                        
+                        return hasMedia ? (
+                          <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: mediaUrls.length === 1 ? '1fr' : mediaUrls.length === 2 ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' }}>
+                            {mediaUrls.map((media: { url?: string; type?: string; size?: number } | string, idx: number) => {
+                              const imageUrl = typeof media === 'string' ? media : (media.url || '');
+                              return (
+                                <div 
+                                  key={idx} 
+                                  className="relative rounded-lg overflow-hidden group cursor-pointer"
+                                  onClick={() => {
+                                    setViewingImages(mediaUrls);
+                                    setViewingImageIndex(idx);
+                                  }}
+                                >
+                                  <img
+                                    src={imageUrl}
+                                    alt={`Attachment ${idx + 1}`}
+                                    className="w-full h-auto max-h-64 object-cover transition-transform group-hover:scale-105"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      console.error('Failed to load image:', imageUrl);
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null;
+                      })()}
+                      {message.content && (
+                        <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
+                      )}
                       {!shouldGroup && (
                         <p className={`text-xs mt-1.5 ${isOwn ? "text-white/70" : "text-muted-foreground"}`}>
                           {new Date(message.created_at).toLocaleTimeString([], { 
@@ -296,8 +700,74 @@ const Chat = () => {
       </div>
 
       {/* Input */}
-      <div className="border-t border-border/50 bg-card/95 backdrop-blur-md p-4 shadow-lg">
-        <div className="container mx-auto flex gap-3 items-end">
+      <div 
+        ref={dropZoneRef}
+        className={`border-t border-border/50 bg-card/95 backdrop-blur-md p-4 shadow-lg transition-colors ${
+          isDragging ? 'bg-primary/10 border-primary' : ''
+        }`}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {/* Drag overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary rounded-lg flex items-center justify-center z-10 pointer-events-none">
+            <div className="flex flex-col items-center gap-2">
+              <Upload className="h-8 w-8 text-primary" />
+              <p className="text-sm font-medium text-primary">Drop images here</p>
+            </div>
+          </div>
+        )}
+
+        {/* Image previews */}
+        {imagePreviews.length > 0 && (
+          <div className="mb-3 flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+            {imagePreviews.map((preview, index) => (
+              <div key={index} className="relative flex-shrink-0 group">
+                <div className="relative">
+                  <img
+                    src={preview}
+                    alt={`Preview ${index + 1}`}
+                    className="h-24 w-24 object-cover rounded-lg border-2 border-border shadow-sm"
+                  />
+                  {/* Upload progress */}
+                  {uploadingImages && uploadProgress[index] !== undefined && (
+                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => removeImage(index)}
+                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1.5 hover:bg-destructive/90 shadow-md transition-all opacity-0 group-hover:opacity-100"
+                    disabled={uploadingImages}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="container mx-auto flex gap-3 items-end relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-full h-11 w-11 flex-shrink-0"
+            disabled={selectedImages.length >= 5}
+          >
+            <ImageIcon className="h-5 w-5" />
+          </Button>
           <Input
             placeholder="Type a message..."
             value={newMessage}
@@ -307,14 +777,28 @@ const Chat = () => {
           />
           <Button 
             onClick={handleSend} 
-            disabled={sending || !newMessage.trim()}
+            disabled={sending || (!newMessage.trim() && selectedImages.length === 0)}
             size="icon"
             className="rounded-full bg-gradient-gold hover:opacity-90 h-11 w-11 shadow-md disabled:opacity-50"
           >
-            <Send className="h-4 w-4" />
+            {uploadingImages ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>
+
+      {/* Image Viewer */}
+      {viewingImages && (
+        <ImageViewer
+          images={viewingImages}
+          currentIndex={viewingImageIndex}
+          isOpen={!!viewingImages}
+          onClose={() => setViewingImages(null)}
+        />
+      )}
     </div>
   );
 };

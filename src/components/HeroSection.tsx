@@ -91,6 +91,11 @@ const HeroSection = () => {
                   src={heroImage}
                   alt="Doctors enjoying genuine friendship at a coffee meetup"
                   className="w-full h-auto object-cover aspect-[4/5]"
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
+                  width="500"
+                  height="625"
                 />
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-foreground/20 to-transparent" />

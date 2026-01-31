@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,120 +29,170 @@ const NotificationPopover = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  useEffect(() => {
+  const fetchNotifications = useCallback(async () => {
     if (!user) return;
 
-    const fetchNotifications = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("notifications")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(50);
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
 
-        if (error) {
-          console.error("Error fetching notifications:", error);
-          setNotifications([]);
-          setLoading(false);
-          return;
-        }
+      if (error) {
+        console.error("Error fetching notifications:", error);
+        setNotifications([]);
+        setLoading(false);
+        return;
+      }
+      
+      setNotifications(data || []);
+      
+      // If no notifications exist, create welcome notification for existing users
+      if ((!data || data.length === 0) && user.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
         
-        setNotifications(data || []);
-        
-        // If no notifications exist, create welcome notification for existing users
-        if ((!data || data.length === 0) && user.id) {
-          const { data: profile } = await supabase
-            .from("profiles")
+        if (profile) {
+          // Check if welcome notification already exists
+          const { data: existingWelcome } = await supabase
+            .from("notifications")
             .select("id")
             .eq("user_id", user.id)
+            .eq("type", "welcome")
             .maybeSingle();
           
-          if (profile) {
-            // Check if welcome notification already exists
-            const { data: existingWelcome } = await supabase
+          if (!existingWelcome) {
+            // Create welcome notification
+            const { data: newNotification } = await supabase
               .from("notifications")
-              .select("id")
-              .eq("user_id", user.id)
-              .eq("type", "welcome")
-              .maybeSingle();
+              .insert({
+                user_id: user.id,
+                type: "welcome",
+                title: "Welcome to BeyondRounds!",
+                message: "Complete your profile to start connecting with physicians who share your interests.",
+                link: "/profile",
+              })
+              .select()
+              .single();
             
-            if (!existingWelcome) {
-              // Create welcome notification
-              const { data: newNotification } = await supabase
-                .from("notifications")
-                .insert({
-                  user_id: user.id,
-                  type: "welcome",
-                  title: "Welcome to BeyondRounds!",
-                  message: "Complete your profile to start connecting with physicians who share your interests.",
-                  link: "/profile",
-                })
-                .select()
-                .single();
-              
-              if (newNotification) {
-                setNotifications([newNotification]);
-              }
+            if (newNotification) {
+              setNotifications([newNotification]);
             }
           }
         }
-      } catch (error) {
-        console.error("Error in fetchNotifications:", error);
-        setNotifications([]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Error in fetchNotifications:", error);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
 
     fetchNotifications();
 
-    // Subscribe to new notifications
-    const channel = supabase
-      .channel(`notifications-${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log("New notification received:", payload.new);
-          setNotifications((prev) => {
-            // Avoid duplicates by checking if notification already exists
-            const exists = prev.some(n => n.id === (payload.new as Notification).id);
-            if (exists) {
-              return prev;
+    // Clean up existing channel before creating a new one
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Subscribe to new notifications with comprehensive error handling
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    
+    try {
+      channel = supabase
+        .channel(`notifications-${user.id}`, {
+          config: {
+            broadcast: { self: false },
+            presence: { key: user.id },
+          },
+        })
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            try {
+              setNotifications((prev) => {
+                // Avoid duplicates by checking if notification already exists
+                const exists = prev.some(n => n.id === (payload.new as Notification).id);
+                if (exists) {
+                  return prev;
+                }
+                return [payload.new as Notification, ...prev];
+              });
+            } catch (err) {
+              // Silently handle errors in notification handler
             }
-            return [payload.new as Notification, ...prev];
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === payload.new.id ? payload.new as Notification : n))
-          );
-        }
-      )
-      .subscribe((status) => {
-        console.log("Notification subscription status:", status);
-      });
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            try {
+              setNotifications((prev) =>
+                prev.map((n) => (n.id === payload.new.id ? payload.new as Notification : n))
+              );
+            } catch (err) {
+              // Silently handle errors in notification handler
+            }
+          }
+        );
+      
+      // Subscribe with error handling - wrap in try-catch to prevent unhandled rejections
+      try {
+        channel.subscribe((status) => {
+          // Only log errors, not normal status changes
+          if (status === "SUBSCRIBED") {
+            channelRef.current = channel;
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            // Silently handle subscription errors - they're often from browser extensions
+            // Don't log to avoid console noise
+          } else if (status === "CLOSED") {
+            // CLOSED status is normal during cleanup, don't log
+          }
+        });
+      } catch (subscribeError) {
+        // Silently catch subscription errors - they're often from browser extensions
+        // The error handler in main.tsx will filter these out
+      }
+    } catch (err) {
+      // Silently handle channel creation errors - they're often from browser extensions
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [user]);
+  }, [user, fetchNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

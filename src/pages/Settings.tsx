@@ -17,6 +17,7 @@ import {
   Trash2,
   ChevronRight
 } from "lucide-react";
+import { BillingSection } from "@/components/BillingSection";
 
 const Settings = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -230,6 +231,9 @@ const Settings = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Billing & Subscription Section */}
+          <BillingSection />
 
           {/* Danger Zone */}
           <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-400 border-destructive/20">
