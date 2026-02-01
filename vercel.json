@@ -47,7 +47,7 @@
       ]
     },
     {
-      "source": "/assets/js/(.*)\\.js",
+      "source": "/assets/js/(.*)\\.(js|tsx|ts)",
       "headers": [
         {
           "key": "Content-Type",
