@@ -6,22 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2, Image as ImageIcon, X, Upload } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2, Image as ImageIcon, X, Upload, Circle, Stethoscope, MapPin as MapPinIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { compressImages } from "@/utils/imageCompression";
 import { ImageViewer } from "@/components/ImageViewer";
-
-interface Message {
-  id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  is_ai?: boolean;
-  is_deleted?: boolean;
-  media_urls?: Array<{ url: string; type: string; size?: number }>;
-  has_media?: boolean;
-  media_type?: string;
-}
+import { getGroupMessages, getGroupConversation, sendGroupMessage, updateGroupMessageMedia, Message } from "@/services/messageService";
+import { getGroupInfo, getGroupMembers } from "@/services/matchService";
+import { getPublicProfile } from "@/services/profileService";
+import { getPublicPreferences } from "@/services/onboardingService";
+import { uploadPhotos } from "@/services/storageService";
 
 interface Member {
   user_id: string;
@@ -29,6 +26,7 @@ interface Member {
   avatar_url: string | null;
   city?: string | null;
   specialty?: string | null;
+  interests?: string[];
 }
 
 const GroupChat = () => {
@@ -69,86 +67,85 @@ const GroupChat = () => {
     try {
       setLoading(true);
       
-      // Fetch conversation, group info, members, and messages in parallel for faster loading
-      const [convoRes, messagesRes] = await Promise.all([
-        supabase
-          .from("group_conversations")
-          .select("group_id")
-          .eq("id", conversationId)
-          .single(),
-        supabase
-          .from("group_messages")
-          .select("*")
-          .eq("conversation_id", conversationId)
-          .or("is_deleted.is.null,is_deleted.eq.false")
-          .order("created_at", { ascending: true })
-          .limit(100), // Limit to last 100 messages for faster loading
+      // Fetch conversation and messages in parallel
+      const [conversation, messagesData] = await Promise.all([
+        getGroupConversation(conversationId),
+        getGroupMessages(conversationId, 100),
       ]);
 
-      if (convoRes.error) {
+      if (!conversation) {
         navigate("/matches");
         return;
       }
 
-      if (messagesRes.data) {
-        setMessages(messagesRes.data);
+      if (messagesData) {
+        setMessages(messagesData);
       }
 
-      const convoData = convoRes.data;
-      if (!convoData) {
-        navigate("/matches");
-        return;
-      }
-
-      setGroupId(convoData.group_id);
+      setGroupId(conversation.group_id);
 
       // Fetch group info and members in parallel
-      const [groupRes, membersRes] = await Promise.all([
-        supabase
-          .from("match_groups")
-          .select("name, id, match_week")
-          .eq("id", convoData.group_id)
-          .single(),
-        supabase
-          .from("group_members")
-          .select("user_id")
-          .eq("group_id", convoData.group_id),
+      const [groupData, membersData] = await Promise.all([
+        getGroupInfo(conversation.group_id),
+        getGroupMembers(conversation.group_id),
       ]);
-
-      const groupData = groupRes.data;
-      const membersData = membersRes.data;
 
       if (membersData && membersData.length > 0) {
         const memberUserIds = membersData.map(m => m.user_id);
         
-        // Fetch all profiles and preferences in batch
-        const [profilesRes, prefsRes] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("user_id, full_name, avatar_url, city")
-            .in("user_id", memberUserIds),
-          supabase
-            .from("onboarding_preferences")
-            .select("user_id, specialty")
-            .in("user_id", memberUserIds),
+        // Fetch all profiles and preferences in batch using services
+        const [profilesPromises, prefsPromises] = await Promise.all([
+          Promise.all(memberUserIds.map(id => getPublicProfile(id))),
+          Promise.all(memberUserIds.map(id => getPublicPreferences(id))),
         ]);
 
-        // Create lookup maps
-        const profilesMap = new Map(
-          (profilesRes.data || []).map(p => [p.user_id, p])
-        );
-        const prefsMap = new Map(
-          (prefsRes.data || []).map(p => [p.user_id, p])
-        );
-
         // Build member profiles array
-        const memberProfiles = memberUserIds.map(userId => ({
-          user_id: userId,
-          full_name: profilesMap.get(userId)?.full_name || null,
-          avatar_url: profilesMap.get(userId)?.avatar_url || null,
-          city: profilesMap.get(userId)?.city || null,
-          specialty: prefsMap.get(userId)?.specialty || null,
-        }));
+        const memberProfiles = memberUserIds.map((userId, index) => {
+          const profile = profilesPromises[index];
+          const prefs = prefsPromises[index] as { 
+            specialty?: string | null;
+            interests?: string[] | null;
+            other_interests?: string[] | null;
+            sports?: string[] | null;
+            music_preferences?: string[] | null;
+            movie_preferences?: string[] | null;
+            social_style?: string[] | null;
+            culture_interests?: string[] | null;
+            lifestyle?: string[] | null;
+          } | null;
+          
+          // Combine all available interests from public preferences
+          const allInterests = [
+            ...(prefs?.interests || []),
+            ...(prefs?.other_interests || []),
+            ...(prefs?.sports || []),
+            ...(prefs?.music_preferences || []),
+            ...(prefs?.movie_preferences || []),
+            ...(prefs?.social_style || []),
+            ...(prefs?.culture_interests || []),
+            ...(prefs?.lifestyle || []),
+          ].filter(Boolean).slice(0, 8) as string[];
+          
+          const memberData = {
+            user_id: userId,
+            full_name: profile?.full_name || null,
+            avatar_url: profile?.avatar_url || null,
+            city: profile?.city || null,
+            specialty: prefs?.specialty || null,
+            interests: allInterests.length > 0 ? allInterests : undefined,
+          };
+          
+          // Debug logging
+          if (!memberData.full_name || !memberData.specialty) {
+            console.log(`Member ${userId} data:`, {
+              profile,
+              prefs,
+              memberData
+            });
+          }
+          
+          return memberData;
+        });
         
         setMembers(memberProfiles);
 
@@ -432,33 +429,30 @@ const GroupChat = () => {
           sender_id: user.id,
           content: messageContent || '',
           created_at: new Date().toISOString(),
+          read_at: null,
           media_urls: tempMediaUrls,
           has_media: true,
           media_type: 'image',
+          is_deleted: false,
         };
         
         // Show message immediately in UI
         setMessages((prev) => [...prev, optimisticMessage]);
         
-        // Send to database in background
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: messageData, error: insertError } = await (supabase as any)
-          .from("group_messages")
-          .insert({
-            conversation_id: conversationId,
-            sender_id: user.id,
-            content: messageContent || '',
-            media_urls: tempMediaUrls,
-            has_media: true,
-            media_type: 'image',
-          })
-          .select()
-          .single();
+        // Send to database in background using service
+        const messageData = await sendGroupMessage({
+          group_conversation_id: conversationId,
+          sender_id: user.id,
+          content: messageContent || '',
+          media_urls: tempMediaUrls,
+          has_media: true,
+          media_type: 'image',
+        });
 
-        if (insertError) {
+        if (!messageData) {
           // Remove optimistic message on error
           setMessages((prev) => prev.filter(msg => msg.id !== optimisticMessage.id));
-          throw insertError;
+          throw new Error("Failed to send message");
         }
         
         tempMessageId = messageData.id;
@@ -471,19 +465,16 @@ const GroupChat = () => {
         );
         
       } else {
-        // No images, send normally
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: messageData, error: insertError } = await (supabase as any)
-          .from("group_messages")
-          .insert({
-            conversation_id: conversationId,
-            sender_id: user.id,
-            content: messageContent || '',
-          })
-          .select()
-          .single();
+        // No images, send normally using service
+        const messageData = await sendGroupMessage({
+          group_conversation_id: conversationId,
+          sender_id: user.id,
+          content: messageContent || '',
+        });
 
-        if (insertError) throw insertError;
+        if (!messageData) {
+          throw new Error("Failed to send message");
+        }
       }
       
       // Upload images in background and replace temporary previews (non-blocking)
@@ -496,57 +487,28 @@ const GroupChat = () => {
             // Compress images in parallel (very fast, skips small images)
             const compressedImages = await compressImages(imagesToUpload);
             
-            // Upload compressed images in parallel
-            const uploadPromises = compressedImages.map(async (file, index) => {
-              const fileExt = file.name.split('.').pop();
-              const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-              
-              try {
-                const { error: uploadError } = await supabase.storage
-                  .from('message-media')
-                  .upload(fileName, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                  });
-                
-                if (uploadError) throw uploadError;
-                
-                const { data: { publicUrl } } = supabase.storage
-                  .from('message-media')
-                  .getPublicUrl(fileName);
-                
-                return {
-                  url: publicUrl,
-                  type: file.type,
-                  size: file.size,
-                };
-              } catch (error) {
-                console.error(`Upload error for image ${index}:`, error);
-                // Return temp preview if upload fails
-                return {
-                  url: previewsToKeep[index],
-                  type: file.type,
-                  size: file.size,
-                };
-              }
-            });
-
-            const mediaUrls = await Promise.all(uploadPromises);
+            // Upload compressed images using storage service
+            const basePath = `${user.id}`;
+            const uploadedUrls = await uploadPhotos('message-media', compressedImages, basePath);
             
-            // Replace temporary previews with real URLs
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
-              .from("group_messages")
-              .update({
-                media_urls: mediaUrls,
-              })
-              .eq("id", tempMessageId);
+            // Map to media URL objects with fallback to temp previews
+            const finalMediaUrls = compressedImages.map((file, index) => {
+              const uploadedUrl = uploadedUrls[index];
+              return {
+                url: uploadedUrl || previewsToKeep[index] || '',
+                type: file.type || 'image/jpeg',
+                size: file.size || 0,
+              };
+            });
+            
+            // Replace temporary previews with real URLs using service
+            await updateGroupMessageMedia(tempMessageId, finalMediaUrls);
             
             // Update local state immediately
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === tempMessageId
-                  ? { ...msg, media_urls: mediaUrls }
+                  ? { ...msg, media_urls: finalMediaUrls }
                   : msg
               )
             );
@@ -624,16 +586,16 @@ const GroupChat = () => {
       const aiMessage = response.data?.message;
       if (!aiMessage) throw new Error("No response from AI");
 
-      // Post AI message to the chat
-      const { error } = await supabase
-        .from("group_messages")
-        .insert({
-          conversation_id: conversationId,
-          sender_id: user.id,
-          content: `🤖 AI Place Recommendations:\n\n${aiMessage}`,
-        });
+      // Post AI message to the chat using service
+      const aiMessageData = await sendGroupMessage({
+        group_conversation_id: conversationId,
+        sender_id: user.id,
+        content: `🤖 AI Place Recommendations:\n\n${aiMessage}`,
+      });
 
-      if (error) throw error;
+      if (!aiMessageData) {
+        throw new Error("Failed to send AI message");
+      }
 
     } catch (error) {
       console.error("Error getting AI suggestions:", error);
@@ -670,9 +632,12 @@ const GroupChat = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col relative">
+      {/* Subtle pattern overlay */}
+      <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(circle_at_1px_1px,rgb(255,152,0)_1px,transparent_0)] [background-size:24px_24px] pointer-events-none" />
+      
       {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-border/50 bg-card/90 backdrop-blur-md sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 py-3 flex items-center gap-4">
           <Button
             variant="ghost"
@@ -711,49 +676,205 @@ const GroupChat = () => {
             <span className="hidden sm:inline">Suggest Places</span>
           </Button>
 
-          {/* Member Avatars */}
-          <div className="flex -space-x-2">
-            {members.slice(0, 4).map((member) => {
-              const initials = member.full_name
-                ?.split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase() || "U";
+          {/* Member Avatars - Premium Display with Profile Cards */}
+          <TooltipProvider delayDuration={200}>
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-2.5">
+                {members.slice(0, 5).map((member) => {
+                  const initials = member.full_name
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase() || "U";
 
-              return (
-                <Avatar key={member.user_id} className="h-8 w-8 border-2 border-background">
-                  <AvatarImage src={member.avatar_url || undefined} />
-                  <AvatarFallback className="bg-secondary text-xs">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              );
-            })}
-            {members.length > 4 && (
-              <div className="h-8 w-8 rounded-full bg-secondary border-2 border-background flex items-center justify-center text-xs font-medium">
-                +{members.length - 4}
+                  return (
+                    <HoverCard key={member.user_id} openDelay={200} closeDelay={100}>
+                      <HoverCardTrigger asChild>
+                        <div className="relative group cursor-pointer">
+                          <Avatar 
+                            className="h-10 w-10 border-2 border-background shadow-[0_2px_8px_rgba(0,0,0,0.12)] ring-2 ring-background hover:ring-primary/40 transition-all hover:scale-110 hover:shadow-[0_4px_12px_rgba(0,0,0,0.16)]"
+                            onClick={() => navigate(`/u/${member.user_id}`)}
+                          >
+                            <AvatarImage src={member.avatar_url || undefined} className="object-cover" />
+                            <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white text-xs font-semibold">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          {/* Online status indicator */}
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full shadow-sm ring-1 ring-green-500/30" />
+                        </div>
+                      </HoverCardTrigger>
+                      <HoverCardContent side="bottom" align="center" className="w-80 p-0 shadow-xl border-border/50">
+                        <div className="p-5 space-y-4">
+                          {/* Header with Avatar */}
+                          <div className="flex items-start gap-4">
+                            <Avatar className="h-16 w-16 border-2 border-border shadow-lg ring-2 ring-background">
+                              <AvatarImage src={member.avatar_url || undefined} />
+                              <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white text-lg font-semibold">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0 pt-1">
+                              <h3 className="font-semibold text-base text-foreground mb-1 truncate">
+                                {member.full_name || "Anonymous"}
+                              </h3>
+                              {member.specialty ? (
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <Stethoscope className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="text-sm text-muted-foreground font-medium">{member.specialty}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <Stethoscope className="h-3.5 w-3.5 text-muted-foreground/50" />
+                                  <span className="text-sm text-muted-foreground/70 italic">Specialty not set</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-green-500/10 w-fit">
+                                <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+                                <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Online</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Location */}
+                          {member.city ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground pb-3 border-b border-border">
+                              <MapPinIcon className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{member.city}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground/50 pb-3 border-b border-border">
+                              <MapPinIcon className="h-4 w-4 flex-shrink-0 opacity-50" />
+                              <span className="truncate italic">Location not set</span>
+                            </div>
+                          )}
+
+                          {/* Interests */}
+                          {member.interests && member.interests.length > 0 ? (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Interests</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {member.interests.map((interest, idx) => (
+                                  <Badge 
+                                    key={idx} 
+                                    variant="secondary" 
+                                    className="text-xs px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
+                                  >
+                                    {interest}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Interests</p>
+                              <p className="text-xs text-muted-foreground/70 italic">No interests listed</p>
+                            </div>
+                          )}
+
+                          {/* View Profile Button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/u/${member.user_id}`)}
+                            className="w-full rounded-lg border-primary/30 hover:bg-primary/10 hover:border-primary/50"
+                          >
+                            View Full Profile
+                          </Button>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  );
+                })}
+                {members.length > 5 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 border-2 border-background flex items-center justify-center text-xs font-semibold text-primary cursor-pointer hover:from-primary/30 hover:via-primary/20 hover:to-primary/15 transition-all shadow-[0_2px_8px_rgba(255,152,0,0.15)] hover:scale-110 hover:shadow-[0_4px_12px_rgba(255,152,0,0.2)] ring-2 ring-background">
+                        +{members.length - 5}
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent side="bottom" align="end" className="w-80 p-0 shadow-xl border-border/50">
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center gap-2 pb-3 border-b border-border">
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Users className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-sm text-foreground">Group Members</h4>
+                            <p className="text-xs text-muted-foreground">{members.length} physicians</p>
+                          </div>
+                        </div>
+                        <div className="space-y-1 max-h-80 overflow-y-auto">
+                          {members.map((member) => {
+                            const initials = member.full_name
+                              ?.split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase() || "U";
+
+                            return (
+                              <div
+                                key={member.user_id}
+                                className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-secondary/60 transition-colors cursor-pointer group"
+                                onClick={() => navigate(`/u/${member.user_id}`)}
+                              >
+                                <div className="relative">
+                                  <Avatar className="h-11 w-11 border border-border/50 shadow-sm ring-1 ring-background group-hover:ring-primary/30 transition-all">
+                                    <AvatarImage src={member.avatar_url || undefined} />
+                                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-white text-sm font-semibold">
+                                      {initials}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-background rounded-full shadow-sm" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm text-foreground truncate">{member.full_name || "Anonymous"}</p>
+                                  {member.specialty ? (
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{member.specialty}</p>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground/50 italic truncate mt-0.5">Specialty not set</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10">
+                                  <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+                                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">Online</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          </TooltipProvider>
         </div>
       </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages Container - Professional Chat Layout */}
+      <div className="flex-1 overflow-y-auto relative">
+        {/* Soft background container */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/3 to-background" />
+        
+        {/* Centered chat container */}
+        <div className="relative max-w-3xl mx-auto h-full flex flex-col">
+          <div className="flex-1 px-6 py-8 space-y-4">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
-              <Users className="h-8 w-8 text-muted-foreground" />
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-6 shadow-xl border border-primary/10">
+              <Users className="h-12 w-12 text-primary" />
             </div>
-            <h3 className="font-display font-semibold mb-2">Start the conversation</h3>
-            <p className="text-muted-foreground text-sm max-w-xs mb-4">
+            <h3 className="font-display font-semibold text-xl mb-2 text-foreground">Start the conversation</h3>
+            <p className="text-muted-foreground text-sm max-w-md mb-8 leading-relaxed">
               Say hello to your group! Plan a meetup or just get to know each other.
             </p>
             <Button
               variant="outline"
               onClick={handleAIPlaceSuggestion}
               disabled={aiLoading}
-              className="gap-2"
+              className="gap-2 rounded-full shadow-md hover:shadow-lg transition-all border-primary/30 hover:border-primary/50"
             >
               {aiLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -766,7 +887,7 @@ const GroupChat = () => {
         ) : (
           messages
             .filter((message) => !message.is_deleted)
-            .map((message) => {
+            .map((message, index) => {
               const isOwn = message.sender_id === user?.id;
               const isAI = message.content.startsWith("🤖 AI");
               const sender = getMemberInfo(message.sender_id);
@@ -775,35 +896,54 @@ const GroupChat = () => {
                 .map((n) => n[0])
                 .join("")
                 .toUpperCase() || "U";
+              
+              // Group consecutive messages from same sender
+              const prevMessage = index > 0 ? messages[index - 1] : null;
+              const isConsecutive = prevMessage && 
+                prevMessage.sender_id === message.sender_id && 
+                !prevMessage.is_deleted &&
+                new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() < 5 * 60 * 1000; // 5 minutes
+              const showAvatar = !isOwn && !isConsecutive;
+              const showName = !isOwn && !isConsecutive;
+              const isFirstInGroup = !isConsecutive;
 
               return (
                 <div
                   key={message.id}
-                className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
-              >
-                {!isOwn && (
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={sender.avatar_url || undefined} />
-                    <AvatarFallback className="bg-secondary text-xs">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                <div className={`max-w-[85%] ${isOwn ? "items-end" : "items-start"}`}>
-                  {!isOwn && (
-                    <span className="text-xs text-muted-foreground mb-1 block">
-                      {sender.full_name || "Anonymous"}
-                    </span>
+                  className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""} ${isConsecutive ? "mt-1" : "mt-6"}`}
+                >
+                  {showAvatar ? (
+                    <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-background shadow-md border-2 border-background">
+                      <AvatarImage src={sender.avatar_url || undefined} />
+                      <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white text-sm font-semibold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <div className="w-10 flex-shrink-0" />
                   )}
-                  <div
-                    className={`rounded-2xl px-4 py-2.5 ${
-                      isAI
-                        ? "bg-accent/10 border border-accent/20 text-foreground rounded-bl-md"
-                        : isOwn
-                        ? "bg-gradient-gold text-white rounded-br-md"
-                        : "bg-secondary text-foreground rounded-bl-md"
-                    }`}
-                  >
+                  <div className={`flex-1 ${isOwn ? "items-end flex flex-col" : "items-start flex flex-col"} max-w-[70%]`}>
+                    {showName && (
+                      <div className="flex items-center gap-2 mb-2 px-1">
+                        <span className="text-sm font-semibold text-foreground">
+                          {sender.full_name || "Anonymous"}
+                        </span>
+                        {sender.specialty && (
+                          <span className="text-xs text-muted-foreground font-medium">
+                            • {sender.specialty}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div
+                      className={`rounded-2xl px-4 py-3 shadow-md transition-all hover:shadow-lg ${
+                        isAI
+                          ? "bg-accent/10 border border-accent/20 text-foreground"
+                          : isOwn
+                          ? "bg-gradient-to-r from-primary to-orange-500 text-white rounded-br-md shadow-[0_2px_12px_rgba(255,152,0,0.3)]"
+                          : "bg-card text-foreground border border-border/60 rounded-bl-md shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+                      } ${isConsecutive && !isOwn ? "rounded-tl-md" : ""} ${isConsecutive && isOwn ? "rounded-tr-md" : ""}`}
+                    >
                     {/* Display images */}
                     {(() => {
                       // Handle both array and JSONB formats, and ensure it's an array
@@ -819,13 +959,13 @@ const GroupChat = () => {
                       const hasMedia = message.has_media && Array.isArray(mediaUrls) && mediaUrls.length > 0;
                       
                         return hasMedia ? (
-                          <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: mediaUrls.length === 1 ? '1fr' : mediaUrls.length === 2 ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' }}>
+                          <div className={`grid gap-2.5 mb-2 ${message.content ? 'mb-3' : ''}`} style={{ gridTemplateColumns: mediaUrls.length === 1 ? '1fr' : mediaUrls.length === 2 ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' }}>
                             {mediaUrls.map((media: { url?: string; type?: string; size?: number } | string, idx: number) => {
                               const imageUrl = typeof media === 'string' ? media : (media.url || '');
                               return (
                                 <div 
                                   key={idx} 
-                                  className="relative rounded-lg overflow-hidden group cursor-pointer"
+                                  className="relative rounded-2xl overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] bg-card border border-border/30"
                                   onClick={() => {
                                     setViewingImages(mediaUrls);
                                     setViewingImageIndex(idx);
@@ -834,14 +974,14 @@ const GroupChat = () => {
                                   <img
                                     src={imageUrl}
                                     alt={`Attachment ${idx + 1}`}
-                                    className="w-full h-auto max-h-64 object-cover transition-transform group-hover:scale-105"
+                                    className="w-full h-auto max-h-72 object-cover"
                                     loading="lazy"
                                     onError={(e) => {
                                       console.error('Failed to load image:', imageUrl);
                                       (e.target as HTMLImageElement).style.display = 'none';
                                     }}
                                   />
-                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
                               );
                             })}
@@ -849,29 +989,36 @@ const GroupChat = () => {
                       ) : null;
                     })()}
                     {message.content && (
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className={`text-sm whitespace-pre-wrap leading-relaxed ${isOwn ? 'text-white' : 'text-foreground'}`}>
+                        {message.content}
+                      </p>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground mt-1 block">
-                    {new Date(message.created_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                  {isFirstInGroup && (
+                    <span className={`text-xs text-muted-foreground mt-1.5 px-1.5 ${isOwn ? 'text-right' : 'text-left'}`}>
+                      {new Date(message.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
                 </div>
               </div>
             );
           })
         )}
         <div ref={messagesEndRef} />
+          </div>
+        </div>
       </div>
 
-      {/* Input */}
-      <div 
-        ref={dropZoneRef}
-        className={`border-t border-border bg-card/80 backdrop-blur-sm p-4 transition-colors ${
-          isDragging ? 'bg-primary/10 border-primary' : ''
-        }`}
+      {/* Input - Floating Premium Container */}
+      <div className="sticky bottom-0 z-10 px-4 pb-6 pt-4">
+        <div 
+          ref={dropZoneRef}
+          className={`max-w-3xl mx-auto rounded-2xl border border-border/60 bg-card/98 backdrop-blur-xl shadow-[0_-8px_32px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.05)] p-4 transition-all relative ${
+            isDragging ? 'bg-primary/10 border-primary shadow-[0_-8px_32px_rgba(255,152,0,0.25)]' : ''
+          }`}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -879,10 +1026,10 @@ const GroupChat = () => {
       >
         {/* Drag overlay */}
         {isDragging && (
-          <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary rounded-lg flex items-center justify-center z-10 pointer-events-none">
+          <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-xl flex items-center justify-center z-10 pointer-events-none backdrop-blur-sm">
             <div className="flex flex-col items-center gap-2">
               <Upload className="h-8 w-8 text-primary" />
-              <p className="text-sm font-medium text-primary">Drop images here</p>
+              <p className="text-sm font-semibold text-primary">Drop images here</p>
             </div>
           </div>
         )}
@@ -896,17 +1043,17 @@ const GroupChat = () => {
                   <img
                     src={preview}
                     alt={`Preview ${index + 1}`}
-                    className="h-24 w-24 object-cover rounded-lg border-2 border-border shadow-sm"
+                    className="h-24 w-24 object-cover rounded-xl border-2 border-border/50 shadow-md"
                   />
                   {/* Upload progress */}
                   {uploadingImages && uploadProgress[index] !== undefined && (
-                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center backdrop-blur-sm">
                       <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     </div>
                   )}
                   <button
                     onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1.5 hover:bg-destructive/90 shadow-md transition-all opacity-0 group-hover:opacity-100"
+                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1.5 hover:bg-destructive/90 shadow-lg transition-all opacity-0 group-hover:opacity-100 ring-2 ring-background"
                     disabled={uploadingImages}
                   >
                     <X className="h-3.5 w-3.5" />
@@ -917,7 +1064,7 @@ const GroupChat = () => {
           </div>
         )}
         
-        <div className="container mx-auto flex gap-3 relative">
+        <div className="flex gap-2.5 items-end">
           <input
             ref={fileInputRef}
             type="file"
@@ -930,22 +1077,24 @@ const GroupChat = () => {
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-full h-11 w-11 flex-shrink-0"
+            className="rounded-full h-12 w-12 flex-shrink-0 hover:bg-primary/10 transition-all hover:scale-105 shadow-sm border border-border/30"
             disabled={selectedImages.length >= 5}
+            title="Attach images"
           >
-            <ImageIcon className="h-5 w-5" />
+            <ImageIcon className="h-5 w-5 text-muted-foreground" />
           </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type a message..."
-            className="flex-1 rounded-full border-border/50 focus-visible:ring-primary"
+            className="flex-1 rounded-full border-border/60 focus-visible:ring-primary/50 h-12 px-5 shadow-sm bg-background/80 text-sm font-medium placeholder:text-muted-foreground/60"
           />
           <Button
             onClick={handleSend}
             disabled={(!input.trim() && selectedImages.length === 0) || uploadingImages}
-            className="px-4"
+            className="rounded-full h-12 px-7 bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:scale-105"
+            title="Send message"
           >
             {uploadingImages ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -954,6 +1103,7 @@ const GroupChat = () => {
             )}
           </Button>
         </div>
+      </div>
       </div>
 
       {/* Image Viewer */}

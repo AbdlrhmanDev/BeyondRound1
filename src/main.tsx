@@ -15,12 +15,18 @@ const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     errorMessage.toLowerCase().includes('could not establish connection') || 
     errorMessage.toLowerCase().includes('receiving end does not exist') ||
     errorMessage.toLowerCase().includes('extension context invalidated') ||
+    errorMessage.toLowerCase().includes('message channel closed') ||
+    errorMessage.toLowerCase().includes('asynchronous response') ||
     errorString.toLowerCase().includes('could not establish connection') ||
     errorString.toLowerCase().includes('receiving end does not exist') ||
     errorString.toLowerCase().includes('extension context invalidated') ||
+    errorString.toLowerCase().includes('message channel closed') ||
+    errorString.toLowerCase().includes('asynchronous response') ||
     fullErrorString.toLowerCase().includes('could not establish connection') ||
     fullErrorString.toLowerCase().includes('receiving end does not exist') ||
-    fullErrorString.toLowerCase().includes('extension context invalidated');
+    fullErrorString.toLowerCase().includes('extension context invalidated') ||
+    fullErrorString.toLowerCase().includes('message channel closed') ||
+    fullErrorString.toLowerCase().includes('asynchronous response');
   
   if (shouldIgnore) {
     event.preventDefault();
@@ -46,12 +52,18 @@ const handleError = (event: ErrorEvent) => {
     errorMessage.toLowerCase().includes('could not establish connection') || 
     errorMessage.toLowerCase().includes('receiving end does not exist') ||
     errorMessage.toLowerCase().includes('extension context invalidated') ||
+    errorMessage.toLowerCase().includes('message channel closed') ||
+    errorMessage.toLowerCase().includes('asynchronous response') ||
     errorString.toLowerCase().includes('could not establish connection') ||
     errorString.toLowerCase().includes('receiving end does not exist') ||
     errorString.toLowerCase().includes('extension context invalidated') ||
+    errorString.toLowerCase().includes('message channel closed') ||
+    errorString.toLowerCase().includes('asynchronous response') ||
     fullErrorString.toLowerCase().includes('could not establish connection') ||
     fullErrorString.toLowerCase().includes('receiving end does not exist') ||
-    fullErrorString.toLowerCase().includes('extension context invalidated');
+    fullErrorString.toLowerCase().includes('extension context invalidated') ||
+    fullErrorString.toLowerCase().includes('message channel closed') ||
+    fullErrorString.toLowerCase().includes('asynchronous response');
   
   if (shouldIgnore) {
     event.preventDefault();
@@ -80,7 +92,9 @@ console.error = (...args: any[]) => {
   // Filter out browser extension errors from console
   if (errorString.toLowerCase().includes('could not establish connection') ||
       errorString.toLowerCase().includes('receiving end does not exist') ||
-      errorString.toLowerCase().includes('extension context invalidated')) {
+      errorString.toLowerCase().includes('extension context invalidated') ||
+      errorString.toLowerCase().includes('message channel closed') ||
+      errorString.toLowerCase().includes('asynchronous response')) {
     return; // Don't log browser extension errors
   }
   

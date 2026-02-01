@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +14,8 @@ import {
   Heart
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getPublicProfile } from "@/services/profileService";
+import { getPublicPreferences } from "@/services/onboardingService";
 
 interface PublicProfile {
   id: string;
@@ -52,22 +53,26 @@ const PublicProfile = () => {
       if (!userId) return;
 
       try {
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("id, user_id, full_name, avatar_url, city, neighborhood, languages")
-          .eq("user_id", userId)
-          .maybeSingle();
+        const [profileData, prefsData] = await Promise.all([
+          getPublicProfile(userId),
+          getPublicPreferences(userId),
+        ]);
 
-        if (profileError) throw profileError;
-        if (profileData) setProfile(profileData as PublicProfile);
+        if (profileData) {
+          setProfile({
+            id: profileData.user_id,
+            user_id: profileData.user_id,
+            full_name: profileData.full_name,
+            avatar_url: profileData.avatar_url,
+            city: profileData.city,
+            neighborhood: profileData.neighborhood,
+            languages: null, // Not included in public profile
+          });
+        }
 
-        const { data: prefsData } = await supabase
-          .from("onboarding_preferences")
-          .select("specialty, career_stage, interests, friendship_type, sports, social_style, culture_interests, lifestyle, availability_slots")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        if (prefsData) setPreferences(prefsData);
+        if (prefsData) {
+          setPreferences(prefsData as PublicPreferences);
+        }
       } catch (error) {
         console.error("Error fetching profile:", error);
         toast({

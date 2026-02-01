@@ -1,25 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { getAuditLogs, AuditLog } from "@/services/adminService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, History, Pencil, Ban, UserCheck, UserX, Shield } from "lucide-react";
 import { format } from "date-fns";
-
-interface AuditLog {
-  id: string;
-  admin_id: string;
-  action: string;
-  target_user_id: string | null;
-  target_table: string | null;
-  old_values: unknown;
-  new_values: unknown;
-  reason: string | null;
-  created_at: string;
-  admin_name?: string;
-  target_name?: string | null;
-}
 
 const actionConfig: Record<string, { label: string; icon: typeof Pencil; color: string }> = {
   user_edit: { label: "Profile Edit", icon: Pencil, color: "bg-blue-500/10 text-blue-500" },
@@ -36,37 +22,8 @@ const AdminAuditLogs = () => {
 
   const fetchLogs = async () => {
     setIsLoading(true);
-    
-    const { data: logsData, error } = await supabase
-      .from("admin_audit_logs")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    if (error || !logsData) {
-      setIsLoading(false);
-      return;
-    }
-
-    // Get unique admin and target user IDs
-    const adminIds = [...new Set(logsData.map((l) => l.admin_id))];
-    const targetIds = [...new Set(logsData.map((l) => l.target_user_id).filter(Boolean))] as string[];
-
-    // Fetch profiles for names
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, full_name")
-      .in("user_id", [...adminIds, ...targetIds]);
-
-    const nameMap = new Map((profiles || []).map((p) => [p.user_id, p.full_name]));
-
-    const enrichedLogs: AuditLog[] = logsData.map((log) => ({
-      ...log,
-      admin_name: nameMap.get(log.admin_id) || "Unknown Admin",
-      target_name: log.target_user_id ? nameMap.get(log.target_user_id) || "Unknown User" : null,
-    }));
-
-    setLogs(enrichedLogs);
+    const logsData = await getAuditLogs(100);
+    setLogs(logsData);
     setIsLoading(false);
   };
 

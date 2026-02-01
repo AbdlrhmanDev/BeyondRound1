@@ -10,17 +10,9 @@ import { ArrowLeft, Send, Sparkles, Image as ImageIcon, X, Loader2, Upload } fro
 import { useToast } from "@/hooks/use-toast";
 import { compressImages } from "@/utils/imageCompression";
 import { ImageViewer } from "@/components/ImageViewer";
-
-interface Message {
-  id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  read_at: string | null;
-  media_urls?: Array<{ url: string; type: string; size?: number }>;
-  has_media?: boolean;
-  media_type?: string;
-}
+import { getMessages, getConversation, getMatchForConversation, sendMessage, updateMessageMedia, Message } from "@/services/messageService";
+import { getPublicProfile } from "@/services/profileService";
+import { uploadPhotos } from "@/services/storageService";
 
 interface OtherUser {
   user_id: string;
@@ -63,42 +55,28 @@ const Chat = () => {
       setLoading(true);
       
       // Fetch conversation and messages in parallel for faster loading
-      const [convoRes, messagesRes] = await Promise.all([
-        (supabase as any)
-          .from("conversations")
-          .select("match_id")
-          .eq("id", conversationId)
-          .single(),
-        (supabase as any)
-          .from("messages")
-          .select("*")
-          .eq("conversation_id", conversationId)
-          .or("is_deleted.is.null,is_deleted.eq.false")
-          .order("created_at", { ascending: true })
-          .limit(100), // Limit to last 100 messages for faster loading
+      const [conversation, messagesData] = await Promise.all([
+        getConversation(conversationId),
+        getMessages(conversationId, 100),
       ]);
 
-      if (convoRes.error) throw convoRes.error;
-      if (messagesRes.data) setMessages(messagesRes.data);
+      if (messagesData) setMessages(messagesData);
 
       // Get match to find other user (can be done after messages load)
-      if (convoRes.data?.match_id) {
-        const { data: match } = await (supabase as any)
-          .from("matches")
-          .select("user_id, matched_user_id")
-          .eq("id", convoRes.data.match_id)
-          .single();
+      if (conversation?.match_id) {
+        const match = await getMatchForConversation(conversation.match_id);
 
         if (match) {
           const otherUserId = match.user_id === user.id ? match.matched_user_id : match.user_id;
-          
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("user_id, full_name, avatar_url")
-            .eq("user_id", otherUserId)
-            .single();
+          const profile = await getPublicProfile(otherUserId);
 
-          if (profile) setOtherUser(profile as any);
+          if (profile) {
+            setOtherUser({
+              user_id: profile.user_id,
+              full_name: profile.full_name,
+              avatar_url: profile.avatar_url,
+            });
+          }
         }
       }
     } catch (error) {
@@ -396,24 +374,20 @@ const Chat = () => {
         // Show message immediately in UI
         setMessages((prev) => [...prev, optimisticMessage]);
         
-        // Send to database in background
-        const { data: messageData, error: insertError } = await (supabase as any)
-          .from("messages")
-          .insert({
-            conversation_id: conversationId,
-            sender_id: user.id,
-            content: messageContent || '',
-            media_urls: tempMediaUrls,
-            has_media: true,
-            media_type: 'image',
-          })
-          .select()
-          .single();
+        // Send to database in background using service
+        const messageData = await sendMessage({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: messageContent || '',
+          media_urls: tempMediaUrls,
+          has_media: true,
+          media_type: 'image',
+        });
 
-        if (insertError) {
+        if (!messageData) {
           // Remove optimistic message on error
           setMessages((prev) => prev.filter(msg => msg.id !== optimisticMessage.id));
-          throw insertError;
+          throw new Error("Failed to send message");
         }
         
         tempMessageId = messageData.id;
@@ -426,18 +400,16 @@ const Chat = () => {
         );
         
       } else {
-        // No images, send normally
-        const { data: messageData, error: insertError } = await (supabase as any)
-          .from("messages")
-          .insert({
-            conversation_id: conversationId,
-            sender_id: user.id,
-            content: messageContent || '',
-          })
-          .select()
-          .single();
+        // No images, send normally using service
+        const messageData = await sendMessage({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: messageContent || '',
+        });
 
-        if (insertError) throw insertError;
+        if (!messageData) {
+          throw new Error("Failed to send message");
+        }
       }
       
       // Upload images in background and replace temporary previews (non-blocking)
@@ -451,50 +423,22 @@ const Chat = () => {
             // Compress images in parallel (very fast, skips small images)
             const compressedImages = await compressImages(imagesToUpload);
             
-            // Upload compressed images in parallel
-            const uploadPromises = compressedImages.map(async (file, index) => {
-              const fileExt = file.name.split('.').pop();
-              const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-              
-              try {
-                const { error: uploadError } = await supabase.storage
-                  .from('message-media')
-                  .upload(fileName, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                  });
-                
-                if (uploadError) throw uploadError;
-                
-                const { data: { publicUrl } } = supabase.storage
-                  .from('message-media')
-                  .getPublicUrl(fileName);
-                
-                return {
-                  url: publicUrl,
-                  type: file.type,
-                  size: file.size,
-                };
-              } catch (error) {
-                console.error(`Upload error for image ${index}:`, error);
-                // Return temp preview if upload fails
-                return {
-                  url: previewsToKeep[index],
-                  type: file.type,
-                  size: file.size,
-                };
-              }
-            });
-
-            const mediaUrls = await Promise.all(uploadPromises);
+            // Upload compressed images using storage service
+            const basePath = `${user.id}`;
+            const uploadedUrls = await uploadPhotos('message-media', compressedImages, basePath);
             
-            // Replace temporary previews with real URLs
-            await (supabase as any)
-              .from("messages")
-              .update({
-                media_urls: mediaUrls,
-              })
-              .eq("id", tempMessageId);
+            // Map to media URL objects with fallback to temp previews
+            const finalMediaUrls = compressedImages.map((file, index) => {
+              const uploadedUrl = uploadedUrls[index];
+              return {
+                url: uploadedUrl || previewsToKeep[index] || '',
+                type: file.type || 'image/jpeg',
+                size: file.size || 0,
+              };
+            });
+            
+            // Replace temporary previews with real URLs using service
+            await updateMessageMedia(tempMessageId, finalMediaUrls);
             
             // Update local state immediately
             setMessages((prev) =>

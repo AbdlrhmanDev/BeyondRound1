@@ -4,7 +4,7 @@ import { Shield, Lock, Eye, Database } from "lucide-react";
 
 const Privacy = () => {
   return (
-    <div className="min-h-screen bg-foreground">
+    <div className="min-h-screen bg-foreground dark:bg-background">
       <Header />
       
       <main className="pt-32">

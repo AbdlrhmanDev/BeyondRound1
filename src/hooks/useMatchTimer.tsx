@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getUserGroupMemberships, getGroupsByIds } from "@/services/matchService";
+import { getGroupConversationsByGroupIds } from "@/services/conversationService";
+import { checkNotificationExists, createNotification } from "@/services/notificationService";
 
 const getNextThursday4PM = (): Date => {
   const now = new Date();
@@ -54,54 +56,49 @@ export const useMatchTimer = () => {
       
       // Check if it's Thursday 4 PM
       if (isThursday4PM()) {
-        // Get user's active group
-        const { data: groupMember } = await supabase
-          .from("group_members")
-          .select("group_id, match_groups!inner(id, match_week, status)")
-          .eq("user_id", user.id)
-          .eq("match_groups.status", "active")
-          .order("match_groups.match_week", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (groupMember) {
-          const groupId = groupMember.group_id;
+        // Get user's active group memberships using service
+        const memberships = await getUserGroupMemberships(user.id);
+        
+        if (memberships.length > 0) {
+          const groupIds = memberships.map(m => m.group_id);
           
-          // Check if notification already sent for this group
-          const { data: existingNotification } = await (supabase
-            .from("notifications" as any)
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("type", "system")
-            .like("message", "%YOUR MATCH IS READY%")
-            .maybeSingle() as any);
+          // Get active groups using service
+          const activeGroups = await getGroupsByIds(groupIds, 1);
+          
+          if (activeGroups.length > 0) {
+            const group = activeGroups[0];
+            const groupId = group.id;
+            
+            // Check if notification already sent for this group using service
+            const notificationExists = await checkNotificationExists(
+              user.id,
+              "system",
+              "%YOUR MATCH IS READY%"
+            );
 
-          if (!existingNotification) {
-            // Get group conversation
-            const { data: conversation } = await supabase
-              .from("group_conversations")
-              .select("id")
-              .eq("group_id", groupId)
-              .maybeSingle();
+            if (!notificationExists) {
+              // Get group conversations using service
+              const conversations = await getGroupConversationsByGroupIds([groupId]);
+              const conversation = conversations.find(c => c.group_id === groupId);
 
-            if (conversation) {
-              // Send notification
-              await (supabase.from("notifications" as any).insert({
-                user_id: user.id,
-                type: "system",
-                title: "🎉 YOUR MATCH IS READY!",
-                message: "🎉 YOUR MATCH IS READY!",
-                link: `/group-chat/${conversation.id}`,
-                metadata: { group_id: groupId },
-              }) as any);
+              if (conversation) {
+                // Send notification using service
+                await createNotification(user.id, {
+                  type: "system",
+                  title: "🎉 YOUR MATCH IS READY!",
+                  message: "🎉 YOUR MATCH IS READY!",
+                  link: `/group-chat/${conversation.id}`,
+                  metadata: { group_id: groupId },
+                });
 
-              // Show toast and redirect
-              toast({
-                title: "🎉 YOUR MATCH IS READY!",
-                description: "You've been matched with a group! Let's start chatting.",
-              });
+                // Show toast and redirect
+                toast({
+                  title: "🎉 YOUR MATCH IS READY!",
+                  description: "You've been matched with a group! Let's start chatting.",
+                });
 
-              navigate(`/group-chat/${conversation.id}`);
+                navigate(`/group-chat/${conversation.id}`);
+              }
             }
           }
         }

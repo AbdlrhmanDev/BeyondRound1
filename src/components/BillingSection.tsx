@@ -3,65 +3,80 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSubscription } from "@/hooks/useSubscription";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import { FEATURE_LABELS } from "@/constants/planFeatures";
 import { CreditCard, Check, Calendar, Download, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-// Subscription plans configuration
-// Replace these with your actual Stripe Price IDs
+// Subscription plans — align Stripe Price nicknames: one_time_trial, monthly, premium
 const PLANS = [
   {
-    id: "basic",
-    name: "Basic",
-    price: "$9.99",
-    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_BASIC || "price_basic",
-    description: "Perfect for getting started",
+    id: "one_time_trial",
+    name: "One-Time Trial",
+    price: "€9.99",
+    period: "one-time",
+    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_ONE_TIME || import.meta.env.VITE_STRIPE_PRICE_ID_BASIC || "price_one_time",
+    description: "Try BeyondRounds once — no commitment",
     features: [
-      "5 matches per week",
-      "Basic profile features",
-      "Email support",
+      "Weekly curated group matches",
+      "Access to private group chat",
+      "RoundsBot icebreaker prompts",
+      "Basic compatibility matching",
     ],
+    popular: false,
   },
   {
-    id: "premium",
-    name: "Premium",
-    price: "$19.99",
-    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_PREMIUM || "price_premium",
+    id: "monthly",
+    name: "Monthly",
+    price: "€14.99",
+    period: "/month",
+    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY || import.meta.env.VITE_STRIPE_PRICE_ID_PREMIUM || "price_monthly",
     description: "Most popular choice",
     features: [
-      "Unlimited matches",
-      "Advanced matching algorithm",
-      "Priority support",
-      "Early access to features",
+      "Everything in One-Time Trial",
+      "Priority in matching algorithm",
+      "Expanded profile & interests",
+      "Early access to new features",
+      "Priority customer support",
     ],
     popular: true,
   },
   {
-    id: "pro",
-    name: "Pro",
-    price: "$29.99",
-    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_PRO || "price_pro",
-    description: "For power users",
+    id: "premium",
+    name: "Premium",
+    price: "€29.99",
+    period: "/month",
+    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_PREMIUM || import.meta.env.VITE_STRIPE_PRICE_ID_PRO || "price_premium",
+    description: "Maximum control & personalization",
     features: [
-      "Everything in Premium",
-      "1-on-1 matching assistance",
-      "VIP events access",
-      "Dedicated account manager",
+      "Everything in Monthly",
+      "Advanced lifestyle compatibility",
+      "AI-powered activity suggestions",
+      "Filter by specialty, age & more",
+      "Smaller group preference (2-3)",
+      "Exclusive member events",
     ],
+    popular: false,
   },
 ];
 
 export const BillingSection = () => {
   const { subscription, invoices, loading, isActive, isCanceled, createCheckoutSession, cancelSubscription } = useSubscription();
+  const { planTier, features } = usePlanFeatures();
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
+
+  const enabledFeatureKeys = Object.entries(features)
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => key as keyof typeof FEATURE_LABELS);
 
   const handleSubscribe = async (priceId: string) => {
     try {
       setProcessingPlan(priceId);
       await createCheckoutSession(priceId);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to start checkout");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to start checkout");
       setProcessingPlan(null);
     }
   };
@@ -124,6 +139,20 @@ export const BillingSection = () => {
               </div>
             )}
 
+            {planTier !== "none" && enabledFeatureKeys.length > 0 && (
+              <div className="p-4 rounded-xl bg-secondary/30 border border-border/50">
+                <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">Your plan includes</p>
+                <ul className="space-y-2">
+                  {enabledFeatureKeys.map((key) => (
+                    <li key={key} className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>{FEATURE_LABELS[key]}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {!subscription.cancel_at_period_end && (
               <Button
                 variant="outline"
@@ -133,8 +162,8 @@ export const BillingSection = () => {
                     setCanceling(true);
                     await cancelSubscription();
                     toast.success("Subscription will cancel at the end of the billing period");
-                  } catch (error: any) {
-                    toast.error(error.message || "Failed to cancel subscription");
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Failed to cancel subscription");
                   } finally {
                     setCanceling(false);
                   }
@@ -148,7 +177,7 @@ export const BillingSection = () => {
         </Card>
       )}
 
-      {/* Subscription Plans */}
+      {/* Subscription Plans — same structure as pricing page */}
       {!isActive && (
         <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-500">
           <CardHeader className="px-6 pt-6 pb-4">
@@ -163,36 +192,40 @@ export const BillingSection = () => {
             </div>
           </CardHeader>
           <CardContent className="px-6 pb-6">
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-3 gap-6">
               {PLANS.map((plan) => (
                 <Card
                   key={plan.id}
-                  className={`relative ${plan.popular ? "border-primary shadow-lg" : ""}`}
+                  className={`relative rounded-2xl overflow-hidden transition-all duration-300 ${
+                    plan.popular
+                      ? "border-2 border-primary shadow-lg shadow-primary/10 scale-[1.02] z-10"
+                      : "border border-border bg-card hover:border-primary/30"
+                  }`}
                 >
                   {plan.popular && (
-                    <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <div className="absolute top-0 left-0 right-0 py-2 bg-primary text-primary-foreground text-center text-sm font-semibold">
                       Most Popular
-                    </Badge>
+                    </div>
                   )}
-                  <CardHeader>
-                    <CardTitle className="text-xl">{plan.name}</CardTitle>
-                    <div className="mt-2">
+                  <CardHeader className={plan.popular ? "pt-10" : ""}>
+                    <CardTitle className="text-xl font-display">{plan.name}</CardTitle>
+                    <div className="mt-2 flex items-baseline gap-1">
                       <span className="text-3xl font-bold">{plan.price}</span>
-                      <span className="text-muted-foreground">/month</span>
+                      <span className="text-muted-foreground text-sm">{plan.period}</span>
                     </div>
                     <CardDescription className="mt-2">{plan.description}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <ul className="space-y-2">
+                  <CardContent className="space-y-5">
+                    <ul className="space-y-3">
                       {plan.features.map((feature, idx) => (
                         <li key={idx} className="flex items-start gap-2 text-sm">
                           <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                          <span>{feature}</span>
+                          <span className="text-muted-foreground">{feature}</span>
                         </li>
                       ))}
                     </ul>
                     <Button
-                      className="w-full"
+                      className="w-full rounded-xl font-semibold h-11"
                       variant={plan.popular ? "default" : "outline"}
                       onClick={() => handleSubscribe(plan.priceId)}
                       disabled={processingPlan === plan.priceId}

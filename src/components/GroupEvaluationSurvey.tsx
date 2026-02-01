@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { getEvaluation, submitEvaluation } from "@/services/evaluationService";
+import { uploadPhotos } from "@/services/storageService";
 
 interface GroupEvaluationSurveyProps {
   groupId: string;
@@ -47,21 +47,9 @@ const GroupEvaluationSurvey = ({ groupId, matchWeek, open, onOpenChange }: Group
 
     // Check if user already submitted evaluation
     const checkExistingEvaluation = async () => {
-      const { data } = await supabase
-        .from("group_evaluations" as never)
-        .select("id, met_in_person, meeting_rating, real_connection, feedback_text, photos_urls")
-        .eq("user_id", user.id)
-        .eq("group_id", groupId)
-        .maybeSingle();
-
-      if (data && typeof data === 'object' && 'met_in_person' in data) {
-        const evaluation = data as {
-          met_in_person: boolean;
-          meeting_rating: number | null;
-          real_connection: boolean | null;
-          feedback_text: string | null;
-          photos_urls: string[] | null;
-        };
+      const evaluation = await getEvaluation(user.id, groupId);
+      
+      if (evaluation) {
         setMetInPerson(evaluation.met_in_person);
         setRating(evaluation.meeting_rating);
         setRealConnection(evaluation.real_connection);
@@ -130,44 +118,27 @@ const GroupEvaluationSurvey = ({ groupId, matchWeek, open, onOpenChange }: Group
       // Upload photos if any
       let uploadedPhotoUrls: string[] = [...photoUrls];
       
-      if (photos.length > 0) {
-        const uploadPromises = photos.map(async (photo) => {
-          const fileExt = photo.name.split('.').pop();
-          const filePath = `${user.id}/${groupId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('meeting-photos')
-            .upload(filePath, photo);
-          
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('meeting-photos')
-              .getPublicUrl(filePath);
-            return publicUrl;
-          }
-          return null;
-        });
-
-        const urls = await Promise.all(uploadPromises);
-        uploadedPhotoUrls = [...uploadedPhotoUrls, ...urls.filter(Boolean) as string[]];
+      if (photos.length > 0 && user) {
+        const basePath = `${user.id}/${groupId}`;
+        const newUrls = await uploadPhotos('meeting-photos', photos, basePath);
+        uploadedPhotoUrls = [...uploadedPhotoUrls, ...newUrls];
       }
 
-      // Save evaluation
-      const { error } = await supabase
-        .from("group_evaluations" as never)
-        .upsert({
-          user_id: user.id,
-          group_id: groupId,
-          met_in_person: metInPerson,
-          meeting_rating: rating,
-          real_connection: realConnection,
-          feedback_text: feedbackText || null,
-          photos_urls: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls : null,
-        } as never, {
-          onConflict: "user_id,group_id",
-        });
+      // Save evaluation using service
+      const success = await submitEvaluation({
+        user_id: user!.id,
+        group_id: groupId,
+        match_week: matchWeek,
+        met_in_person: metInPerson,
+        meeting_rating: rating,
+        real_connection: realConnection,
+        feedback_text: feedbackText || null,
+        photos_urls: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls : null,
+      });
 
-      if (error) throw error;
+      if (!success) {
+        throw new Error("Failed to submit evaluation");
+      }
 
       setHasSubmitted(true);
       toast({

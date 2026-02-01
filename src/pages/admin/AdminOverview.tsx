@@ -1,20 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, MessageSquare, Heart, UsersRound, TrendingUp, TrendingDown } from "lucide-react";
-
-interface Stats {
-  totalUsers: number;
-  totalFeedback: number;
-  totalMatches: number;
-  totalGroups: number;
-  pendingMatches: number;
-  acceptedMatches: number;
-}
+import { getAdminStats, AdminStats } from "@/services/adminService";
 
 const AdminOverview = () => {
-  const [stats, setStats] = useState<Stats>({
+  const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalFeedback: 0,
     totalMatches: 0,
@@ -26,30 +17,8 @@ const AdminOverview = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const [
-        { count: usersCount },
-        { count: feedbackCount },
-        { count: matchesCount },
-        { count: groupsCount },
-        { count: pendingCount },
-        { count: acceptedCount },
-      ] = await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase.from("feedback").select("*", { count: "exact", head: true }),
-        supabase.from("matches").select("*", { count: "exact", head: true }),
-        supabase.from("match_groups").select("*", { count: "exact", head: true }),
-        supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "accepted"),
-      ]);
-
-      setStats({
-        totalUsers: usersCount || 0,
-        totalFeedback: feedbackCount || 0,
-        totalMatches: matchesCount || 0,
-        totalGroups: groupsCount || 0,
-        pendingMatches: pendingCount || 0,
-        acceptedMatches: acceptedCount || 0,
-      });
+      const statsData = await getAdminStats();
+      setStats(statsData);
       setIsLoading(false);
     };
 

@@ -6,7 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { ThemeSync } from "@/components/ThemeSync";
+import { CookieConsent } from "@/components/CookieConsent";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Analytics } from "@vercel/analytics/react";
 
 // Lazy load non-critical components
 const FeedbackButton = lazy(() => import("@/components/FeedbackButton"));
@@ -25,10 +28,15 @@ const Chat = lazy(() => import("./pages/Chat"));
 const GroupChat = lazy(() => import("./pages/GroupChat"));
 const PlaceSuggestions = lazy(() => import("./pages/PlaceSuggestions"));
 const About = lazy(() => import("./pages/About"));
+const LearnMore = lazy(() => import("./pages/LearnMore"));
 const FAQ = lazy(() => import("./pages/FAQ"));
+const Contact = lazy(() => import("./pages/Contact"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const Waitlist = lazy(() => import("./pages/Waitlist"));
+const ForDoctors = lazy(() => import("./pages/ForDoctors"));
+const Survey = lazy(() => import("./pages/Survey"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
 const AdminFeedback = lazy(() => import("./pages/admin/AdminFeedback"));
@@ -39,7 +47,7 @@ const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 
 // Loading fallback component
 const PageLoader = () => (
-  <div className="min-h-screen bg-foreground flex items-center justify-center">
+  <div className="min-h-screen bg-foreground dark:bg-background flex items-center justify-center">
     <div className="space-y-4 w-full max-w-md px-4">
       <Skeleton className="h-12 w-full" />
       <Skeleton className="h-64 w-full" />
@@ -75,6 +83,9 @@ const App = () => (
             v7_relativeSplatPath: true,
           }}
         >
+          <ThemeSync />
+          <CookieConsent />
+          <Analytics />
           <Suspense fallback={null}>
             <FeedbackButton />
           </Suspense>
@@ -101,10 +112,15 @@ const App = () => (
               <Route path="/group-chat/:conversationId" element={<GroupChat />} />
               <Route path="/places" element={<PlaceSuggestions />} />
               <Route path="/about" element={<About />} />
+              <Route path="/learn-more" element={<LearnMore />} />
               <Route path="/faq" element={<FAQ />} />
+              <Route path="/contact" element={<Contact />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/waitlist" element={<Waitlist />} />
+              <Route path="/for-doctors" element={<ForDoctors />} />
+              <Route path="/survey" element={<Survey />} />
               
        
               <Route 

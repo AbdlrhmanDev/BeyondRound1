@@ -5,7 +5,7 @@ import { FileText } from "lucide-react";
 
 const Terms = () => {
   return (
-    <div className="min-h-screen bg-foreground">
+    <div className="min-h-screen bg-foreground dark:bg-background">
       <Header />
       
       <main className="pt-32">

@@ -2,14 +2,18 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import DashboardLayout from "@/components/DashboardLayout";
 import MatchCountdown from "@/components/MatchCountdown";
+import { getProfile, getPublicProfile, updateProfile } from "@/services/profileService";
+import { getOnboardingPreferences, saveOnboardingPreferences, markOnboardingComplete, getPublicPreferences } from "@/services/onboardingService";
+import { getGroupMembers, getUserGroupMemberships, getGroupsByIds } from "@/services/matchService";
+import { getGroupConversationsByGroupIds } from "@/services/conversationService";
 import { 
   Users, 
   Heart, 
@@ -17,7 +21,16 @@ import {
   Stethoscope, 
   Sparkles,
   ArrowRight,
-  ChevronRight
+  ChevronRight,
+  Camera,
+  Music,
+  Film,
+  Activity,
+  Star,
+  Hourglass,
+  Clock,
+  CheckCircle2,
+  MapPin
 } from "lucide-react";
 
 interface Profile {
@@ -44,6 +57,9 @@ interface GroupMember {
     full_name: string | null;
     avatar_url: string | null;
     city: string | null;
+  };
+  preferences?: {
+    specialty: string | null;
   };
 }
 
@@ -112,29 +128,26 @@ const Dashboard = () => {
             const { personalInfo, answers } = pendingData;
             
             // Save pending onboarding data
-            console.log('💾 Found pending onboarding data, saving now...');
+            const { logInfo, logError } = await import('@/utils/logger');
+            logInfo('Found pending onboarding data, saving now...', 'Dashboard');
             
-            // Update profile
-            const { error: profileError } = await supabase
-              .from("profiles")
-              .update({
-                full_name: personalInfo?.name || null,
-                city: personalInfo?.city || null,
-                neighborhood: personalInfo?.neighborhood || null,
-                gender: personalInfo?.gender || null,
-                birth_year: personalInfo?.birthYear ? parseInt(personalInfo.birthYear) : null,
-                gender_preference: personalInfo?.genderPreference || null,
-                nationality: personalInfo?.nationality || null,
-              } as any)
-              .eq("user_id", user.id);
+            // Update profile using service
+            const profileUpdate = await updateProfile(user.id, {
+              full_name: personalInfo?.name || null,
+              city: personalInfo?.city || null,
+              neighborhood: personalInfo?.neighborhood || null,
+              gender: personalInfo?.gender || null,
+              birth_year: personalInfo?.birthYear ? parseInt(personalInfo.birthYear) : null,
+              gender_preference: personalInfo?.genderPreference || null,
+              nationality: personalInfo?.nationality || null,
+            });
 
-            if (profileError) {
-              console.error('Profile update error:', profileError);
+            if (!profileUpdate) {
+              logError('Profile update error', 'Dashboard');
             }
 
-            // Save preferences
-            const { error: prefsError } = await supabase.from("onboarding_preferences").upsert({
-              user_id: user.id,
+            // Save preferences using service
+            const prefsSuccess = await saveOnboardingPreferences(user.id, {
               specialty: answers?.specialty?.[0] || null,
               specialty_preference: answers?.specialty_preference?.[0] || null,
               career_stage: answers?.stage?.[0] || null,
@@ -156,35 +169,26 @@ const Dashboard = () => {
               completed_at: new Date().toISOString(),
             });
 
-            if (prefsError) {
-              console.error('Preferences save error:', prefsError);
+            if (!prefsSuccess) {
+              logError('Preferences save error', 'Dashboard');
               toast({
                 title: "Error saving data",
-                description: `Preferences save failed: ${prefsError.message}. Click "Save Pending Data" button to retry.`,
+                description: "Preferences save failed. Click \"Save Pending Data\" button to retry.",
                 variant: "destructive",
               });
             } else {
-              console.log('✅ Pending onboarding data saved successfully');
+              logInfo('Pending onboarding data saved successfully', 'Dashboard');
               // Remove from localStorage after successful save
               localStorage.removeItem('pending_onboarding_data');
               
-              // Refresh data
-              let profileRes = { data: null, error: null };
-              let prefsRes = { data: null, error: null };
-              
-              try {
-                const results = await Promise.all([
-                  supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-                  supabase.from("onboarding_preferences").select("*").eq("user_id", user.id).maybeSingle(),
-                ]);
-                profileRes = results[0];
-                prefsRes = results[1];
-              } catch (err) {
-                console.warn("Error refreshing data:", err);
-              }
+              // Refresh data using services
+              const [profileData, prefsData] = await Promise.all([
+                getProfile(user.id),
+                getOnboardingPreferences(user.id),
+              ]);
 
-              if (profileRes.data) setProfile(profileRes.data);
-              if (prefsRes.data) setPreferences(prefsRes.data);
+              if (profileData) setProfile(profileData);
+              if (prefsData) setPreferences(prefsData);
               
               toast({
                 title: "Profile data saved",
@@ -192,97 +196,81 @@ const Dashboard = () => {
               });
             }
           } catch (parseError) {
-            console.error('Error parsing pending onboarding data:', parseError);
+            const { logError } = await import('@/utils/logger');
+            logError('Error parsing pending onboarding data', 'Dashboard', parseError);
             localStorage.removeItem('pending_onboarding_data');
           }
         }
 
-        let profileRes = { data: null, error: null };
-        let prefsRes = { data: null, error: null };
-        let memberRes = { data: null, error: null };
-        
-        try {
-          const results = await Promise.all([
-            supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-            supabase.from("onboarding_preferences").select("*, other_interests, sports, music_preferences, movie_preferences").eq("user_id", user.id).maybeSingle(),
-            supabase.from("group_members").select("group_id").eq("user_id", user.id),
-          ]);
-          profileRes = results[0];
-          prefsRes = results[1];
-          memberRes = results[2];
-        } catch (err) {
-          console.warn("Error fetching initial data:", err);
-        }
+        // Fetch profile and preferences using services
+        const [profileData, prefsData, memberData] = await Promise.all([
+          getProfile(user.id),
+          getOnboardingPreferences(user.id),
+          getUserGroupMemberships(user.id),
+        ]);
 
-        if (profileRes.data) setProfile(profileRes.data);
-        if (prefsRes.data) setPreferences(prefsRes.data);
+        if (profileData) setProfile(profileData);
+        if (prefsData) setPreferences(prefsData);
         
         // Fetch groups if user is a member
-        if (memberRes.data && memberRes.data.length > 0) {
-          setGroupsCount(memberRes.data.length);
-          const groupIds = memberRes.data.map((m) => m.group_id);
+        if (memberData && memberData.length > 0) {
+          setGroupsCount(memberData.length);
+          const groupIds = memberData.map((m) => m.group_id);
 
-          let groupsData = null;
-          try {
-            const result = await supabase
-              .from("match_groups")
-              .select("*")
-              .in("id", groupIds)
-              .eq("status", "active")
-              .order("match_week", { ascending: false })
-              .limit(1);
-            groupsData = result.data;
-          } catch (err) {
-            console.warn("Error fetching groups:", err);
-          }
+          // Get group info for the most recent active group using service
+          const groupsData = await getGroupsByIds(groupIds, 1);
 
           if (groupsData && groupsData.length > 0) {
             const allGroupIds = groupsData.map(g => g.id);
             
-            // Fetch all data in parallel - much faster!
-            let allMembersData = { data: [] as Array<{group_id: string; user_id: string}>, error: null };
-            let allConversationsData = { data: [] as Array<{id: string; group_id: string}>, error: null };
-            
-            try {
-              const results = await Promise.all([
-                supabase
-                  .from("group_members")
-                  .select("group_id, user_id")
-                  .in("group_id", allGroupIds),
-                supabase
-                  .from("group_conversations")
-                  .select("id, group_id")
-                  .in("group_id", allGroupIds),
-              ]);
-              allMembersData = results[0];
-              allConversationsData = results[1];
-            } catch (err) {
-              console.warn("Error fetching group data:", err);
-            }
+            // Fetch all data in parallel using services
+            const [allMembersData, allConversationsData] = await Promise.all([
+              Promise.all(allGroupIds.map(id => getGroupMembers(id))).then(results => 
+                results.flatMap((members, index) => 
+                  members.map(m => ({ group_id: allGroupIds[index], user_id: m.user_id }))
+                )
+              ),
+              getGroupConversationsByGroupIds(allGroupIds),
+            ]);
 
             // Get all unique member user IDs
             const allMemberUserIds = Array.from(new Set(
-              (allMembersData.data || []).map(m => m.user_id).filter(id => id !== user.id)
+              allMembersData.map(m => m.user_id).filter(id => id !== user.id)
             ));
 
-            // Fetch all profiles in one batch query
-            let allProfilesData: Array<{user_id: string; full_name: string | null; avatar_url: string | null; city: string | null}> = [];
+            // Fetch all profiles and preferences using service
+            const [allProfilesPromises, allPrefsPromises] = await Promise.all([
+              Promise.all(allMemberUserIds.map(id => getPublicProfile(id))),
+              Promise.all(allMemberUserIds.map(id => getPublicPreferences(id))),
+            ]);
             
-            if (allMemberUserIds.length > 0) {
-              try {
-                const result = await supabase
-                  .from("profiles")
-                  .select("user_id, full_name, avatar_url, city")
-                  .in("user_id", allMemberUserIds);
-                allProfilesData = result.data || [];
-              } catch (err) {
-                console.warn("Error fetching profiles:", err);
-              }
-            }
+            const profilesMap = new Map(
+              allProfilesPromises
+                .filter((p): p is NonNullable<typeof p> => p !== null)
+                .map(p => [p.user_id, p])
+            );
+            
+            const prefsMap = new Map(
+              allPrefsPromises
+                .filter((p): p is NonNullable<typeof p> => p !== null)
+                .map(p => [p.user_id, p])
+            );
+            
+            const allProfilesData = allMemberUserIds.map(userId => {
+              const profile = profilesMap.get(userId);
+              const prefs = prefsMap.get(userId);
+              return {
+                user_id: userId,
+                full_name: profile?.full_name || null,
+                avatar_url: profile?.avatar_url || null,
+                city: profile?.city || null,
+                specialty: prefs?.specialty || null,
+              };
+            });
 
             // Create lookup maps
             const membersByGroup = new Map<string, string[]>();
-            (allMembersData.data || []).forEach(m => {
+            allMembersData.forEach(m => {
               if (!membersByGroup.has(m.group_id)) {
                 membersByGroup.set(m.group_id, []);
               }
@@ -290,11 +278,11 @@ const Dashboard = () => {
             });
 
             const conversationsMap = new Map(
-              (allConversationsData.data || []).map(c => [c.group_id, c.id])
+              allConversationsData.map(c => [c.group_id, c.id])
             );
 
-            const profilesMap = new Map(
-              (allProfilesData || []).map(p => [p.user_id, p])
+            const profilesMapForGroups = new Map(
+              allProfilesData.map(p => [p.user_id, p])
             );
 
             // Build enriched groups synchronously (no async needed)
@@ -304,13 +292,16 @@ const Dashboard = () => {
               const displayMemberIds = otherMemberIds.slice(0, 4);
 
               const completeProfiles = otherMemberIds.map(memberId => {
-                const profileData = profilesMap.get(memberId);
+                const profileData = profilesMapForGroups.get(memberId);
                 return {
                   user_id: memberId,
                   profile: {
                     full_name: profileData?.full_name || null,
                     avatar_url: profileData?.avatar_url || null,
                     city: profileData?.city || null,
+                  },
+                  preferences: {
+                    specialty: profileData?.specialty || null,
                   },
                 };
               });
@@ -333,7 +324,13 @@ const Dashboard = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        const { handleError } = await import('@/utils/errorHandler');
+        const errorMessage = handleError(error, 'Dashboard');
+        toast({
+          title: "Error loading data",
+          description: errorMessage,
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -347,6 +344,29 @@ const Dashboard = () => {
   // Memoize displayed group to prevent unnecessary re-renders
   const displayedGroup = useMemo(() => groups[0], [groups]);
 
+  // Calculate all interests (must be before useMemo hooks)
+  const allInterests = useMemo(() => [
+    ...(preferences?.other_interests || []),
+    ...(preferences?.sports || []),
+    ...(preferences?.music_preferences || []),
+    ...(preferences?.movie_preferences || []),
+    ...(preferences?.interests || []),
+  ].filter(Boolean), [preferences]);
+
+  // Calculate profile completion percentage (must be before early return)
+  const calculateProfileCompletion = useMemo(() => {
+    let completedFields = 0;
+    const totalFields = 7; // name, specialty, career_stage, city, interests (min 3), avatar, completed_at
+    
+    if (profile?.full_name) completedFields++;
+    if (preferences?.specialty) completedFields++;
+    if (preferences?.career_stage) completedFields++;
+    if (profile?.avatar_url) completedFields++;
+    if (allInterests.length >= 3) completedFields++;
+    if (preferences?.completed_at) completedFields += 2; // Bonus for completion
+    
+    return Math.min(Math.round((completedFields / totalFields) * 100), 100);
+  }, [profile, preferences, allInterests.length]);
 
   if (authLoading || loading) {
     return (
@@ -376,14 +396,23 @@ const Dashboard = () => {
 
   const firstName = profile?.full_name?.split(" ")[0] || "Doctor";
 
-  // Combine all interests
-  const allInterests = [
-    ...(preferences?.other_interests || []),
-    ...(preferences?.sports || []),
-    ...(preferences?.music_preferences || []),
-    ...(preferences?.movie_preferences || []),
-    ...(preferences?.interests || []),
-  ].filter(Boolean);
+  // Combine all interests with their categories
+  const getInterestCategory = (interest: string): { category: string; icon: any; color: string } => {
+    const sports = preferences?.sports || [];
+    const music = preferences?.music_preferences || [];
+    const movies = preferences?.movie_preferences || [];
+    
+    if (sports.includes(interest)) {
+      return { category: 'sports', icon: Activity, color: 'bg-blue-500/10 text-blue-600 border-blue-200' };
+    }
+    if (music.includes(interest)) {
+      return { category: 'music', icon: Music, color: 'bg-purple-500/10 text-purple-600 border-purple-200' };
+    }
+    if (movies.includes(interest)) {
+      return { category: 'movies', icon: Film, color: 'bg-pink-500/10 text-pink-600 border-pink-200' };
+    }
+    return { category: 'other', icon: Star, color: 'bg-primary/10 text-primary border-primary/20' };
+  };
 
   // Manual save function for pending onboarding data
   const handleManualSave = async () => {
@@ -408,33 +437,29 @@ const Dashboard = () => {
         description: "Please wait while we save your onboarding data.",
       });
 
-      // Update profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          full_name: personalInfo?.name || null,
-          city: personalInfo?.city || null,
-          neighborhood: personalInfo?.neighborhood || null,
-          gender: personalInfo?.gender || null,
-          birth_year: personalInfo?.birthYear ? parseInt(personalInfo.birthYear) : null,
-          gender_preference: personalInfo?.genderPreference || null,
-          nationality: personalInfo?.nationality || null,
-        } as any)
-        .eq("user_id", user.id);
+      // Update profile using service
+      const profileUpdate = await updateProfile(user.id, {
+        full_name: personalInfo?.name || null,
+        city: personalInfo?.city || null,
+        neighborhood: personalInfo?.neighborhood || null,
+        gender: personalInfo?.gender || null,
+        birth_year: personalInfo?.birthYear ? parseInt(personalInfo.birthYear) : null,
+        gender_preference: personalInfo?.genderPreference || null,
+        nationality: personalInfo?.nationality || null,
+      });
 
-      if (profileError) {
-        console.error('Profile update error:', profileError);
+      if (!profileUpdate) {
+        console.error('Profile update error');
         toast({
           title: "Profile update failed",
-          description: profileError.message,
+          description: "Failed to update profile",
           variant: "destructive",
         });
         return;
       }
 
-      // Save preferences
-      const { error: prefsError } = await supabase.from("onboarding_preferences").upsert({
-        user_id: user.id,
+      // Save preferences using service
+      const prefsSuccess = await saveOnboardingPreferences(user.id, {
         specialty: answers?.specialty?.[0] || null,
         specialty_preference: answers?.specialty_preference?.[0] || null,
         career_stage: answers?.stage?.[0] || null,
@@ -456,11 +481,12 @@ const Dashboard = () => {
         completed_at: new Date().toISOString(),
       });
 
-      if (prefsError) {
-        console.error('Preferences save error:', prefsError);
+      if (!prefsSuccess) {
+        const { logError } = await import('@/utils/logger');
+        logError('Preferences save error', 'Dashboard');
         toast({
           title: "Preferences save failed",
-          description: prefsError.message,
+          description: "Failed to save preferences. Please try again.",
           variant: "destructive",
         });
         return;
@@ -470,22 +496,14 @@ const Dashboard = () => {
       localStorage.removeItem('pending_onboarding_data');
       
       // Refresh data immediately
-      let profileRes = { data: null, error: null };
-      let prefsRes = { data: null, error: null };
-      
-      try {
-        const results = await Promise.all([
-          supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-          supabase.from("onboarding_preferences").select("*").eq("user_id", user.id).maybeSingle(),
-        ]);
-        profileRes = results[0];
-        prefsRes = results[1];
-      } catch (err) {
-        console.warn("Error refreshing data after manual save:", err);
-      }
+      // Refresh data using services
+      const [profileData, prefsData] = await Promise.all([
+        getProfile(user.id),
+        getOnboardingPreferences(user.id),
+      ]);
 
-      if (profileRes.data) setProfile(profileRes.data);
-      if (prefsRes.data) setPreferences(prefsRes.data);
+      if (profileData) setProfile(profileData);
+      if (prefsData) setPreferences(prefsData);
       
       toast({
         title: "✅ Data saved successfully!",
@@ -507,15 +525,15 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-6 py-8 lg:py-12">
+      <main className="container mx-auto px-6 py-8 lg:py-12 max-w-7xl">
         {/* Welcome Section */}
-        <div className="mb-10 animate-fade-up">
+        <div className="mb-8 animate-fade-up">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-sm font-medium text-muted-foreground">Dashboard</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Overview</span>
           </div>
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between flex-col sm:flex-row gap-4">
             <div>
               <h1 className="font-display text-4xl lg:text-5xl font-bold text-foreground mb-3">
                 Hey, {firstName} <span className="inline-block animate-float">👋</span>
@@ -524,12 +542,12 @@ const Dashboard = () => {
                 Ready to connect with physicians who share your journey?
               </p>
             </div>
-            {(hasPendingData || isProfileIncomplete) && (
+            {hasPendingData && (
               <Button
                 onClick={handleManualSave}
-                className="bg-primary hover:opacity-90 text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-shadow"
+                className="bg-primary hover:opacity-90 text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-shadow w-full sm:w-auto"
               >
-                {hasPendingData ? "💾 Save Pending Data" : "Complete Profile"}
+                💾 Save Pending Data
               </Button>
             )}
           </div>
@@ -537,22 +555,36 @@ const Dashboard = () => {
 
         <div className="grid gap-6 lg:grid-cols-12">
           {/* Left Column - Profile */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-5 order-2 lg:order-1">
             {/* Profile Card */}
             <Card 
-              className="overflow-hidden border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up cursor-pointer hover:shadow-2xl transition-all duration-300"
+              className="overflow-hidden border-0 rounded-3xl animate-fade-up cursor-pointer transition-all duration-300 bg-card
+                shadow-[0_1px_2px_rgba(0,0,0,0.03),0_4px_8px_rgba(0,0,0,0.04),0_8px_16px_rgba(0,0,0,0.05)]
+                hover:shadow-[0_2px_4px_rgba(0,0,0,0.04),0_8px_16px_rgba(0,0,0,0.06),0_16px_32px_rgba(0,0,0,0.08)]
+                hover:-translate-y-0.5"
               onClick={() => navigate("/profile")}
             >
               <div className="h-24 bg-primary relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.25),transparent_60%)]" />
               </div>
               <CardContent className="-mt-12 relative pb-6 px-6">
-                <Avatar className="h-24 w-24 border-4 border-background shadow-xl bg-secondary/80 backdrop-blur-sm">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-secondary text-foreground text-2xl font-display font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative inline-block">
+                  <Avatar className="h-24 w-24 border-4 border-background shadow-xl bg-secondary">
+                    <AvatarImage src={profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-secondary text-foreground text-2xl font-display font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!profile?.avatar_url && (
+                    <div className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-primary border-4 border-background flex items-center justify-center shadow-lg cursor-pointer hover:bg-primary/90 transition-colors group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate("/profile");
+                      }}
+                      title="Add profile photo">
+                      <Camera className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                  )}
+                </div>
                 <div className="mt-5">
                   <h3 className="font-display text-xl font-bold text-foreground">
                     {profile?.full_name || "Complete Your Profile"}
@@ -560,9 +592,36 @@ const Dashboard = () => {
                   <p className="text-sm text-muted-foreground mt-1.5">{user?.email}</p>
                 </div>
 
+                {/* Profile Completion Progress */}
+                {!preferences?.completed_at && (
+                  <div className="mt-6 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground font-medium">Profile {calculateProfileCompletion}% complete</span>
+                      <span className="text-muted-foreground">{calculateProfileCompletion}%</span>
+                    </div>
+                    <Progress value={calculateProfileCompletion} className="h-2" />
+                    <p className="text-xs text-muted-foreground">
+                      Finish profile to join the next matching round
+                    </p>
+                  </div>
+                )}
+
+                {/* Success State */}
+                {preferences?.completed_at && (
+                  <div className="mt-6 p-4 rounded-xl bg-primary/10 border border-primary/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-semibold text-foreground">You're ready for the next matching round 🎉</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Your profile is complete. You'll be matched in the next round on Thursday at 4 PM.
+                    </p>
+                  </div>
+                )}
+
                 <div className="mt-6 space-y-3">
                   {preferences?.specialty && (
-                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary/80 backdrop-blur-sm border border-border/50">
+                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary border border-border/50">
                       <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <Stethoscope className="h-4 w-4 text-primary" />
                       </div>
@@ -573,7 +632,7 @@ const Dashboard = () => {
                     </div>
                   )}
                   {preferences?.career_stage && (
-                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary/80 backdrop-blur-sm border border-border/50">
+                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary border border-border/50">
                       <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <Sparkles className="h-4 w-4 text-primary" />
                       </div>
@@ -603,14 +662,17 @@ const Dashboard = () => {
           </div>
 
           {/* Right Column - Main Content */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Next Group Matching - Prominent Display */}
+          <div className="lg:col-span-8 space-y-5 order-1 lg:order-2">
+            {/* Next Group Matching - Supporting Display */}
             <div className="animate-fade-up delay-100">
               <MatchCountdown />
             </div>
 
             {/* Matches Section */}
-            <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl overflow-hidden animate-fade-up delay-200 hover:shadow-2xl transition-shadow">
+            <Card className="border-0 rounded-3xl overflow-hidden animate-fade-up delay-200 bg-card transition-all duration-300
+              shadow-[0_1px_2px_rgba(0,0,0,0.03),0_4px_8px_rgba(0,0,0,0.04),0_8px_16px_rgba(0,0,0,0.05)]
+              hover:shadow-[0_2px_4px_rgba(0,0,0,0.04),0_8px_16px_rgba(0,0,0,0.06),0_16px_32px_rgba(0,0,0,0.08)]
+              hover:-translate-y-0.5">
               <CardHeader className="px-6 pt-6 pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -637,7 +699,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 {displayedGroup ? (
-                  <div>
+                  <div className="space-y-4">
                     {(() => {
                       const group = displayedGroup;
                       const groupDate = group.match_week 
@@ -650,59 +712,114 @@ const Dashboard = () => {
                             day: "numeric",
                           });
                       
+                      // Get shared specialties for match reason
+                      const specialties = group.members
+                        .map(m => m.preferences?.specialty)
+                        .filter(Boolean) as string[];
+                      const uniqueSpecialties = Array.from(new Set(specialties));
+                      const sharedInterests = allInterests.slice(0, 3);
+                      
                       return (
-                        <div
-                          key={group.id}
-                          className="flex items-center justify-between p-3 rounded-xl cursor-pointer group hover:bg-secondary/50 transition-colors"
-                          onClick={() => {
-                            if (group.conversation_id) {
-                              navigate(`/group-chat/${group.conversation_id}`);
-                            } else {
-                              navigate("/matches");
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <Avatar className="h-12 w-12 border-0 shadow-md">
-                              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-display font-bold">
-                                {formatGroupName(group).replace(/[^A-Z]/g, '').slice(0, 2) || 'G1'}
-                              </AvatarFallback>
-                            </Avatar>
+                        <div key={group.id} className="space-y-4">
+                          {/* Group Header */}
+                          <div
+                            className="flex items-start gap-4 p-4 rounded-xl cursor-pointer group hover:bg-secondary/50 transition-colors border border-border/50"
+                            onClick={() => {
+                              if (group.conversation_id) {
+                                navigate(`/group-chat/${group.conversation_id}`);
+                              } else {
+                                navigate("/matches");
+                              }
+                            }}
+                          >
+                            <div className="flex -space-x-2 flex-shrink-0">
+                              {group.members.slice(0, 4).map((member, idx) => (
+                                <Avatar key={member.user_id} className="h-10 w-10 border-2 border-background shadow-md">
+                                  <AvatarImage src={member.profile.avatar_url || undefined} />
+                                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-display font-bold">
+                                    {member.profile.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "U"}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ))}
+                              {group.member_count > 4 && (
+                                <div className="h-10 w-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-xs font-semibold text-foreground shadow-md">
+                                  +{group.member_count - 4}
+                                </div>
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-display font-semibold text-foreground mb-1 truncate">
+                              <h4 className="font-display font-semibold text-foreground mb-1">
                                 {formatGroupName(group)}
                               </h4>
-                              <p className="text-sm text-muted-foreground">
-                                {group.member_count} members • {groupDate}
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                {uniqueSpecialties.slice(0, 2).map((spec, idx) => (
+                                  <Badge key={idx} variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
+                                    <Stethoscope className="h-3 w-3 mr-1" />
+                                    {spec}
+                                  </Badge>
+                                ))}
+                                {group.members[0]?.profile.city && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <MapPin className="h-3 w-3 mr-1" />
+                                    {group.members[0].profile.city}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {group.member_count} physicians • Matched {groupDate}
                               </p>
                             </div>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors mt-1" />
                           </div>
-                          <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors" />
+                          
+                          {/* Match Reason */}
+                          {(sharedInterests.length > 0 || uniqueSpecialties.length > 0) && (
+                            <div className="px-4 py-3 rounded-lg bg-primary/5 border border-primary/10">
+                              <p className="text-xs text-muted-foreground mb-1.5 font-medium">Why this match?</p>
+                              <p className="text-sm text-foreground">
+                                {uniqueSpecialties.length > 0 && (
+                                  <>Matched because you share <span className="font-semibold text-primary">{uniqueSpecialties.join(", ")}</span> specialty</>
+                                )}
+                                {uniqueSpecialties.length > 0 && sharedInterests.length > 0 && " and "}
+                                {sharedInterests.length > 0 && (
+                                  <>selected: <span className="font-semibold text-primary">{sharedInterests.join(", ")}</span></>
+                                )}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-secondary to-secondary/50 flex items-center justify-center shadow-inner">
-                      <Users className="h-10 w-10 text-muted-foreground/50" />
+                  <div className="text-center py-12 px-4">
+                    <div className="w-28 h-28 mx-auto mb-6 rounded-3xl bg-primary/10 flex items-center justify-center border-2 border-primary/20 shadow-lg">
+                      <Hourglass className="h-14 w-14 text-primary animate-pulse" />
                     </div>
-                    <h4 className="font-display text-xl font-semibold text-foreground mb-2">
-                      {preferences?.completed_at ? "Finding Your Matches..." : "Start Your Journey"}
+                    <h4 className="font-display text-2xl font-semibold text-foreground mb-3">
+                      {preferences?.completed_at ? "On Waiting List" : "Start Your Journey"}
                     </h4>
-                    <p className="text-muted-foreground max-w-sm mx-auto mb-6">
+                    <p className="text-muted-foreground max-w-md mx-auto mb-6 leading-relaxed">
                       {preferences?.completed_at 
-                        ? "We're curating meaningful connections for you. Check back soon!"
-                        : "Complete your profile to start connecting with physicians who understand your world."}
+                        ? "Your group is being formed. New members will be added in the next matching round on Thursday at 4 PM."
+                        : "Complete your profile to start connecting with physicians who understand your world and share your interests."}
                     </p>
                     {!preferences?.completed_at && (
                       <Button 
                         onClick={() => navigate("/onboarding")} 
-                        className="bg-primary hover:opacity-90 rounded-xl px-6 h-11 font-medium shadow-md hover:shadow-lg transition-all"
+                        className="bg-primary hover:opacity-90 rounded-xl px-8 h-12 font-medium shadow-md hover:shadow-lg transition-all"
                       >
-                        Get Started
+                        Complete Your Profile
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
+                    )}
+                    {preferences?.completed_at && (
+                      <div className="mt-6 pt-6 border-t border-border/50">
+                        <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-primary/10 text-primary border-primary/20">
+                          <Clock className="h-4 w-4 mr-2" />
+                          Next matching round coming soon
+                        </Badge>
+                      </div>
                     )}
                   </div>
                 )}
@@ -710,7 +827,10 @@ const Dashboard = () => {
             </Card>
 
             {/* Interests Card */}
-            <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-300 hover:shadow-2xl transition-shadow">
+            <Card className="border-0 rounded-3xl animate-fade-up delay-300 bg-card transition-all duration-300
+              shadow-[0_1px_2px_rgba(0,0,0,0.03),0_4px_8px_rgba(0,0,0,0.04),0_8px_16px_rgba(0,0,0,0.05)]
+              hover:shadow-[0_2px_4px_rgba(0,0,0,0.04),0_8px_16px_rgba(0,0,0,0.06),0_16px_32px_rgba(0,0,0,0.08)]
+              hover:-translate-y-0.5">
               <CardHeader className="px-6 pt-6 pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -731,21 +851,50 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 {allInterests.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {allInterests.slice(0, 10).map((interest, index) => (
+                  <div className="flex flex-wrap gap-2.5">
+                    {allInterests.slice(0, 12).map((interest, index) => {
+                      const { icon: Icon, color } = getInterestCategory(interest as string);
+                      return (
+                        <Badge 
+                          key={`${interest}-${index}`} 
+                          variant="secondary" 
+                          className={`px-3.5 py-2 rounded-full text-xs font-medium border transition-all hover:scale-105 ${color} flex items-center gap-1.5`}
+                        >
+                          <Icon className="h-3 w-3" />
+                          {interest}
+                        </Badge>
+                      );
+                    })}
+                    {allInterests.length > 12 && (
                       <Badge 
-                        key={`${interest}-${index}`} 
                         variant="secondary" 
-                        className="px-3 py-1.5 rounded-full text-xs font-medium bg-secondary/80 hover:bg-secondary/90 border border-border/50 transition-colors"
+                        className="px-3.5 py-2 rounded-full text-xs font-medium bg-secondary/80 hover:bg-secondary/90 border border-border/50 transition-colors"
                       >
-                        {interest}
+                        +{allInterests.length - 12} more
                       </Badge>
-                    ))}
+                    )}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Add your interests to find like-minded physicians.
-                  </p>
+                  <div className="text-center py-6">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/5 flex items-center justify-center">
+                      <Heart className="h-8 w-8 text-primary/30" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground mb-2">
+                      Your interests determine who you get matched with
+                    </p>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Add at least 3 interests to improve your matches
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate("/profile")}
+                      className="gap-2 border-primary/20 hover:bg-primary/5"
+                    >
+                      <Heart className="h-4 w-4 text-primary" />
+                      Add Interests
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>

@@ -77,7 +77,7 @@ const faqData = [
 
 const FAQ = () => {
   return (
-    <div className="min-h-screen bg-foreground">
+    <div className="min-h-screen bg-foreground dark:bg-background">
       <Header />
       
       <main className="pt-32">

@@ -1,32 +1,12 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { getMatches, getMatchGroups, Match, MatchGroup } from "@/services/adminService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Heart, Users, Calendar } from "lucide-react";
 import { format } from "date-fns";
-
-interface Match {
-  id: string;
-  user_id: string;
-  matched_user_id: string;
-  match_score: number | null;
-  status: string;
-  created_at: string;
-}
-
-interface MatchGroup {
-  id: string;
-  name: string | null;
-  group_type: string;
-  match_week: string;
-  status: string;
-  gender_composition: string | null;
-  created_at: string;
-  member_count?: number;
-}
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-500",
@@ -43,37 +23,13 @@ const AdminMatches = () => {
   const fetchData = async () => {
     setIsLoading(true);
     
-    const [matchesRes, groupsRes, membersRes] = await Promise.all([
-      supabase
-        .from("matches")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100),
-      supabase
-        .from("match_groups")
-        .select("*")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("group_members")
-        .select("group_id"),
+    const [matchesData, groupsData] = await Promise.all([
+      getMatches(100),
+      getMatchGroups(),
     ]);
 
-    if (matchesRes.data) setMatches(matchesRes.data);
-    
-    if (groupsRes.data && membersRes.data) {
-      const memberCounts = membersRes.data.reduce((acc, m) => {
-        acc[m.group_id] = (acc[m.group_id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      setGroups(
-        groupsRes.data.map((g) => ({
-          ...g,
-          member_count: memberCounts[g.id] || 0,
-        }))
-      );
-    }
-
+    setMatches(matchesData);
+    setGroups(groupsData);
     setIsLoading(false);
   };
 

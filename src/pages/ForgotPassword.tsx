@@ -96,7 +96,7 @@ const ForgotPassword = () => {
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-foreground">
+    <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background">
       {/* Animated background gradient orbs */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-primary/20 blur-[150px] animate-pulse-soft" />

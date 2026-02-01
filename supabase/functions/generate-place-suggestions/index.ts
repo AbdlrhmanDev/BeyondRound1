@@ -54,16 +54,44 @@ ${specialtyContext}
 ${interestContext}
 ${chatHistoryContext}
 
-Generate 3 personalized place suggestions that would be perfect for this specific group. Consider their profession (need quiet spaces for deep conversations, appreciate good food/coffee after long shifts) and any shared interests.
+Generate exactly 3 personalized place suggestions in JSON format. Each place should be perfect for this specific group of physicians. Consider their profession (need quiet spaces for deep conversations, appreciate good food/coffee after long shifts) and any shared interests.
 
-For each place, provide:
-1. A realistic venue name for ${city}
-2. Type (cafe, restaurant, park, bar, lounge, etc.)
-3. A brief, friendly description (1-2 sentences)
-4. Why it's perfect for THIS group specifically
-5. Price range ($, $$, $$$)
+Return ONLY valid JSON in this exact format (no markdown, no code blocks, just pure JSON):
+{
+  "suggestions": [
+    {
+      "name": "Place Name 1",
+      "type": "cafe",
+      "description": "A brief description (1-2 sentences) about why this place is great for physicians",
+      "vibe": "cozy and quiet",
+      "priceRange": "$$",
+      "goodFor": ["networking", "coffee meetings", "casual conversations"]
+    },
+    {
+      "name": "Place Name 2",
+      "type": "restaurant",
+      "description": "A brief description (1-2 sentences) about why this place is great for physicians",
+      "vibe": "upscale but relaxed",
+      "priceRange": "$$$",
+      "goodFor": ["dinner meetings", "professional gatherings"]
+    },
+    {
+      "name": "Place Name 3",
+      "type": "bar",
+      "description": "A brief description (1-2 sentences) about why this place is great for physicians",
+      "vibe": "sophisticated lounge",
+      "priceRange": "$$",
+      "goodFor": ["after-work drinks", "socializing"]
+    }
+  ]
+}
 
-Respond conversationally as if you're a local friend making recommendations. Start with a brief friendly intro, then list the 3 places with details. Use emojis sparingly. Keep it concise but warm.`;
+Important: 
+- Use realistic place names that could exist in ${city}
+- Types should be: cafe, restaurant, park, bar, lounge, library, gym, museum, or similar
+- Price ranges: $ (budget), $$ (moderate), $$$ (upscale), $$$$ (fine dining)
+- goodFor should be an array of 2-4 relevant tags
+- Return ONLY the JSON object, no additional text before or after`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -77,6 +105,7 @@ Respond conversationally as if you're a local friend making recommendations. Sta
           { role: "user", content: prompt },
         ],
         temperature: 0.8,
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -97,16 +126,41 @@ Respond conversationally as if you're a local friend making recommendations. Sta
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    let content = data.choices?.[0]?.message?.content;
 
     if (!content) {
       throw new Error("No content in AI response");
     }
 
-    return new Response(
-      JSON.stringify({ message: content }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Clean up the content - remove markdown code blocks if present
+    content = content.trim();
+    if (content.startsWith("```json")) {
+      content = content.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+    } else if (content.startsWith("```")) {
+      content = content.replace(/^```\s*/, "").replace(/\s*```$/, "");
+    }
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(content);
+    } catch (parseError) {
+      console.error("Error parsing AI JSON response:", parseError);
+      console.error("Raw content:", content);
+      throw new Error("Failed to parse AI response as JSON");
+    }
+
+    // Return suggestions directly
+    if (parsedData.suggestions && Array.isArray(parsedData.suggestions)) {
+      return new Response(
+        JSON.stringify({ 
+          suggestions: parsedData.suggestions,
+          message: `Here are ${parsedData.suggestions.length} great places in ${city} for your group!`
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    throw new Error("Invalid response structure from AI");
   } catch (error) {
     console.error("Error in generate-place-suggestions:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

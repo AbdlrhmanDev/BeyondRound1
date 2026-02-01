@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { supabase } from "@/integrations/supabase/client";
+import { isUserBanned } from "@/services/userService";
 import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -30,13 +30,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("status, ban_reason")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (profile && (profile.status === "banned" || profile.status === "suspended")) {
+      const banned = await isUserBanned(user.id);
+      if (banned) {
         setIsBanned(true);
         // Sign out banned/suspended users
         await signOut();

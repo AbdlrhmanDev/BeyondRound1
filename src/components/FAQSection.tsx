@@ -51,7 +51,7 @@ const faqs = [
 
 const FAQSection = () => {
   return (
-    <section id="faq" className="py-28 lg:py-36 bg-foreground relative">
+    <section id="faq" className="py-28 lg:py-36 bg-foreground dark:bg-background relative">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-start">
           {/* Left Column - Header */}

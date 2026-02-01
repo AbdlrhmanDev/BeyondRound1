@@ -6,7 +6,10 @@ const Footer = () => {
 
   const footerLinks = {
     product: [
-      { label: "How It Works", href: "#how-it-works" },
+      { label: "For Doctors", href: "/for-doctors" },
+      { label: "Take the Quiz", href: "/survey" },
+      { label: "Waitlist", href: "/waitlist" },
+      { label: "How It Works", href: "/learn-more" },
       { label: "Pricing", href: "/pricing" },
       { label: "FAQ", href: "/faq" },
       { label: "About", href: "/about" },
@@ -22,7 +25,7 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-foreground relative overflow-hidden border-t border-primary-foreground/10">
+    <footer className="bg-foreground dark:bg-background relative overflow-hidden border-t border-primary-foreground/10 dark:border-border">
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 blur-[150px]" />

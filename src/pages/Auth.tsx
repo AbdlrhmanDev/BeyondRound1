@@ -12,7 +12,7 @@ import { z } from "zod";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(1, "Password is required"),
 });
 
 const Auth = () => {
@@ -172,14 +172,14 @@ const Auth = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-foreground flex items-center justify-center">
+      <div className="min-h-screen bg-foreground dark:bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-foreground">
+    <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background">
       {/* Animated background gradient orbs */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-primary/20 blur-[150px] animate-pulse-soft" />
@@ -262,11 +262,11 @@ const Auth = () => {
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-primary-foreground/80 text-sm font-medium">
+                    <Label htmlFor="email" className="text-primary-foreground/80 text-base font-medium">
                       Email Address
                     </Label>
                     <div className="relative group">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/70 group-hover:text-primary group-focus-within:text-primary transition-colors z-10" size={18} />
                       <Input
                         id="email"
                         name="email"
@@ -274,16 +274,16 @@ const Auth = () => {
                         placeholder="doctor@hospital.com"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className={`pl-12 h-14 rounded-2xl bg-primary-foreground/5 border-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-red-500' : ''}`}
+                        className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
                         required
                       />
                     </div>
-                    {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+                    {errors.email && <p className="text-destructive text-xs mt-1">{errors.email}</p>}
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="password" className="text-primary-foreground/80 text-sm font-medium">
+                      <Label htmlFor="password" className="text-primary-foreground/80 text-base font-medium">
                         Password
                       </Label>
                       <Link to="/forgot-password" className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
@@ -291,26 +291,26 @@ const Auth = () => {
                       </Link>
                     </div>
                     <div className="relative group">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/70 group-hover:text-primary group-focus-within:text-primary transition-colors z-10" size={18} />
                       <Input
                         id="password"
                         name="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        placeholder="Enter your password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className={`pl-12 pr-12 h-14 rounded-2xl bg-primary-foreground/5 border-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.password ? 'border-red-500' : ''}`}
+                        className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.password ? 'border-destructive' : ''}`}
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-primary-foreground/40 hover:text-primary-foreground transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-primary-foreground/70 group-hover:text-primary hover:text-primary transition-colors z-10"
                       >
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
-                    {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
+                    {errors.password && <p className="text-destructive text-xs mt-1">{errors.password}</p>}
                   </div>
 
                   <Button 

@@ -2,48 +2,22 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { loadStripe } from '@stripe/stripe-js';
+import {
+  getSubscription,
+  getPaymentMethods,
+  getInvoices,
+  createCheckoutSession,
+  cancelSubscription,
+  Subscription,
+  PaymentMethod,
+  Invoice,
+} from '@/services/subscriptionService';
 
 const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
 );
 
-export interface Subscription {
-  id: string;
-  user_id: string;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
-  stripe_price_id: string | null;
-  status: string;
-  plan_name: string | null;
-  current_period_start: string | null;
-  current_period_end: string | null;
-  cancel_at_period_end: boolean;
-  canceled_at: string | null;
-}
-
-export interface PaymentMethod {
-  id: string;
-  stripe_payment_method_id: string;
-  type: string;
-  card_brand: string | null;
-  card_last4: string | null;
-  card_exp_month: number | null;
-  card_exp_year: number | null;
-  is_default: boolean;
-}
-
-export interface Invoice {
-  id: string;
-  stripe_invoice_id: string;
-  amount: number;
-  currency: string;
-  status: string;
-  invoice_pdf: string | null;
-  hosted_invoice_url: string | null;
-  period_start: string | null;
-  period_end: string | null;
-  paid_at: string | null;
-}
+// Types are now imported from subscriptionService
 
 export const useSubscription = () => {
   const { user } = useAuth();
@@ -112,18 +86,8 @@ export const useSubscription = () => {
     if (!user) return;
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: fetchError } = await (supabase as any)
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
-      }
-
-      setSubscription((data as Subscription) || null);
+      const subscription = await getSubscription(user.id);
+      setSubscription(subscription);
     } catch (err) {
       const error = err as Error;
       console.error('Error fetching subscription:', error);
@@ -137,15 +101,8 @@ export const useSubscription = () => {
     if (!user) return;
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: fetchError } = await (supabase as any)
-        .from('payment_methods')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-      setPaymentMethods((data as PaymentMethod[]) || []);
+      const methods = await getPaymentMethods(user.id);
+      setPaymentMethods(methods);
     } catch (err) {
       console.error('Error fetching payment methods:', err);
     }
@@ -155,22 +112,14 @@ export const useSubscription = () => {
     if (!user) return;
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: fetchError } = await (supabase as any)
-        .from('invoices')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (fetchError) throw fetchError;
-      setInvoices((data as Invoice[]) || []);
+      const invoiceList = await getInvoices(user.id, 10);
+      setInvoices(invoiceList);
     } catch (err) {
       console.error('Error fetching invoices:', err);
     }
   };
 
-  const createCheckoutSession = async (priceId: string) => {
+  const handleCreateCheckoutSession = async (priceId: string) => {
     if (!user) {
       throw new Error('User must be authenticated');
     }
@@ -181,35 +130,25 @@ export const useSubscription = () => {
         throw new Error('No active session');
       }
 
-      const { data, error: fetchError } = await supabase.functions.invoke(
-        'stripe-checkout',
-        {
-          body: {
-            priceId,
-            successUrl: `${window.location.origin}/settings?success=true`,
-            cancelUrl: `${window.location.origin}/settings?canceled=true`,
-          },
-          headers: {
-            Authorization: `Bearer ${session.data.session.access_token}`,
-          },
-        }
+      const result = await createCheckoutSession(
+        user.id,
+        priceId,
+        session.data.session.access_token
       );
 
-      if (fetchError) throw fetchError;
+      if (!result) {
+        throw new Error('Failed to create checkout session');
+      }
 
       const stripe = await stripePromise;
       if (!stripe) {
         throw new Error('Stripe failed to load');
       }
 
-      if (!data?.sessionId) {
-        throw new Error('No session ID returned from checkout');
-      }
-
       // redirectToCheckout is available on Stripe instance from loadStripe
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: redirectError } = await (stripe as any).redirectToCheckout({
-        sessionId: data.sessionId as string,
+        sessionId: result.sessionId,
       });
 
       if (redirectError) throw redirectError;
@@ -221,9 +160,13 @@ export const useSubscription = () => {
     }
   };
 
-  const cancelSubscription = async () => {
+  const handleCancelSubscription = async () => {
     if (!subscription?.stripe_subscription_id) {
       throw new Error('No active subscription to cancel');
+    }
+
+    if (!user) {
+      throw new Error('User must be authenticated');
     }
 
     try {
@@ -232,21 +175,17 @@ export const useSubscription = () => {
         throw new Error('No active session');
       }
 
-      const { data, error: cancelError } = await supabase.functions.invoke(
-        'stripe-cancel-subscription',
-        {
-          headers: {
-            Authorization: `Bearer ${session.data.session.access_token}`,
-          },
-        }
+      const success = await cancelSubscription(
+        user.id,
+        session.data.session.access_token
       );
 
-      if (cancelError) throw cancelError;
+      if (!success) {
+        throw new Error('Failed to cancel subscription');
+      }
 
       // Refresh subscription data
       await fetchSubscription();
-      
-      return data;
     } catch (err) {
       const error = err as Error;
       console.error('Error canceling subscription:', error);
@@ -266,8 +205,8 @@ export const useSubscription = () => {
     error,
     isActive,
     isCanceled,
-    createCheckoutSession,
-    cancelSubscription,
+    createCheckoutSession: handleCreateCheckoutSession,
+    cancelSubscription: handleCancelSubscription,
     refetch: () => {
       fetchSubscription();
       fetchPaymentMethods();

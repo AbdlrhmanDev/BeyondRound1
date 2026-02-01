@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/DashboardLayout";
+import { LocationSelect } from "@/components/LocationSelect";
+import { getProfile, updateProfile } from "@/services/profileService";
+import { getOnboardingPreferences, markOnboardingComplete } from "@/services/onboardingService";
+import { uploadAvatar, uploadLicense } from "@/services/storageService";
 import { 
   Camera, 
   Save,
@@ -30,6 +33,8 @@ import {
 interface Profile {
   full_name: string | null;
   avatar_url: string | null;
+  country: string | null;
+  state: string | null;
   city: string | null;
   neighborhood: string | null;
   languages: string[] | null;
@@ -63,6 +68,8 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   
   const [fullName, setFullName] = useState("");
+  const [country, setCountry] = useState("");
+  const [state, setState] = useState("");
   const [city, setCity] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   
@@ -83,25 +90,13 @@ const Profile = () => {
     
     setAvatarUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/avatar.${fileExt}`;
+      const publicUrl = await uploadAvatar(user.id, file);
       
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
+      if (!publicUrl) {
+        throw new Error("Failed to upload avatar");
+      }
       
-      if (uploadError) throw uploadError;
-      
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      
-      const { error: updateError, data: updatedProfile } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl } as any)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      
-      if (updateError) throw updateError;
+      const updatedProfile = await updateProfile(user.id, { avatar_url: publicUrl });
       
       if (updatedProfile) {
         setProfile({
@@ -134,23 +129,13 @@ const Profile = () => {
     
     setLicenseUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/license.${fileExt}`;
+      const filePath = await uploadLicense(user.id, file);
       
-      const { error: uploadError } = await supabase.storage
-        .from('licenses')
-        .upload(filePath, file, { upsert: true });
+      if (!filePath) {
+        throw new Error("Failed to upload license");
+      }
       
-      if (uploadError) throw uploadError;
-      
-      const { error: updateError, data: updatedProfile } = await supabase
-        .from('profiles')
-        .update({ license_url: filePath } as any)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      
-      if (updateError) throw updateError;
+      const updatedProfile = await updateProfile(user.id, { license_url: filePath });
       
       if (updatedProfile) {
         setProfile({
@@ -164,49 +149,18 @@ const Profile = () => {
       }
       
       // Check if profile is now complete and mark it
-      if (updatedProfile?.full_name && updatedProfile?.city && filePath) {
-        const { data: existingPrefs } = await supabase
-          .from("onboarding_preferences")
-          .select("completed_at")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (!existingPrefs?.completed_at) {
-          await supabase
-            .from("onboarding_preferences")
-            .upsert({
-              user_id: user.id,
-              completed_at: new Date().toISOString(),
-            }, {
-              onConflict: 'user_id'
-            });
-          
-          // Refresh preferences
-          const { data: prefsData } = await supabase
-            .from("onboarding_preferences")
-            .select("*")
-            .eq("user_id", user.id)
-            .maybeSingle();
-          
-          if (prefsData) {
-            setPreferences(prefsData as any);
-          }
-        }
-      }
-      
-      // Check if profile is now complete
       const isNowComplete = updatedProfile?.full_name && updatedProfile?.city && filePath;
       
       if (isNowComplete) {
-        // Refresh preferences to show completion status
-        const { data: prefsData } = await supabase
-          .from("onboarding_preferences")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        
-        if (prefsData) {
-          setPreferences(prefsData as any);
+        const existingPrefs = await getOnboardingPreferences(user.id);
+        if (!existingPrefs?.completed_at) {
+          await markOnboardingComplete(user.id);
+          
+          // Refresh preferences
+          const prefsData = await getOnboardingPreferences(user.id);
+          if (prefsData) {
+            setPreferences(prefsData);
+          }
         }
       }
       
@@ -235,27 +189,30 @@ const Profile = () => {
       if (!user) return;
 
       try {
-        const [profileRes, prefsRes] = await Promise.all([
-          supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-          supabase.from("onboarding_preferences").select("*").eq("user_id", user.id).maybeSingle(),
+        const [profileData, prefsData] = await Promise.all([
+          getProfile(user.id),
+          getOnboardingPreferences(user.id),
         ]);
 
-        if (profileRes.data) {
-          const data = profileRes.data as any;
+        if (profileData) {
           setProfile({
-            full_name: data.full_name,
-            avatar_url: data.avatar_url,
-            city: data.city || null,
-            neighborhood: data.neighborhood || null,
-            languages: data.languages || null,
-            license_url: data.license_url || null,
+            full_name: profileData.full_name,
+            avatar_url: profileData.avatar_url,
+            country: profileData.country || null,
+            state: profileData.state || null,
+            city: profileData.city || null,
+            neighborhood: profileData.neighborhood || null,
+            languages: profileData.languages || null,
+            license_url: profileData.license_url || null,
           });
-          setFullName(data.full_name || "");
-          setCity(data.city || "");
-          setNeighborhood(data.neighborhood || "");
+          setFullName(profileData.full_name || "");
+          setCountry(profileData.country || "");
+          setState(profileData.state || "");
+          setCity(profileData.city || "");
+          setNeighborhood(profileData.neighborhood || "");
         }
-        if (prefsRes.data) {
-          setPreferences(prefsRes.data as any);
+        if (prefsData) {
+          setPreferences(prefsData);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -274,68 +231,45 @@ const Profile = () => {
     
     setSaving(true);
     try {
-      // Update profile
-      const { error: profileError, data: updatedProfile } = await supabase
-        .from("profiles")
-        .update({ 
-          full_name: fullName,
-          city: city || null,
-          neighborhood: neighborhood || null,
-        } as any)
-        .eq("user_id", user.id)
-        .select()
-        .single();
+      // Update profile using service
+      const updatedProfile = await updateProfile(user.id, {
+        full_name: fullName,
+        country: country || null,
+        state: state || null,
+        city: city || null,
+        neighborhood: neighborhood || null,
+      });
 
-      if (profileError) throw profileError;
+      if (!updatedProfile) {
+        throw new Error("Failed to update profile");
+      }
 
       // Update local state
-      if (updatedProfile) {
-        setProfile({
-          full_name: updatedProfile.full_name,
-          avatar_url: updatedProfile.avatar_url,
-          city: updatedProfile.city || null,
-          neighborhood: updatedProfile.neighborhood || null,
-          languages: updatedProfile.languages || null,
-          license_url: updatedProfile.license_url || null,
-        });
-        setFullName(updatedProfile.full_name || "");
-        setCity(updatedProfile.city || "");
-        setNeighborhood(updatedProfile.neighborhood || "");
-      }
+      setProfile({
+        full_name: updatedProfile.full_name,
+        avatar_url: updatedProfile.avatar_url,
+        city: updatedProfile.city || null,
+        neighborhood: updatedProfile.neighborhood || null,
+        languages: updatedProfile.languages || null,
+        license_url: updatedProfile.license_url || null,
+      });
+      setFullName(updatedProfile.full_name || "");
+      setCity(updatedProfile.city || "");
+      setNeighborhood(updatedProfile.neighborhood || "");
 
       // Check if profile is complete (has name, city, and license)
       const isComplete = fullName && city && profile?.license_url;
       
       if (isComplete) {
         // Mark onboarding as complete if not already
-        const { data: existingPrefs } = await supabase
-          .from("onboarding_preferences")
-          .select("completed_at")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
+        const existingPrefs = await getOnboardingPreferences(user.id);
         if (!existingPrefs?.completed_at) {
-          const { error: prefsError } = await supabase
-            .from("onboarding_preferences")
-            .upsert({
-              user_id: user.id,
-              completed_at: new Date().toISOString(),
-            }, {
-              onConflict: 'user_id'
-            });
-
-          if (prefsError) {
-            console.error('Error marking profile complete:', prefsError);
-          } else {
+          const success = await markOnboardingComplete(user.id);
+          if (success) {
             // Refresh preferences
-            const { data: prefsData } = await supabase
-              .from("onboarding_preferences")
-              .select("*")
-              .eq("user_id", user.id)
-              .maybeSingle();
-            
+            const prefsData = await getOnboardingPreferences(user.id);
             if (prefsData) {
-              setPreferences(prefsData as any);
+              setPreferences(prefsData);
             }
           }
         }
@@ -466,7 +400,7 @@ const Profile = () => {
                   {profile?.city && (
                     <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                       <MapPin className="h-3 w-3" />
-                      {profile.city}{profile.neighborhood && `, ${profile.neighborhood}`}
+                      {[profile.country, profile.state, profile.city, profile.neighborhood].filter(Boolean).join(", ")}
                     </p>
                   )}
                 </div>
@@ -552,27 +486,24 @@ const Profile = () => {
                   className="rounded-xl h-12"
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="e.g., New York"
-                    className="rounded-xl h-12"
-                  />
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Location</p>
+                  <p className="text-xs text-muted-foreground">Country, state, and city help others find you.</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="neighborhood">Neighborhood</Label>
-                  <Input
-                    id="neighborhood"
-                    value={neighborhood}
-                    onChange={(e) => setNeighborhood(e.target.value)}
-                    placeholder="e.g., Manhattan"
-                    className="rounded-xl h-12"
-                  />
-                </div>
+                <LocationSelect
+                  country={country}
+                  state={state}
+                  city={city}
+                  neighborhood={neighborhood}
+                  onCountryChange={setCountry}
+                  onStateChange={setState}
+                  onCityChange={setCity}
+                  onNeighborhoodChange={setNeighborhood}
+                  showNationality={false}
+                  className="w-full"
+                  variant="profile"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

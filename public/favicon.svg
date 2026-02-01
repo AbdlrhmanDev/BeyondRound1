@@ -1,0 +1,13 @@
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="themeGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="hsl(28, 100%, 50%)"/>
+      <stop offset="100%" stop-color="hsl(35, 100%, 60%)"/>
+    </linearGradient>
+  </defs>
+  <!-- Bold B for BeyondRounds -->
+  <path
+    d="M26 18v64h14a20 20 0 0 0 0-40 12 12 0 0 0 0-24H26z"
+    fill="url(#themeGold)"
+  />
+</svg>

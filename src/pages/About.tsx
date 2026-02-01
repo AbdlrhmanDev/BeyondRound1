@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 
 const About = () => {
   return (
-    <div className="min-h-screen bg-foreground">
+    <div className="min-h-screen bg-foreground dark:bg-background">
       <Header />
       
       <main className="pt-32">

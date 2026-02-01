@@ -1,67 +1,52 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Check, Star, Zap, Shield } from "lucide-react";
+import { Check, Star, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
 const plans = [
   {
-    name: "Trial",
+    name: "One-Time Trial",
     price: "€9.99",
-    period: "first month",
-    description: "Try BeyondRounds risk-free",
+    period: "one-time",
+    description: "Try BeyondRounds once — no recurring commitment",
     features: [
       "Weekly curated group matches",
       "Access to private group chat",
       "RoundsBot icebreaker prompts",
       "Basic compatibility matching",
-      "30-day money-back guarantee",
     ],
     popular: false,
-    cta: "Start Trial",
+    cta: "Start One-Time Trial",
   },
   {
-    name: "Founders",
+    name: "Monthly",
     price: "€14.99",
     period: "/month",
-    description: "Limited offer — lock in this rate forever",
+    description: "Full experience with monthly subscription",
     features: [
-      "Everything in Trial",
+      "Everything in One-Time Trial",
       "Priority in matching algorithm",
       "Expanded profile & interests",
-      "Exclusive Founders badge",
       "Early access to new features",
-    ],
-    popular: true,
-    cta: "Claim Founders Rate",
-  },
-  {
-    name: "Core",
-    price: "€29.99",
-    period: "/month",
-    description: "The full BeyondRounds experience",
-    features: [
-      "Everything in Founders",
-      "Advanced lifestyle compatibility",
-      "AI-powered activity suggestions",
-      "Match history & insights",
       "Priority customer support",
     ],
-    popular: false,
-    cta: "Join Core",
+    popular: true,
+    cta: "Subscribe Monthly",
   },
   {
     name: "Premium",
-    price: "€49.99",
+    price: "€29.99",
     period: "/month",
     description: "Maximum control & personalization",
     features: [
-      "Everything in Core",
+      "Everything in Monthly",
+      "Advanced lifestyle compatibility",
+      "AI-powered activity suggestions",
       "Filter by specialty, age & more",
       "Smaller group preference (2-3)",
       "Exclusive member events",
-      "Dedicated account manager",
     ],
     popular: false,
     cta: "Go Premium",
@@ -70,7 +55,7 @@ const plans = [
 
 const Pricing = () => {
   return (
-    <div className="min-h-screen bg-foreground">
+    <div className="min-h-screen bg-foreground dark:bg-background">
       <Header />
       
       <main className="pt-32">
@@ -96,46 +81,46 @@ const Pricing = () => {
               </p>
             </div>
 
-            {/* Pricing Grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {/* Pricing Grid — same structure as Settings subscription plans */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {plans.map((plan) => (
                 <div
                   key={plan.name}
                   className={cn(
-                    "relative rounded-3xl p-6 transition-all duration-500",
+                    "relative rounded-2xl overflow-hidden p-6 transition-all duration-300",
                     plan.popular
-                      ? "bg-gradient-to-b from-primary/20 to-primary/5 border-2 border-primary/50 shadow-glow scale-[1.02] lg:scale-105 z-10"
+                      ? "bg-gradient-to-b from-primary/20 to-primary/5 border-2 border-primary shadow-lg shadow-primary/10 scale-[1.02] lg:scale-105 z-10"
                       : "bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 hover:border-primary-foreground/20"
                   )}
                 >
-                  {/* Popular Badge */}
+                  {/* Most Popular banner — full-width at top like reference */}
                   {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-gradient-gold text-primary-foreground text-sm font-bold flex items-center gap-2 shadow-glow">
+                    <div className="absolute top-0 left-0 right-0 py-2 bg-primary text-primary-foreground text-center text-sm font-semibold flex items-center justify-center gap-2">
                       <Star size={14} fill="currentColor" />
                       Most Popular
                     </div>
                   )}
 
                   {/* Plan Header */}
-                  <div className="mb-8 pt-2">
+                  <div className={plan.popular ? "pt-10" : ""}>
                     <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">
                       {plan.name}
                     </h3>
                     <div className="flex items-baseline gap-1 mb-2">
-                      <span className="number-display text-5xl text-primary-foreground">
+                      <span className="number-display text-4xl text-primary-foreground">
                         {plan.price}
                       </span>
-                      <span className="text-sm font-medium text-primary-foreground/40">
+                      <span className="text-sm font-medium text-primary-foreground/50">
                         {plan.period}
                       </span>
                     </div>
-                    <p className="text-sm text-primary-foreground/50">
+                    <p className="text-sm text-primary-foreground/60">
                       {plan.description}
                     </p>
                   </div>
 
                   {/* Features */}
-                  <ul className="space-y-4 mb-8">
+                  <ul className="space-y-3 my-6">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-3">
                         <div className={cn(
@@ -144,7 +129,7 @@ const Pricing = () => {
                         )}>
                           <Check className="w-3 h-3 text-primary-foreground" />
                         </div>
-                        <span className="text-sm leading-relaxed text-primary-foreground/60">
+                        <span className="text-sm leading-relaxed text-primary-foreground/70">
                           {feature}
                         </span>
                       </li>
@@ -155,9 +140,9 @@ const Pricing = () => {
                   <Link to="/auth">
                     <Button
                       className={cn(
-                        "w-full font-semibold rounded-2xl h-12",
-                        plan.popular 
-                          ? "bg-gradient-gold hover:opacity-90 text-primary-foreground shadow-glow" 
+                        "w-full font-semibold rounded-xl h-11",
+                        plan.popular
+                          ? "bg-primary hover:opacity-90 text-primary-foreground"
                           : "bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border border-primary-foreground/10"
                       )}
                     >
@@ -168,16 +153,6 @@ const Pricing = () => {
               ))}
             </div>
 
-            {/* Guarantee Note */}
-            <div className="mt-16 text-center">
-              <div className="inline-flex items-center gap-3 px-6 py-4 rounded-full bg-primary-foreground/5 border border-primary-foreground/10">
-                <Shield className="w-6 h-6 text-primary" />
-                <p className="text-primary-foreground/60">
-                  All memberships backed by our{" "}
-                  <span className="font-semibold text-primary-foreground">30-Day Friendship Guarantee</span>
-                </p>
-              </div>
-            </div>
           </div>
         </section>
       </main>

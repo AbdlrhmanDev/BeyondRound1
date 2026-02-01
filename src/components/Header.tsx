@@ -9,8 +9,10 @@ const Header = () => {
   const { user, loading } = useAuth();
 
   const navLinks = [
+    { href: "/for-doctors", label: "For Doctors" },
     { href: "/about", label: "About" },
     { href: "/faq", label: "FAQ" },
+    { href: "/contact", label: "Contact" },
     { href: "/pricing", label: "Pricing" },
   ];
 
@@ -83,7 +85,7 @@ const Header = () => {
       {/* Mobile Navigation */}
       {isMenuOpen && (
         <div className="md:hidden mx-4 mt-2">
-          <div className="bg-primary-foreground/5 backdrop-blur-2xl border border-primary-foreground/10 rounded-2xl shadow-lg p-4 animate-fade-in">
+          <div className="bg-primary-foreground/5 dark:bg-card/90 backdrop-blur-2xl border border-primary-foreground/10 dark:border-border rounded-2xl shadow-lg p-4 animate-fade-in">
             <nav className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link

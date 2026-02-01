@@ -1,12 +1,14 @@
-import { useEffect, useState, useMemo, useCallback, lazy, Suspense, memo } from "react";
+import { useState, useCallback, lazy, Suspense, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMatches } from "@/hooks/useMatches";
+import { useMatchDetails } from "@/hooks/useMatchDetails";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import DashboardLayout from "@/components/DashboardLayout";
 import MatchCountdown from "@/components/MatchCountdown";
 import {
@@ -22,697 +24,89 @@ import {
   MapPin,
   Sparkles,
   Crown,
-  UserPlus,
   RefreshCw,
   Info,
   Calendar,
   Stethoscope,
   Heart,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Hourglass,
+  ChevronRight
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { MatchGroup, MatchDetails } from "@/types/match";
+import { formatSlot, getGroupTypeLabel, getWeekLabel, formatGroupName } from "@/utils/groupUtils";
+import { getOrCreateGroupConversation } from "@/services/conversationService";
 
 // Lazy load heavy component that's conditionally rendered
 const GroupEvaluationSurvey = lazy(() => import("@/components/GroupEvaluationSurvey"));
-
-interface GroupMember {
-  user_id: string;
-  profile: {
-    full_name: string | null;
-    avatar_url: string | null;
-    city: string | null;
-    neighborhood: string | null;
-    gender: string | null;
-  };
-  preferences?: {
-    specialty: string | null;
-    sports?: string[] | null;
-    social_style?: string[] | null;
-    culture_interests?: string[] | null;
-    lifestyle?: string[] | null;
-    availability_slots?: string[] | null;
-  };
-}
-
-interface MatchDetails {
-  sharedInterests: string[];
-  specialtyMatch: {
-    type: 'same' | 'related' | 'different';
-    value: string;
-  };
-  locationMatch: {
-    city: string;
-    sameNeighborhood: boolean;
-    neighborhood?: string;
-  };
-  sharedAvailability: string[];
-}
-
-interface MatchGroup {
-  id: string;
-  name: string | null;
-  group_type: string;
-  gender_composition: string | null;
-  status: string;
-  match_week: string;
-  created_at: string;
-  members: GroupMember[];
-  conversation_id?: string;
-  average_score?: number;
-  matchDetails?: MatchDetails;
-  is_partial_group?: boolean;
-}
 
 
 const Matches = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [groups, setGroups] = useState<MatchGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    groups,
+    loading,
+    isProfileComplete,
+    showSurvey,
+    surveyGroupId,
+    surveyMatchWeek,
+    setShowSurvey,
+  } = useMatches();
+  const { fetchDetails, loading: loadingDetails, error: detailsError } = useMatchDetails();
   const [selectedGroup, setSelectedGroup] = useState<MatchGroup | null>(null);
   const [matchDetails, setMatchDetails] = useState<MatchDetails | null>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [showSurvey, setShowSurvey] = useState(false);
-  const [surveyGroupId, setSurveyGroupId] = useState<string>("");
-  const [surveyMatchWeek, setSurveyMatchWeek] = useState<string>("");
-  const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
 
+  // Filter to show only the highest scoring group
+  const highestScoreGroup = groups.length > 0 && groups[0].average_score !== null && groups[0].average_score !== undefined
+    ? [groups[0]] // Show only the first group (highest score)
+    : groups.length > 0 
+      ? [groups[0]] // If no score, still show the first group
+      : [];
+
+  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
 
-  const fetchGroups = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      
-      // Fetch all initial data in parallel for better performance
-      const [preferencesRes, memberRes] = await Promise.all([
-        supabase
-          .from("onboarding_preferences")
-          .select("completed_at")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-        supabase
-          .from("group_members")
-          .select("group_id")
-          .eq("user_id", user.id),
-      ]);
-      
-      setIsProfileComplete(!!preferencesRes.data?.completed_at);
-
-      if (memberRes.error) throw memberRes.error;
-      if (!memberRes.data || memberRes.data.length === 0) {
-        setGroups([]);
-        setLoading(false);
-        return;
-      }
-
-      const groupIds = memberRes.data.map((m) => m.group_id);
-
-      // Get group details (including is_partial_group if column exists)
-      type GroupData = {
-        id: string;
-        name: string | null;
-        group_type: string;
-        gender_composition: string | null;
-        status: string;
-        match_week: string;
-        created_at: string;
-        is_partial_group?: boolean;
-      };
-      
-      // Try to select with is_partial_group first
-      let groupsData: GroupData[] | null = null;
-      const { data, error: groupsError } = await supabase
-        .from("match_groups")
-        .select("*")
-        .in("id", groupIds)
-        .eq("status", "active")
-        .order("match_week", { ascending: false });
-
-      if (groupsError) {
-        // If error mentions is_partial_group, try without it
-        if (groupsError.message?.includes("is_partial_group")) {
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from("match_groups")
-            .select("id, name, group_type, gender_composition, status, match_week, created_at")
-            .in("id", groupIds)
-            .eq("status", "active")
-            .order("match_week", { ascending: false });
-          
-          if (fallbackError) throw fallbackError;
-          if (!fallbackData || fallbackData.length === 0) {
-            setGroups([]);
-            setLoading(false);
-            return;
-          }
-          
-          // Use fallback data (without is_partial_group)
-          groupsData = fallbackData.map(g => ({ ...g, is_partial_group: false }));
-        } else {
-          throw groupsError;
-        }
-      } else {
-        groupsData = data;
-      }
-
-      if (!groupsData || groupsData.length === 0) {
-        setGroups([]);
-        setLoading(false);
-        return;
-      }
-
-      // Get all member IDs for all groups at once
-      const allGroupIds = groupsData.map(g => g.id);
-      
-      // Fetch all related data in parallel for maximum performance
-      let allMembersRes: { data: Array<{group_id: string; user_id: string}> | null; error: Error | null } = { data: [], error: null };
-      let conversationsRes: { data: Array<{id: string; group_id: string}> | null; error: Error | null } = { data: [], error: null };
-      let matchesRes: { data: Array<{matched_user_id: string; match_score: number; status: string}> | null; error: Error | null } = { data: [], error: null };
-      
-      try {
-        const results = await Promise.all([
-          supabase
-            .from("group_members")
-            .select("group_id, user_id")
-            .in("group_id", allGroupIds),
-          supabase
-            .from("group_conversations")
-            .select("id, group_id")
-            .in("group_id", allGroupIds),
-          supabase
-            .from("matches")
-            .select("matched_user_id, match_score, status")
-            .eq("user_id", user.id),
-        ]);
-        allMembersRes = results[0];
-        conversationsRes = results[1];
-        matchesRes = results[2];
-      } catch (err) {
-        console.warn("Error fetching related data:", err);
-      }
-
-      const allMembersData = allMembersRes.data || [];
-      
-      // Get all user IDs (excluding current user)
-      const allMemberIds = Array.from(new Set(
-        allMembersData
-          .map(m => m.user_id)
-          .filter(id => id !== user.id)
-      ));
-
-      // Fetch all profiles and preferences in bulk (only if we have members)
-      let profilesRes: { data: Array<{user_id: string; full_name: string | null; avatar_url: string | null; city: string | null; neighborhood: string | null; gender: string | null}> | null; error: Error | null } = { data: [], error: null };
-      let prefsRes: { data: Array<{user_id: string; specialty: string | null; sports: string[] | null; social_style: string[] | null; culture_interests: string[] | null; lifestyle: string[] | null; availability_slots: string[] | null}> | null; error: Error | null } = { data: [], error: null };
-      
-      if (allMemberIds.length > 0) {
-        try {
-          const [profilesResult, prefsResult] = await Promise.all([
-            supabase
-              .from("profiles")
-              .select("user_id, full_name, avatar_url, city, neighborhood, gender")
-              .in("user_id", allMemberIds as string[]),
-            supabase
-              .from("onboarding_preferences")
-              .select("user_id, specialty, sports, social_style, culture_interests, lifestyle, availability_slots")
-              .in("user_id", allMemberIds as string[]),
-          ]);
-          profilesRes = profilesResult;
-          prefsRes = prefsResult;
-        } catch (err) {
-          console.warn("Error fetching profiles/preferences:", err);
-        }
-      }
-
-      // Create lookup maps for faster access
-      const profilesMap = new Map(
-        (profilesRes.data || []).map(p => [p.user_id, p])
-      );
-      const prefsMap = new Map(
-        (prefsRes.data || []).map(p => [p.user_id, p])
-      );
-
-      const conversationsMap = new Map(
-        (conversationsRes.data || []).map(c => [c.group_id, c.id])
-      );
-
-      // Group members by group_id
-      const membersByGroup = new Map<string, string[]>();
-      (allMembersData || []).forEach(m => {
-        if (!membersByGroup.has(m.group_id)) {
-          membersByGroup.set(m.group_id, []);
-        }
-        membersByGroup.get(m.group_id)!.push(m.user_id);
-      });
-
-      // Use match scores from matchesRes (already fetched above)
-      const matchScoresMap = new Map<string, number>();
-      (matchesRes.data || []).forEach((match) => {
-        if (match.match_score && match.match_score > 0) {
-          matchScoresMap.set(match.matched_user_id, match.match_score);
-        }
-      });
-
-      // Build enriched groups with score calculation
-      const enrichedGroupsPromises = (groupsData || []).map(async (group: GroupData) => {
-        const memberUserIds = membersByGroup.get(group.id) || [];
-        const otherMemberIds = memberUserIds.filter((id) => id !== user.id);
-        
-        const members: GroupMember[] = otherMemberIds.map((memberId) => ({
-          user_id: memberId,
-          profile: profilesMap.get(memberId) || { 
-            user_id: memberId,
-            full_name: null, 
-            avatar_url: null, 
-            city: null, 
-            neighborhood: null, 
-            gender: null 
-          },
-          preferences: prefsMap.get(memberId) || undefined,
-        }));
-
-        // Calculate average match score for this group
-        const scores: number[] = [];
-        otherMemberIds.forEach((memberId) => {
-          const score = matchScoresMap.get(memberId);
-          if (score !== undefined && score !== null && score >= 0) {
-            scores.push(score);
-          }
-        });
-        
-        // Calculate average score - include all scores, even if 0
-        let averageScore: number | null = null;
-        if (scores.length > 0) {
-          const sum = scores.reduce((acc, score) => acc + score, 0);
-          averageScore = Math.round((sum / scores.length) * 10) / 10;
-        }
-        // Removed RPC call from loop - it was causing performance issues
-        // Scores should be pre-calculated and stored in matches table
-
-        return {
-          id: group.id,
-          name: group.name,
-          group_type: group.group_type,
-          gender_composition: group.gender_composition,
-          status: group.status,
-          match_week: group.match_week,
-          created_at: group.created_at,
-          members,
-          conversation_id: conversationsMap.get(group.id) as string | undefined,
-          average_score: averageScore,
-          is_partial_group: group.is_partial_group ?? false,
-        };
-      });
-      
-      let enrichedGroups: MatchGroup[] = [];
-      try {
-        enrichedGroups = await Promise.all(enrichedGroupsPromises);
-      } catch (err) {
-        console.warn("Error enriching groups:", err);
-        // Continue with empty array or partial results
-        enrichedGroups = [];
-      }
-
-      // Sort all groups by average_score (highest first), then by match_week (newest first)
-      // Groups with scores are prioritized, but we show the best one regardless
-      enrichedGroups.sort((a, b) => {
-        const scoreA = a.average_score ?? 0;
-        const scoreB = b.average_score ?? 0;
-        if (scoreB !== scoreA) {
-          return scoreB - scoreA; // Higher score first
-        }
-        return new Date(b.match_week).getTime() - new Date(a.match_week).getTime();
-      });
-      
-      // Show only the group with the highest score (or most recent if no scores)
-      const selectedGroup = enrichedGroups.length > 0 ? enrichedGroups[0] : null;
-      setGroups(selectedGroup ? [selectedGroup] : []);
-
-      // Check if survey should be shown for the selected group
-      if (selectedGroup) {
-        const group = selectedGroup;
-        const now = new Date();
-        const matchDate = new Date(group.match_week);
-        matchDate.setHours(16, 0, 0, 0); // Thursday 4 PM
-        const thursdayEvening = new Date(matchDate);
-        thursdayEvening.setHours(20, 0, 0, 0); // Thursday 8 PM
-        
-        if (now >= thursdayEvening) {
-          // Check if user already submitted evaluation
-          const { data: existingEvaluation } = await supabase
-            .from("group_evaluations" as never)
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("group_id", group.id)
-            .maybeSingle();
-          
-          if (!existingEvaluation) {
-            setSurveyGroupId(group.id);
-            setSurveyMatchWeek(group.match_week);
-            setShowSurvey(true);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching groups:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchGroups();
-  }, [fetchGroups]);
-
-  // Refresh completion status when component mounts or user changes
-  const checkProfileCompletion = useCallback(async () => {
-    if (!user) return;
-    
-    const { data: preferences } = await supabase
-      .from("onboarding_preferences")
-      .select("completed_at")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    
-    setIsProfileComplete(!!preferences?.completed_at);
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      checkProfileCompletion();
-    }
-  }, [user, checkProfileCompletion]);
-
   const startGroupChat = useCallback(async (group: MatchGroup) => {
-    if (group.conversation_id) {
-      navigate(`/group-chat/${group.conversation_id}`);
-    } else {
-      // Create conversation
-      const { data: newConvo, error } = await supabase
-        .from("group_conversations")
-        .insert({ group_id: group.id })
-        .select()
-        .single();
-
-      if (newConvo && !error) {
-        navigate(`/group-chat/${newConvo.id}`);
-      }
-    }
-  }, [navigate]);
-
-  // Memoize helper functions to prevent recreation on every render
-  const getGroupTypeLabel = useCallback((group: MatchGroup) => {
-    if (group.group_type === "mixed") {
-      return group.gender_composition === "2F3M" ? "2♀ 3♂" : "3♀ 2♂";
-    }
-    return group.gender_composition === "all_female" ? "All Female" : "All Male";
-  }, []);
-
-  const getWeekLabel = useCallback((dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffTime = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 7) return "This Week";
-    if (diffDays < 14) return "Last Week";
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  }, []);
-
-  const formatSlot = useCallback((slot: string) => {
-    const slotMap: Record<string, string> = {
-      fri_evening: "Fri Evening",
-      sat_morning: "Sat Morning",
-      sat_afternoon: "Sat Afternoon",
-      sat_evening: "Sat Evening",
-      sun_morning: "Sun Morning",
-      sun_afternoon: "Sun Afternoon",
-      sun_evening: "Sun Evening",
-      weekday_eve: "Weekday Evenings",
-    };
-    return slotMap[slot] || slot.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-  }, []);
-
-  const getSpecialtyCluster = useCallback((specialties: string[]): string => {
-    if (specialties.length === 0) return "General";
-    
-    // Count specialty occurrences
-    const counts: Record<string, number> = {};
-    specialties.forEach(s => {
-      if (s) counts[s] = (counts[s] || 0) + 1;
-    });
-    
-    // Find most common specialty
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const mostCommon = sorted[0]?.[0];
-    
-    if (!mostCommon) return "General";
-    
-    // If all have same specialty, return it
-    if (sorted.length === 1) return mostCommon;
-    
-    // If majority share same specialty, return it
-    if (sorted[0][1] >= specialties.length * 0.6) return mostCommon;
-    
-    // Otherwise, return a cluster name based on common categories
-    const primaryCare = ["Family Medicine", "General Practice", "Internal Medicine"];
-    const surgical = ["Surgery", "Orthopedics", "Plastic Surgery", "Neurosurgery"];
-    const medical = ["Cardiology", "Pulmonology", "Gastroenterology", "Nephrology", "Endocrinology"];
-    
-    if (specialties.some(s => primaryCare.includes(s))) return "Primary Care";
-    if (specialties.some(s => surgical.includes(s))) return "Surgical";
-    if (specialties.some(s => medical.includes(s))) return "Medical";
-    
-    return mostCommon;
-  }, []);
-
-  const getGroupTheme = useCallback((group: MatchGroup): string => {
-    // Collect all interests from group members
-    const allInterests: string[] = [];
-    group.members.forEach(member => {
-      if (member.preferences) {
-        if (member.preferences.sports) allInterests.push(...member.preferences.sports);
-        if (member.preferences.social_style) allInterests.push(...member.preferences.social_style);
-        if (member.preferences.culture_interests) allInterests.push(...member.preferences.culture_interests);
-        if (member.preferences.lifestyle) allInterests.push(...member.preferences.lifestyle);
-      }
-    });
-    
-    // Count interest occurrences
-    const counts: Record<string, number> = {};
-    allInterests.forEach(interest => {
-      counts[interest] = (counts[interest] || 0) + 1;
-    });
-    
-    // Find most common interest theme
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const topInterest = sorted[0]?.[0];
-    
-    // Map interests to themes
-    const themeMap: Record<string, string> = {
-      "Fitness": "Active",
-      "Running": "Active",
-      "Gym": "Active",
-      "Yoga": "Wellness",
-      "Meditation": "Wellness",
-      "Reading": "Intellectual",
-      "Books": "Intellectual",
-      "Travel": "Adventure",
-      "Hiking": "Adventure",
-      "Outdoor": "Adventure",
-      "Music": "Creative",
-      "Art": "Creative",
-      "Photography": "Creative",
-      "Cooking": "Culinary",
-      "Food": "Culinary",
-      "Coffee": "Social",
-      "Networking": "Professional",
-      "Business": "Professional",
-    };
-    
-    if (topInterest && themeMap[topInterest]) {
-      return themeMap[topInterest];
-    }
-    
-    // Default themes based on group characteristics
-    if (group.gender_composition === "all_female") return "Women's Circle";
-    if (group.gender_composition === "all_male") return "Men's Circle";
-    if (group.group_type === "mixed") return "Diverse";
-    
-    return "Community";
-  }, []);
-
-  const formatGroupName = useCallback((group: MatchGroup): string => {
-    const cities = Array.from(new Set(group.members.map(m => m.profile.city).filter(Boolean)));
-    const city = cities[0] || "Unknown";
-    
-    // Format match_week date as "Nov 2"
-    let dateStr = "";
-    if (group.match_week) {
-      try {
-        const matchDate = new Date(group.match_week);
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const month = monthNames[matchDate.getMonth()];
-        const day = matchDate.getDate();
-        dateStr = `${month} ${day}`;
-      } catch (e) {
-        dateStr = "Unknown";
-      }
-    } else {
-      dateStr = "Unknown";
-    }
-    
-    return `${dateStr} - ${city}`;
-  }, []);
-
-  const fetchMatchDetails = useCallback(async (group: MatchGroup) => {
-    if (!user) return;
-    setLoadingDetails(true);
-    setSelectedGroup(group);
-    setMatchDetails(null); // Reset previous details
-    
     try {
-      // Check if group has members
-      if (!group.members || group.members.length === 0) {
-        console.warn("Group has no members");
-        setLoadingDetails(false);
-        return;
-      }
-
-      // Get current user's preferences
-      const { data: userPrefs, error: prefsError } = await supabase
-        .from("onboarding_preferences")
-        .select("specialty, sports, social_style, culture_interests, lifestyle, availability_slots")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (prefsError) {
-        console.error("Error fetching user preferences:", prefsError);
-      }
-
-      const { data: userProfile, error: profileError } = await supabase
-        .from("profiles")
-        .select("city, neighborhood")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error("Error fetching user profile:", profileError);
-      }
-
-      // Use default values if preferences are missing
-      const defaultPrefs = {
-        specialty: null,
-        sports: [],
-        social_style: [],
-        culture_interests: [],
-        lifestyle: [],
-        availability_slots: [],
-      };
-      const effectivePrefs = userPrefs || defaultPrefs;
-
-      // Collect all interests from group members
-      const allInterests: string[] = [];
-      const specialties: string[] = [];
-      const cities: string[] = [];
-      const neighborhoods: string[] = [];
-      const allAvailability: string[] = [];
-
-      group.members.forEach((member) => {
-        if (member.preferences) {
-          if (member.preferences.sports) allInterests.push(...(member.preferences.sports || []));
-          if (member.preferences.social_style) allInterests.push(...(member.preferences.social_style || []));
-          if (member.preferences.culture_interests) allInterests.push(...(member.preferences.culture_interests || []));
-          if (member.preferences.lifestyle) allInterests.push(...(member.preferences.lifestyle || []));
-          if (member.preferences.specialty) specialties.push(member.preferences.specialty);
-          if (member.preferences.availability_slots) allAvailability.push(...(member.preferences.availability_slots || []));
-        }
-        if (member.profile?.city) cities.push(member.profile.city);
-        if (member.profile?.neighborhood) neighborhoods.push(member.profile.neighborhood);
-      });
-
-      // Find shared interests with current user
-      const userInterests = [
-        ...(effectivePrefs.sports || []),
-        ...(effectivePrefs.social_style || []),
-        ...(effectivePrefs.culture_interests || []),
-        ...(effectivePrefs.lifestyle || []),
-      ];
-      const sharedInterests = userInterests.filter((interest) => allInterests.includes(interest));
-      const uniqueSharedInterests = Array.from(new Set(sharedInterests)).slice(0, 5);
-
-      // Determine specialty match
-      let specialtyMatch: { type: 'same' | 'related' | 'different'; value: string } = {
-        type: 'different',
-        value: 'Various',
-      };
-      if (effectivePrefs.specialty) {
-        const memberSpecialties = Array.from(new Set(specialties.filter(s => s)));
-        if (memberSpecialties.includes(effectivePrefs.specialty)) {
-          specialtyMatch = { type: 'same', value: effectivePrefs.specialty };
-        } else if (memberSpecialties.length === 1) {
-          specialtyMatch = { type: 'related', value: memberSpecialties[0] };
-        } else if (memberSpecialties.length > 0) {
-          specialtyMatch = { type: 'related', value: `${memberSpecialties.length} specialties` };
-        }
-      } else if (specialties.length > 0) {
-        const memberSpecialties = Array.from(new Set(specialties.filter(s => s)));
-        if (memberSpecialties.length === 1) {
-          specialtyMatch = { type: 'related', value: memberSpecialties[0] };
-        } else if (memberSpecialties.length > 0) {
-          specialtyMatch = { type: 'related', value: `${memberSpecialties.length} specialties` };
-        }
-      }
-
-      // Determine location match
-      const uniqueCities = Array.from(new Set(cities.filter(c => c)));
-      const uniqueNeighborhoods = Array.from(new Set(neighborhoods.filter(n => n)));
-      const locationMatch = {
-        city: uniqueCities[0] || userProfile?.city || "Unknown",
-        sameNeighborhood: userProfile?.neighborhood ? uniqueNeighborhoods.includes(userProfile.neighborhood) : false,
-        neighborhood: userProfile?.neighborhood || uniqueNeighborhoods[0] || undefined,
-      };
-
-      // Find shared availability
-      const userAvailability = effectivePrefs.availability_slots || [];
-      const sharedAvailability = userAvailability.filter((slot) => allAvailability.includes(slot));
-      const uniqueSharedAvailability = Array.from(new Set(sharedAvailability));
-
-      const details: MatchDetails = {
-        sharedInterests: uniqueSharedInterests,
-        specialtyMatch,
-        locationMatch,
-        sharedAvailability: uniqueSharedAvailability,
-      };
-      
-      setMatchDetails(details);
-      
-      // Also update the group in the list with these details
-      setGroups(prevGroups => 
-        prevGroups.map(g => 
-          g.id === group.id ? { ...g, matchDetails: details } : g
-        )
-      );
+      const conversationId = group.conversation_id || await getOrCreateGroupConversation(group.id);
+      navigate(`/group-chat/${conversationId}`);
     } catch (error) {
-      console.error("Error fetching match details:", error);
-      setMatchDetails(null);
+      console.error("Error starting group chat:", error);
       toast({
         title: "Error",
-        description: "Failed to load match details. Please try again.",
+        description: "Failed to start group chat. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setLoadingDetails(false);
     }
-  }, [user, toast]);
+  }, [navigate, toast]);
+
+  const handleFetchMatchDetails = useCallback(async (group: MatchGroup) => {
+    setSelectedGroup(group);
+    setMatchDetails(null);
+    
+    const details = await fetchDetails(group);
+    if (details) {
+      setMatchDetails(details);
+      // Update group in list with details
+      // Note: This would require updating the groups state, but since we're using a hook,
+      // we might need to refetch or handle this differently
+    } else if (detailsError) {
+      toast({
+        title: "Error",
+        description: detailsError,
+        variant: "destructive",
+      });
+    }
+  }, [fetchDetails, detailsError, toast]);
 
   if (authLoading || loading) {
     return (
@@ -731,8 +125,8 @@ const Matches = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-6 py-8">
-        <div className="mb-6">
+      <main className="container mx-auto px-6 py-8 max-w-7xl">
+        <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-2xl font-bold">Your Matches</h1>
@@ -740,13 +134,13 @@ const Matches = () => {
                 Connect with physicians who share your interests
               </p>
             </div>
-            {groups.length > 0 && groups[0].average_score !== null && groups[0].average_score !== undefined && (
+            {highestScoreGroup.length > 0 && highestScoreGroup[0].average_score !== null && highestScoreGroup[0].average_score !== undefined && (
               <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 shadow-md">
                 <Crown className="h-5 w-5 text-yellow-600" />
                 <div className="flex flex-col">
                   <span className="text-xs text-muted-foreground font-medium">Best Score</span>
                   <span className="font-display font-bold text-xl text-foreground">
-                    {Math.round(groups[0].average_score)}%
+                    {Math.round(highestScoreGroup[0].average_score)}%
                   </span>
                 </div>
               </div>
@@ -755,13 +149,27 @@ const Matches = () => {
         </div>
 
         {/* Countdown Section */}
-        <div className="mb-8">
+        <div className="mb-6">
           <MatchCountdown />
+        </div>
+
+        {/* Filter by specialty */}
+        <div className="mb-6">
+          <Card className="border-primary/20 bg-primary-foreground/5 rounded-2xl">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-primary-foreground/80">
+                Filter by specialty, age & location — available on your plan.
+              </p>
+              <p className="text-xs text-primary-foreground/50 mt-1">
+                Use filters when more match options are available.
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="your-groups" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-1 mb-6">
+          <TabsList className="grid w-full max-w-md grid-cols-1 mb-5">
             <TabsTrigger value="your-groups">
               <Users className="h-4 w-4 mr-2" />
               Your Groups
@@ -769,32 +177,34 @@ const Matches = () => {
           </TabsList>
 
           {/* Your Groups Tab */}
-          <TabsContent value="your-groups" className="space-y-6">
+          <TabsContent value="your-groups" className="space-y-5">
           {/* Best Score Banner */}
-          {groups.length > 0 && groups[0].average_score !== null && groups[0].average_score !== undefined && (
-            <Card className="border-2 border-yellow-500/60 bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 rounded-3xl overflow-hidden shadow-2xl ring-4 ring-yellow-500/20">
+          {highestScoreGroup.length > 0 && highestScoreGroup[0].average_score !== null && highestScoreGroup[0].average_score !== undefined && (
+            <Card className="border-2 border-yellow-500/60 bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 rounded-3xl overflow-hidden shadow-2xl ring-4 ring-yellow-500/20 shadow-[0_12px_32px_rgba(251,146,60,0.25)]">
               <CardContent className="p-6">
-                <div className="flex items-center justify-center gap-5">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500 via-orange-500 to-yellow-500 flex items-center justify-center shadow-2xl ring-4 ring-yellow-500/30 animate-pulse">
-                    <Crown className="h-8 w-8 text-white drop-shadow-lg" />
+                <div className="flex items-center justify-between gap-5 flex-wrap">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500 via-orange-500 to-yellow-500 flex items-center justify-center shadow-2xl ring-4 ring-yellow-500/30">
+                      <Crown className="h-8 w-8 text-white drop-shadow-lg" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-display font-black text-2xl text-foreground tracking-tight">Best Match Score</span>
+                      <span className="text-sm text-muted-foreground font-medium">Your highest compatibility group</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-display font-black text-2xl text-foreground tracking-tight">Best Score</span>
-                    <span className="text-sm text-muted-foreground font-medium">Your highest matching group</span>
-                  </div>
-                  <div className="flex items-center gap-3 ml-auto">
-                    <Badge className="bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white border-0 text-3xl font-black px-8 py-3 shadow-2xl ring-4 ring-yellow-500/30">
-                      {Math.round(groups[0].average_score)}%
+                  <div className="flex items-center gap-3">
+                    <Badge className="bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white border-0 text-4xl font-black px-8 py-4 shadow-2xl ring-4 ring-yellow-500/30">
+                      {Math.round(highestScoreGroup[0].average_score)}%
                     </Badge>
+                    <Sparkles className="h-7 w-7 text-yellow-600" />
                   </div>
-                  <Sparkles className="h-7 w-7 text-yellow-600 animate-pulse" />
                 </div>
               </CardContent>
             </Card>
           )}
           
-          {groups.length === 0 ? (
-            <Card className="border-0 shadow-lg rounded-2xl">
+          {highestScoreGroup.length === 0 ? (
+            <Card className="border-2 border-border/60 shadow-lg rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1)]">
               <CardContent className="py-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary flex items-center justify-center">
                   <Sparkles className="h-8 w-8 text-muted-foreground" />
@@ -823,82 +233,97 @@ const Matches = () => {
               </CardContent>
             </Card>
           ) : (
-            groups.map((group, index) => {
+            highestScoreGroup.map((group, index) => {
               // Get unique city and neighborhood from members
               const cities = Array.from(new Set(group.members.map(m => m.profile.city).filter(Boolean)));
               const neighborhoods = Array.from(new Set(group.members.map(m => m.profile.neighborhood).filter(Boolean)));
-              const city = cities[0] || "Unknown";
+              const city = cities[0] || null;
               const area = neighborhoods[0] || null;
               const isThisWeek = getWeekLabel(group.match_week) === "This Week";
+              const hasScore = group.average_score !== null && group.average_score !== undefined;
+              const scoreValue = hasScore ? Math.round(group.average_score) : null;
+              const memberCount = group.member_count ?? group.members.length + 1;
+              const MIN_GROUP_SIZE = 3;
+              const isGroupComplete = memberCount >= MIN_GROUP_SIZE;
 
               return (
-                <Card 
-                  key={group.id} 
-                  className={`border-2 border-border/60 shadow-2xl shadow-foreground/10 rounded-3xl overflow-hidden transition-all duration-300 relative backdrop-blur-sm ${
-                    index === 0 && group.average_score !== null && group.average_score !== undefined
-                      ? 'ring-4 ring-yellow-500/40 hover:ring-yellow-500/60 bg-gradient-to-br from-yellow-50/50 via-white to-orange-50/50 hover:shadow-[0_20px_50px_rgba(251,146,60,0.15)] border-yellow-500/30' 
-                      : 'hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:border-primary/30 bg-white'
-                  }`}
-                >
+                <div key={group.id} className="relative max-w-3xl mx-auto group">
+                  {/* Premium glow effect for primary focus */}
+                  <div className={`absolute -inset-[2px] rounded-2xl opacity-60 blur-2xl -z-10 transition-opacity duration-500 group-hover:opacity-80 ${
+                    hasScore
+                      ? 'bg-gradient-to-br from-yellow-500/20 via-orange-500/15 to-yellow-500/20'
+                      : 'bg-gradient-to-br from-primary/20 via-primary/12 to-primary/20'
+                  }`}></div>
+                  
+                  <Card 
+                    className={`relative border-0 rounded-2xl overflow-hidden transition-all duration-500 ${
+                      hasScore
+                        ? 'bg-gradient-to-br from-yellow-50/80 via-card to-orange-50/60 dark:from-yellow-500/8 dark:via-card dark:to-orange-500/8 ring-1 ring-yellow-500/20 shadow-[0_0_0_0.5px_rgba(251,146,60,0.15),0_2px_4px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.08),0_16px_48px_rgba(251,146,60,0.12)] dark:shadow-[0_0_0_0.5px_rgba(251,146,60,0.2),0_2px_4px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.16),0_8px_24px_rgba(0,0,0,0.2),0_16px_48px_rgba(251,146,60,0.15)] hover:shadow-[0_0_0_0.5px_rgba(251,146,60,0.2),0_4px_8px_rgba(0,0,0,0.06),0_8px_16px_rgba(0,0,0,0.08),0_16px_32px_rgba(0,0,0,0.12),0_24px_64px_rgba(251,146,60,0.18)] dark:hover:shadow-[0_0_0_0.5px_rgba(251,146,60,0.25),0_4px_8px_rgba(0,0,0,0.16),0_8px_16px_rgba(0,0,0,0.2),0_16px_32px_rgba(0,0,0,0.24),0_24px_64px_rgba(251,146,60,0.22)]'
+                        : 'bg-card ring-1 ring-primary/10 shadow-[0_0_0_0.5px_rgba(255,152,0,0.1),0_2px_4px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.08),0_16px_48px_rgba(255,152,0,0.1)] dark:shadow-[0_0_0_0.5px_rgba(255,152,0,0.15),0_2px_4px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.16),0_8px_24px_rgba(0,0,0,0.2),0_16px_48px_rgba(255,152,0,0.12)] hover:shadow-[0_0_0_0.5px_rgba(255,152,0,0.15),0_4px_8px_rgba(0,0,0,0.06),0_8px_16px_rgba(0,0,0,0.08),0_16px_32px_rgba(0,0,0,0.12),0_24px_64px_rgba(255,152,0,0.15)] dark:hover:shadow-[0_0_0_0.5px_rgba(255,152,0,0.2),0_4px_8px_rgba(0,0,0,0.16),0_8px_16px_rgba(0,0,0,0.2),0_16px_32px_rgba(0,0,0,0.24),0_24px_64px_rgba(255,152,0,0.18)]'
+                    } hover:-translate-y-1`}
+                  >
                   {/* Best Score Ribbon */}
-                  {group.average_score !== null && group.average_score !== undefined && (
-                    <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white px-7 py-2.5 rounded-bl-2xl rounded-tr-3xl shadow-[0_8px_16px_rgba(251,146,60,0.4)] z-10 animate-pulse">
-                      <div className="flex items-center gap-3 font-bold">
-                        <Crown className="h-5 w-5 drop-shadow-lg animate-bounce" />
-                        <span className="text-sm tracking-wider uppercase">Best Score</span>
-                        <span className="text-2xl font-black drop-shadow-lg">{Math.round(group.average_score)}%</span>
+                  {hasScore && (
+                    <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white px-3 py-1 rounded-bl-lg rounded-tr-lg shadow-[0_2px_4px_rgba(251,146,60,0.3)] z-10">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <Crown className="h-3 w-3 drop-shadow-lg" />
+                        <span className="text-xs tracking-wider uppercase">Best Score</span>
+                        <span className="text-base font-black drop-shadow-lg">{scoreValue}%</span>
                       </div>
                     </div>
                   )}
                   
                   <CardContent className="p-0">
                     {/* Group Header */}
-                    <div className={`px-7 py-6 border-b-2 border-border/30 bg-gradient-to-br from-background via-secondary/20 to-background ${index === 0 && group.average_score !== null && group.average_score !== undefined ? 'pt-9' : ''}`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-5 flex-1">
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-110 hover:rotate-3 ${
-                            index === 0 && group.average_score !== null && group.average_score !== undefined
+                    <div className={`px-3 py-3 border-b border-border/30 bg-gradient-to-br from-background via-secondary/20 to-background ${hasScore ? 'pt-8' : ''}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-md transition-all duration-300 hover:scale-105 flex-shrink-0 ${
+                            hasScore
                               ? 'bg-gradient-to-br from-yellow-500 via-orange-500 to-yellow-500 shadow-yellow-500/40 ring-2 ring-yellow-500/30' 
                               : 'bg-gradient-to-br from-primary to-orange-500 shadow-primary/30 ring-2 ring-primary/20'
                           }`}>
-                            <Users className="h-7 w-7 text-white drop-shadow-lg" />
+                            <Users className="h-5 w-5 text-white drop-shadow-lg" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-3 flex-wrap">
-                              <h3 className="font-display font-bold text-xl text-foreground tracking-tight">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h3 className="font-display font-bold text-base text-foreground tracking-tight">
                                 {formatGroupName(group)}
                               </h3>
-                              {group.average_score !== null && group.average_score !== undefined && (
-                                <Badge className="bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white border-0 shadow-xl px-5 py-2 text-sm font-bold ring-2 ring-yellow-500/30">
-                                  <Crown className="h-4 w-4 mr-2 animate-pulse" />
-                                  Best Score: {Math.round(group.average_score)}%
+                              {hasScore && (
+                                <Badge className="bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white border-0 shadow-lg px-3 py-1 text-xs font-bold ring-2 ring-yellow-500/30">
+                                  <Crown className="h-3 w-3 mr-1" />
+                                  {scoreValue}% Match
                                 </Badge>
                               )}
-                              {(!group.average_score || group.average_score === null) && (
-                                <Badge variant="secondary" className="text-xs font-semibold px-3 py-1.5">
+                              {!hasScore && (
+                                <Badge variant="secondary" className="text-xs font-semibold px-2 py-1">
                                   Your Group
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-2.5">
-                              <Badge variant="secondary" className="text-xs font-medium px-3 py-1.5 shadow-sm">
-                                <MapPin className="h-3.5 w-3.5 mr-1.5" />
-                                {city}
-                                {area && ` • ${area}`}
-                              </Badge>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {city && (
+                                <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">
+                                  <MapPin className="h-3 w-3 mr-1" />
+                                  {city}
+                                  {area && ` • ${area}`}
+                                </Badge>
+                              )}
                               {isThisWeek && (
-                                <Badge variant="secondary" className="text-xs bg-primary/15 text-primary border-primary/30 px-3 py-1.5 font-semibold shadow-sm">
+                                <Badge variant="secondary" className="text-xs bg-primary/15 text-primary border-primary/30 px-2 py-0.5 font-semibold">
+                                  <Clock className="h-3 w-3 mr-1" />
                                   This Week
                                 </Badge>
                               )}
                               {group.gender_composition && (
-                                <Badge variant="outline" className="text-xs px-3 py-1.5 font-medium border-2">
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 font-medium border">
                                   {getGroupTypeLabel(group)}
                                 </Badge>
                               )}
                               {group.is_partial_group && (
-                                <Badge variant="secondary" className="text-xs bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30 px-3 py-1.5 shadow-sm">
-                                  <Info className="h-3.5 w-3.5 mr-1" />
+                                <Badge variant="secondary" className="text-xs bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30 px-2 py-0.5">
+                                  <Info className="h-3 w-3 mr-1" />
                                   Smaller Group
                                 </Badge>
                               )}
@@ -910,120 +335,228 @@ const Matches = () => {
 
                     {/* Partial Group Notice */}
                     {group.is_partial_group && (
-                      <div className="px-5 py-3 bg-yellow-500/10 border-b border-yellow-500/20">
-                        <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
-                          <Info className="h-4 w-4" />
+                      <div className="px-3 py-1.5 bg-yellow-500/10 dark:bg-yellow-500/15 border-b border-yellow-500/20 dark:border-yellow-500/30">
+                        <div className="flex items-center gap-1.5 text-xs text-yellow-700 dark:text-yellow-400">
+                          <Info className="h-3 w-3" />
                           <span>
-                            Smaller group this week ({group.members.length} members). We'll add more members in the next matching round!
+                            Smaller group this week ({memberCount} members). We'll add more members in the next matching round!
                           </span>
                         </div>
                       </div>
                     )}
 
                     {/* Members Row */}
-                    <div className="px-7 py-6 border-b-2 border-border/30 bg-gradient-to-b from-background to-secondary/10">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
-                        {group.members.map((member) => {
-                          const initials = member.profile.full_name
-                            ?.split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase() || "U";
-
-                          return (
-                            <div 
-                              key={member.user_id}
-                              className="flex flex-col items-center p-5 rounded-2xl bg-white hover:bg-gradient-to-br hover:from-primary/5 hover:to-orange-500/5 border-2 border-border/60 hover:border-primary/40 transition-all duration-300 cursor-pointer group hover:shadow-xl hover:-translate-y-2 hover:scale-105"
-                              onClick={() => navigate(`/u/${member.user_id}`)}
-                            >
-                              <Avatar className="h-20 w-20 mb-4 ring-4 ring-background shadow-2xl group-hover:ring-primary/40 group-hover:shadow-primary/30 transition-all duration-300">
-                                <AvatarImage src={member.profile.avatar_url || undefined} />
-                                <AvatarFallback className="bg-gradient-to-br from-primary via-orange-500 to-primary text-white font-display font-bold text-xl shadow-lg">
-                                  {initials}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="font-bold text-sm text-center truncate w-full text-foreground mb-1">
-                                {member.profile.full_name || "Anonymous"}
-                              </span>
-                              {member.preferences?.specialty && (
-                                <span className="text-xs text-muted-foreground truncate w-full text-center font-semibold px-2 py-1 rounded-lg bg-secondary/50">
-                                  {member.preferences.specialty}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
+                    <div className="px-3 py-3 border-b border-border/30 bg-gradient-to-b from-background to-secondary/10">
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <h4 className="text-xs font-semibold text-foreground">
+                            Group Progress
+                          </h4>
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            {memberCount} of {MIN_GROUP_SIZE} members joined
+                          </span>
+                        </div>
+                        <Progress 
+                          value={(memberCount / MIN_GROUP_SIZE) * 100} 
+                          className="h-2 mb-2"
+                        />
+                        {!isGroupComplete && (
+                          <p className="text-xs font-medium text-primary mt-1">
+                            {MIN_GROUP_SIZE - memberCount} more {MIN_GROUP_SIZE - memberCount === 1 ? 'physician' : 'physicians'} needed to complete this group
+                          </p>
+                        )}
+                        {isGroupComplete && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {hasScore ? `Matched with ${scoreValue}% compatibility` : 'Your matched group members'}
+                          </p>
+                        )}
                       </div>
-                    </div>
-
-                    {/* Why this match & Suggested meetup times */}
-                    <div className={`px-7 py-6 space-y-5 ${index === 0 && group.average_score ? 'bg-gradient-to-br from-yellow-50/50 via-background to-orange-50/30' : 'bg-background'}`}>
-                      <Button
-                        variant="outline"
-                        size="default"
-                        onClick={() => fetchMatchDetails(group)}
-                        className={`w-full h-12 font-semibold text-base border-2 transition-all duration-300 ${
-                          index === 0 && group.average_score 
-                            ? 'border-yellow-500/40 hover:bg-yellow-500/15 hover:border-yellow-500/60 hover:shadow-lg hover:scale-[1.02]' 
-                            : 'hover:bg-secondary hover:shadow-md hover:border-primary/40 hover:scale-[1.02]'
-                        }`}
-                      >
-                        <Info className="h-5 w-5 mr-2" />
-                        Why this match?
-                      </Button>
-
-                      {/* Suggested meetup times */}
-                      {group.matchDetails && group.matchDetails.sharedAvailability.length > 0 && (
-                        <div className="pt-3 border-t border-border/50">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium text-foreground">Suggested meetup times</span>
+                      
+                      {group.members.length === 0 ? (
+                        // Waiting List State
+                        <div className="text-center py-4 px-3">
+                          <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-gradient-to-br from-primary/10 via-orange-500/10 to-primary/10 dark:from-primary/20 dark:via-orange-500/20 dark:to-primary/20 flex items-center justify-center border border-primary/20 dark:border-primary/30 shadow-md">
+                            <Hourglass className="h-6 w-6 text-primary animate-pulse" />
                           </div>
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {group.matchDetails.sharedAvailability.slice(0, 3).map((slot) => (
-                              <Badge key={slot} variant="secondary" className="px-3 py-1">
-                                {formatSlot(slot)}
-                              </Badge>
-                            ))}
-                          </div>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            Create Poll
-                          </Button>
+                          <h4 className="font-display text-sm font-semibold text-foreground mb-1">
+                            On Waiting List
+                          </h4>
+                          <p className="text-muted-foreground text-xs max-w-md mx-auto mb-2 leading-relaxed">
+                            Your group is being formed. New members will be added in the next matching round on Thursday at 4 PM.
+                          </p>
+                          <Badge variant="secondary" className="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary border-primary/20">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {MIN_GROUP_SIZE - memberCount} more {MIN_GROUP_SIZE - memberCount === 1 ? 'physician' : 'physicians'} needed to complete this group
+                          </Badge>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {group.members.map((member) => {
+                            const fullName = member.profile.full_name || "Anonymous";
+                            const initials = fullName !== "Anonymous"
+                              ? fullName
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)
+                              : "?";
+
+                            return (
+                              <div 
+                                key={member.user_id}
+                                className="flex flex-col items-center p-2 rounded-lg bg-card hover:bg-gradient-to-br hover:from-primary/5 hover:to-orange-500/5 border border-border/60 hover:border-primary/40 transition-all duration-300 cursor-pointer group hover:shadow-md hover:scale-105 shadow-sm"
+                                onClick={() => navigate(`/u/${member.user_id}`)}
+                              >
+                                <Avatar className="h-12 w-12 mb-1 ring-1 ring-background shadow-md group-hover:ring-primary/40 transition-all duration-300">
+                                  <AvatarImage src={member.profile.avatar_url || undefined} alt={fullName} />
+                                  <AvatarFallback className="bg-gradient-to-br from-primary via-orange-500 to-primary text-white font-display font-bold text-xs shadow-sm">
+                                    {initials}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-semibold text-xs text-center truncate w-full text-foreground mb-0.5">
+                                  {fullName}
+                                </span>
+                                {member.preferences?.specialty ? (
+                                  <span className="text-xs text-muted-foreground truncate w-full text-center font-medium px-1.5 py-0.5 rounded bg-secondary/60">
+                                    {member.preferences.specialty}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/60 italic">
+                                    No specialty listed
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
 
+                    {/* Why this match - Now visible by default */}
+                    {group.matchDetails && (
+                      <div className={`px-3 py-3 border-b border-border/30 ${hasScore ? 'bg-gradient-to-br from-yellow-50/50 via-card to-orange-50/30 dark:from-yellow-500/5 dark:via-card dark:to-orange-500/5' : 'bg-background'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Info className="h-4 w-4 text-primary" />
+                          <h4 className="text-xs font-semibold text-foreground">Matched based on:</h4>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pl-6">
+                          {group.matchDetails.sharedInterests.slice(0, 3).map((interest) => (
+                            <Badge key={interest} variant="secondary" className="px-2 py-0.5 text-xs">
+                              {interest}
+                            </Badge>
+                          ))}
+                          {group.matchDetails.specialtyMatch && (
+                            <Badge variant="secondary" className="px-2 py-0.5 text-xs">
+                              <Stethoscope className="h-3 w-3 mr-1 inline" />
+                              {group.matchDetails.specialtyMatch.value}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleFetchMatchDetails(group)}
+                          className="mt-2 h-7 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          View full details
+                          <ChevronRight className="h-3 w-3 ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Why this match button - Show if no details loaded yet */}
+                    {!group.matchDetails && (
+                      <div className={`px-3 py-2 ${hasScore ? 'bg-gradient-to-br from-yellow-50/50 via-card to-orange-50/30 dark:from-yellow-500/5 dark:via-card dark:to-orange-500/5' : 'bg-background'}`}>
+                        <Button
+                          variant="outline"
+                          size="default"
+                          onClick={() => handleFetchMatchDetails(group)}
+                          className={`w-full h-9 font-semibold text-xs border transition-all duration-300 ${
+                            hasScore 
+                              ? 'border-yellow-500/40 hover:bg-yellow-500/15 hover:border-yellow-500/60' 
+                              : 'hover:bg-secondary hover:border-primary/40'
+                          }`}
+                        >
+                          <Info className="h-3 w-3 mr-1.5" />
+                          Why this match?
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Suggested meetup times */}
+                    {group.matchDetails && group.matchDetails.sharedAvailability.length > 0 && (
+                      <div className={`px-3 py-2 space-y-2 border-b border-border/30 ${hasScore ? 'bg-gradient-to-br from-yellow-50/50 via-card to-orange-50/30 dark:from-yellow-500/5 dark:via-card dark:to-orange-500/5' : 'bg-background'}`}>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs font-medium text-foreground">Suggested meetup times</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {group.matchDetails.sharedAvailability.slice(0, 3).map((slot) => (
+                            <Badge key={slot} variant="secondary" className="px-2 py-0.5 text-xs">
+                              {formatSlot(slot)}
+                            </Badge>
+                          ))}
+                        </div>
+                        <Button variant="outline" size="sm" className="w-full h-8 text-xs">
+                          <Calendar className="h-3 w-3 mr-1.5" />
+                          Create Poll
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Actions */}
-                    <div className={`px-7 py-6 border-t-2 border-border/30 flex gap-4 bg-gradient-to-r from-background via-secondary/10 to-background ${
-                      index === 0 && group.average_score ? 'from-yellow-50/30 via-background to-orange-50/20' : ''
+                    <div className={`px-3 py-2 border-t border-border/30 flex flex-col gap-2 bg-gradient-to-r from-background via-secondary/10 to-background ${
+                      hasScore ? 'from-yellow-50/30 via-background to-orange-50/20' : ''
                     }`}>
-                      <Button 
-                        onClick={() => startGroupChat(group)}
-                        className={`flex-1 h-14 font-bold text-base shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 ${
-                          index === 0 && group.average_score
-                            ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 hover:from-yellow-600 hover:via-orange-600 hover:to-yellow-600 text-white ring-2 ring-yellow-500/30'
-                            : 'bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-600 text-white ring-2 ring-primary/20'
-                        }`}
-                      >
-                        <MessageCircle className="h-6 w-6 mr-2" />
-                        Group Chat
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        onClick={() => navigate("/places")}
-                        className={`flex-1 h-14 font-bold text-base border-2 hover:shadow-lg transition-all duration-300 hover:scale-105 ${
-                          index === 0 && group.average_score
-                            ? 'border-yellow-500/40 hover:bg-yellow-500/15 hover:border-yellow-500/60 bg-white'
-                            : 'hover:bg-secondary hover:border-primary/40 bg-white'
-                        }`}
-                      >
-                        <Calendar className="h-6 w-6 mr-2" />
-                        Plan Meetup
-                      </Button>
+                      {!isGroupComplete && (
+                        <div className="flex items-start gap-2 text-xs bg-yellow-500/10 dark:bg-yellow-500/15 border border-yellow-500/20 dark:border-yellow-500/30 rounded-lg px-3 py-2 mb-2">
+                          <Info className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-500 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground mb-0.5">
+                              Group chat unlocks when {MIN_GROUP_SIZE} members join
+                            </p>
+                            <p className="text-muted-foreground">
+                              Currently {memberCount} of {MIN_GROUP_SIZE} members. {MIN_GROUP_SIZE - memberCount} more {MIN_GROUP_SIZE - memberCount === 1 ? 'physician' : 'physicians'} needed.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => startGroupChat(group)}
+                          disabled={!isGroupComplete}
+                          className={`flex-1 h-11 font-semibold text-sm transition-all duration-300 shadow-lg ${
+                            !isGroupComplete
+                              ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground'
+                              : hasScore
+                              ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 hover:from-yellow-600 hover:via-orange-600 hover:to-yellow-600 text-white shadow-yellow-500/30 hover:shadow-yellow-500/40'
+                              : 'bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-600 text-white shadow-primary/30 hover:shadow-primary/40'
+                          }`}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Group Chat
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => navigate("/places")}
+                          disabled={!isGroupComplete}
+                          className={`h-11 px-4 font-medium text-xs border transition-all duration-300 ${
+                            !isGroupComplete
+                              ? 'opacity-50 cursor-not-allowed'
+                              : hasScore
+                              ? 'border-yellow-500/30 hover:bg-yellow-500/10 dark:hover:bg-yellow-500/15 hover:border-yellow-500/50 bg-card/50'
+                              : 'border-border/50 hover:bg-secondary/50 hover:border-primary/30 bg-card/50'
+                          }`}
+                        >
+                          <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                          Plan Meetup
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
+                </div>
               );
             })
           )}

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,15 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Trash2, Bug, Lightbulb, MessageSquare, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-
-interface Feedback {
-  id: string;
-  category: string;
-  message: string;
-  page_url: string | null;
-  created_at: string;
-  user_id: string | null;
-}
+import { getFeedback, deleteFeedback, Feedback } from "@/services/adminService";
 
 const categoryConfig = {
   bug: { label: "Bug Report", icon: Bug, color: "bg-red-500/10 text-red-500" },
@@ -31,21 +22,11 @@ const AdminFeedback = () => {
 
   const fetchFeedback = async () => {
     setIsLoading(true);
-    let query = supabase
-      .from("feedback")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (filter !== "all") {
-      query = query.eq("category", filter);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
+    try {
+      const feedbackData = await getFeedback(filter === "all" ? undefined : filter);
+      setFeedback(feedbackData);
+    } catch (error) {
       toast({ title: "Error", description: "Failed to fetch feedback", variant: "destructive" });
-    } else {
-      setFeedback(data || []);
     }
     setIsLoading(false);
   };
@@ -55,8 +36,8 @@ const AdminFeedback = () => {
   }, [filter]);
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("feedback").delete().eq("id", id);
-    if (error) {
+    const success = await deleteFeedback(id);
+    if (!success) {
       toast({ title: "Error", description: "Failed to delete feedback", variant: "destructive" });
     } else {
       toast({ title: "Deleted", description: "Feedback removed" });

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +20,8 @@ import {
   Search
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getUserCity, generatePlaceSuggestions } from "@/services/placeService";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PlaceSuggestion {
   name: string;
@@ -51,15 +52,10 @@ const PlaceSuggestions = () => {
     const fetchUserCity = async () => {
       if (!user) return;
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-      if ((data as any)?.city) {
-        setUserCity((data as any).city);
-        setCity((data as any).city);
+      const cityData = await getUserCity(user.id);
+      if (cityData) {
+        setUserCity(cityData);
+        setCity(cityData);
       }
       setInitialLoading(false);
     };
@@ -67,7 +63,7 @@ const PlaceSuggestions = () => {
     fetchUserCity();
   }, [user]);
 
-  const generateSuggestions = async () => {
+  const handleGenerateSuggestions = async () => {
     if (!city.trim()) {
       toast({
         title: "Please enter a city",
@@ -81,14 +77,19 @@ const PlaceSuggestions = () => {
     setSuggestions([]);
 
     try {
-      const response = await supabase.functions.invoke("generate-place-suggestions", {
-        body: { city: city.trim() },
-      });
-
-      if (response.error) throw response.error;
-
-      if (response.data?.suggestions) {
-        setSuggestions(response.data.suggestions);
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      
+      const placeSuggestions = await generatePlaceSuggestions(city.trim(), accessToken);
+      
+      if (placeSuggestions.length > 0) {
+        setSuggestions(placeSuggestions);
+      } else {
+        toast({
+          title: "No suggestions found",
+          description: "Could not generate place suggestions for this city.",
+          variant: "default",
+        });
       }
     } catch (error) {
       console.error("Error generating suggestions:", error);
@@ -167,11 +168,11 @@ const PlaceSuggestions = () => {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   className="pl-10"
-                  onKeyPress={(e) => e.key === "Enter" && generateSuggestions()}
+                  onKeyPress={(e) => e.key === "Enter" && handleGenerateSuggestions()}
                 />
               </div>
               <Button 
-                onClick={generateSuggestions}
+                onClick={handleGenerateSuggestions}
                 disabled={loading}
                 className="gap-2"
               >

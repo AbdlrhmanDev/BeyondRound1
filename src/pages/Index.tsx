@@ -4,7 +4,6 @@ import HeroSection from "@/components/HeroSection";
 
 // Lazy load below-the-fold sections for faster initial load
 const HowItWorksSection = lazy(() => import("@/components/HowItWorksSection"));
-const PricingSection = lazy(() => import("@/components/PricingSection"));
 const FAQSection = lazy(() => import("@/components/FAQSection"));
 const AboutSection = lazy(() => import("@/components/AboutSection"));
 const CTASection = lazy(() => import("@/components/CTASection"));
@@ -12,13 +11,12 @@ const Footer = lazy(() => import("@/components/Footer"));
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-foreground">
+    <div className="min-h-screen bg-foreground dark:bg-background">
       <Header />
       <main>
         <HeroSection />
         <Suspense fallback={null}>
           <HowItWorksSection />
-          <PricingSection />
           <FAQSection />
           <AboutSection />
           <CTASection />

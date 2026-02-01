@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 const CTASection = () => {
   return (
-    <section className="py-28 lg:py-36 bg-foreground relative overflow-hidden">
+    <section className="py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/20 blur-[200px]" />
@@ -39,8 +39,9 @@ const CTASection = () => {
             <Button
               variant="outline"
               className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 text-base h-14 px-8 rounded-2xl"
+              asChild
             >
-              Learn More
+              <Link to="/learn-more">Learn More</Link>
             </Button>
           </div>
 

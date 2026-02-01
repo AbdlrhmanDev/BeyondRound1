@@ -10,9 +10,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { submitFeedback } from "@/services/feedbackService";
 
 const categories = [
   { id: "bug", label: "Bug Report", icon: Bug, color: "text-red-500" },
@@ -49,14 +55,14 @@ const FeedbackButton = () => {
 
     setIsSubmitting(true);
     
-    const { error } = await supabase.from("feedback").insert({
+    const success = await submitFeedback({
       user_id: user?.id || null,
       category,
       message: feedback.trim(),
       page_url: window.location.pathname,
     });
 
-    if (error) {
+    if (!success) {
       toast({
         title: "Error",
         description: "Failed to submit feedback. Please try again.",
@@ -79,15 +85,27 @@ const FeedbackButton = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          className="fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 shadow-lg bg-primary hover:bg-primary/90"
-          size="icon"
-          aria-label="Open feedback dialog"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-      </DialogTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <DialogTrigger asChild>
+            <TooltipTrigger asChild>
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.currentTarget.click(); }}
+                className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 rounded-full bg-orange-500 pl-3 pr-2 py-2 shadow-lg shadow-orange-500/30 hover:bg-orange-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-background"
+                aria-label="Feedback — أرسل رأيك أو اقتراحك"
+              >
+                <MessageCircle className="h-5 w-5 text-white shrink-0" aria-hidden />
+                <span className="text-sm font-semibold text-white whitespace-nowrap pr-1">Feedback</span>
+              </div>
+            </TooltipTrigger>
+          </DialogTrigger>
+          <TooltipContent side="left" className="font-medium">
+            أرسل رأيك أو اقتراحك — Send feedback
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

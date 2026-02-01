@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Calendar, Sparkles } from "lucide-react";
+import { Clock, Calendar, Sparkles, Users } from "lucide-react";
 
 interface TimeLeft {
   days: number;
@@ -87,60 +87,61 @@ const MatchCountdown = () => {
   };
 
   const TimeUnit = ({ value, label }: { value: number; label: string }) => (
-    <div className="flex flex-col items-center gap-2.5">
-      <div className="bg-white rounded-lg px-5 py-4 min-w-[75px] text-center shadow-[0_2px_4px_rgba(0,0,0,0.08)] border border-gray-100">
-        <span className="font-display text-3xl font-bold text-[#1a1a1a] tracking-tight leading-none block">
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative bg-background/95 dark:bg-background/98 backdrop-blur-sm rounded-lg px-4 py-3 min-w-[70px] text-center 
+        shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_4px_rgba(0,0,0,0.05)]
+        dark:shadow-[0_1px_2px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.12)]
+        border border-border/50 dark:border-border/60">
+        <span className="font-display text-2xl font-bold text-foreground tracking-tight leading-none block">
           {String(value).padStart(2, '0')}
         </span>
       </div>
-      <span className="text-xs text-[#999999] uppercase tracking-wider font-medium">
+      <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
         {label}
       </span>
     </div>
   );
 
   return (
-    <Card className="border-t-2 border-[#FF6B35]/30 shadow-lg shadow-gray-200/50 rounded-3xl overflow-hidden bg-gradient-to-br from-[#FFFBF8] via-[#FFFBF8] to-[#FFF8F0]">
-      <CardContent className="p-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+    <Card className="relative border-0 rounded-2xl overflow-hidden 
+      bg-card/50 backdrop-blur-sm
+      transition-all duration-300 ease-out
+      shadow-[0_1px_2px_rgba(0,0,0,0.02),0_2px_4px_rgba(0,0,0,0.03)]
+      dark:shadow-[0_1px_2px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.1)]
+      hover:shadow-[0_2px_4px_rgba(0,0,0,0.04),0_4px_8px_rgba(0,0,0,0.05)]
+      dark:hover:shadow-[0_2px_4px_rgba(0,0,0,0.12),0_4px_8px_rgba(0,0,0,0.14)]
+      border border-border/30">
+      <CardContent className="p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           {/* Left Section - Event Details */}
-          <div className="flex items-start gap-4 flex-1">
-            <div className="w-12 h-12 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0 shadow-sm">
-              <Clock className="h-6 w-6 text-white" strokeWidth={2} />
+          <div className="flex items-start gap-3 flex-1">
+            <div className="relative w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Clock className="h-5 w-5 text-primary" strokeWidth={2} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2.5">
-                <h3 className="font-display font-semibold text-xl text-[#1a1a1a]">Next Group Matching</h3>
-                <Sparkles className="h-4 w-4 text-[#FF6B35] flex-shrink-0" />
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="font-display font-medium text-base text-foreground">
+                  Next Group Matching
+                </h3>
               </div>
-              <div className="flex items-center gap-2 text-sm text-[#666666] mb-4">
-                <Calendar className="h-4 w-4 flex-shrink-0 text-[#999999]" />
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>{formatDate(nextThursday)}</span>
               </div>
-              <p className="text-sm text-[#666666] flex items-center gap-2">
-                <span className="text-[#FF6B35] text-base leading-none">•</span>
-                <span>New groups are formed every Thursday at 4 PM</span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Groups are created every Thursday at 4 PM based on shared interests and specialty.
               </p>
             </div>
           </div>
           
           {/* Right Section - Countdown Timer */}
-          <div className="flex items-center justify-center lg:justify-end gap-3">
+          <div className="flex items-center justify-center lg:justify-end gap-2">
             <TimeUnit value={timeLeft.days} label="DAYS" />
-            <div className="flex flex-col gap-1 self-start mt-5">
-              <span className="text-[#FF6B35] text-xs leading-none">•</span>
-              <span className="text-[#FF6B35] text-xs leading-none">•</span>
-            </div>
+            <span className="text-primary text-xs leading-none">:</span>
             <TimeUnit value={timeLeft.hours} label="HOURS" />
-            <div className="flex flex-col gap-1 self-start mt-5">
-              <span className="text-[#FF6B35] text-xs leading-none">•</span>
-              <span className="text-[#FF6B35] text-xs leading-none">•</span>
-            </div>
+            <span className="text-primary text-xs leading-none">:</span>
             <TimeUnit value={timeLeft.minutes} label="MINS" />
-            <div className="flex flex-col gap-1 self-start mt-5">
-              <span className="text-[#FF6B35] text-xs leading-none">•</span>
-              <span className="text-[#FF6B35] text-xs leading-none">•</span>
-            </div>
+            <span className="text-primary text-xs leading-none">:</span>
             <TimeUnit value={timeLeft.seconds} label="SECS" />
           </div>
         </div>

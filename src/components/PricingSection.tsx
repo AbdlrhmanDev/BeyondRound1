@@ -5,61 +5,46 @@ import { Link } from "react-router-dom";
 
 const plans = [
   {
-    name: "Trial",
+    name: "One-Time Trial",
     price: "€9.99",
-    period: "first month",
-    description: "Try BeyondRounds risk-free",
+    period: "one-time",
+    description: "Try BeyondRounds once — no recurring commitment",
     features: [
       "Weekly curated group matches",
       "Access to private group chat",
       "RoundsBot icebreaker prompts",
       "Basic compatibility matching",
-      "30-day money-back guarantee",
     ],
     popular: false,
-    cta: "Start Trial",
+    cta: "Start One-Time Trial",
   },
   {
-    name: "Founders",
+    name: "Monthly",
     price: "€14.99",
     period: "/month",
-    description: "Limited offer — lock in this rate forever",
+    description: "Full experience with monthly subscription",
     features: [
-      "Everything in Trial",
+      "Everything in One-Time Trial",
       "Priority in matching algorithm",
       "Expanded profile & interests",
-      "Exclusive Founders badge",
       "Early access to new features",
-    ],
-    popular: true,
-    cta: "Claim Founders Rate",
-  },
-  {
-    name: "Core",
-    price: "€29.99",
-    period: "/month",
-    description: "The full BeyondRounds experience",
-    features: [
-      "Everything in Founders",
-      "Advanced lifestyle compatibility",
-      "AI-powered activity suggestions",
-      "Match history & insights",
       "Priority customer support",
     ],
-    popular: false,
-    cta: "Join Core",
+    popular: true,
+    cta: "Subscribe Monthly",
   },
   {
     name: "Premium",
-    price: "€49.99",
+    price: "€29.99",
     period: "/month",
     description: "Maximum control & personalization",
     features: [
-      "Everything in Core",
+      "Everything in Monthly",
+      "Advanced lifestyle compatibility",
+      "AI-powered activity suggestions",
       "Filter by specialty, age & more",
       "Smaller group preference (2-3)",
       "Exclusive member events",
-      "Dedicated account manager",
     ],
     popular: false,
     cta: "Go Premium",
@@ -68,7 +53,7 @@ const plans = [
 
 const PricingSection = () => {
   return (
-    <section id="pricing" className="py-28 lg:py-36 bg-foreground relative overflow-hidden">
+    <section id="pricing" className="py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] rounded-full bg-primary/10 blur-[200px]" />
@@ -91,7 +76,7 @@ const PricingSection = () => {
         </div>
 
         {/* Pricing Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {plans.map((plan) => (
             <div
               key={plan.name}
@@ -162,16 +147,6 @@ const PricingSection = () => {
           ))}
         </div>
 
-        {/* Guarantee Note */}
-        <div className="mt-16 text-center">
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-primary-foreground/5 border border-primary-foreground/10">
-            <span className="text-2xl">🛡️</span>
-            <p className="text-primary-foreground/60">
-              All memberships backed by our{" "}
-              <span className="font-semibold text-primary-foreground">30-Day Friendship Guarantee</span>
-            </p>
-          </div>
-        </div>
       </div>
     </section>
   );

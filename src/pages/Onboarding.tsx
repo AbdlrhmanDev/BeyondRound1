@@ -3,12 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, ArrowLeft, Sparkles, Check, Mail, Lock, Eye, EyeOff, Camera, Upload, FileCheck } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles, Check, Mail, Lock, Eye, EyeOff, Camera, Upload, FileCheck, Zap, Star, Trophy } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { getProfile, updateProfile } from "@/services/profileService";
+import { getOnboardingPreferences, saveOnboardingPreferences, markOnboardingComplete } from "@/services/onboardingService";
+import { uploadAvatar, uploadLicense } from "@/services/storageService";
+import { createNotification } from "@/services/notificationService";
+import { LocationSelect } from "@/components/LocationSelect";
 
 interface ExtendedError extends Error {
   status?: number;
@@ -30,6 +35,7 @@ interface OnboardingQuestion {
   multiSelect?: boolean;
   inputType?: "personal-info" | "signup";
   skipable?: boolean;
+  isEssential?: boolean; // Mark essential questions for minimal onboarding flow
 }
 
 const questions: OnboardingQuestion[] = [
@@ -38,6 +44,7 @@ const questions: OnboardingQuestion[] = [
     id: "specialty",
     title: "What's your specialty?",
     subtitle: "Match with similar or complementary fields",
+    isEssential: true, // 30% of match score
     options: [
       { id: "General Practice", label: "General Practice", icon: "🏥" },
       { id: "Internal Medicine", label: "Internal Medicine", icon: "🩺" },
@@ -61,6 +68,7 @@ const questions: OnboardingQuestion[] = [
     id: "stage",
     title: "Where are you in your career?",
     subtitle: "Match with physicians at similar stages",
+    isEssential: true, // Important for filtering
     options: [
       { id: "medical_student", label: "Medical Student", icon: "📚" },
       { id: "resident_junior", label: "Resident (1st-2nd yr)", icon: "🩺" },
@@ -228,6 +236,7 @@ const questions: OnboardingQuestion[] = [
     id: "availability",
     title: "When are you free?",
     subtitle: "Match with compatible schedules",
+    isEssential: true, // 10% of match score
     multiSelect: true,
     options: [
       { id: "fri_evening", label: "Fri Evening", icon: "🌆" },
@@ -256,6 +265,7 @@ const questions: OnboardingQuestion[] = [
     id: "goals",
     title: "What are you looking for?",
     subtitle: "Define your friendship goals",
+    isEssential: true, // Part of Interests (40% of match score)
     multiSelect: true,
     options: [
       { id: "casual_friends", label: "Casual Friends", icon: "👋" },
@@ -318,6 +328,7 @@ const questions: OnboardingQuestion[] = [
     id: "personal_info",
     title: "Tell us about yourself",
     subtitle: "Personal information for your profile",
+    isEssential: true, // Location (20% of match score) + License verification
     inputType: "personal-info",
   },
   // SIGNUP - FINAL STEP
@@ -325,6 +336,7 @@ const questions: OnboardingQuestion[] = [
     id: "signup",
     title: "Create your account",
     subtitle: "Join BeyondRounds today",
+    isEssential: true, // Account creation required
     inputType: "signup",
   },
 ];
@@ -334,16 +346,24 @@ const years = Array.from({ length: 60 }, (_, i) => currentYear - 25 - i);
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
 });
 
 const Onboarding = () => {
   const { user } = useAuth();
-  const [filteredQuestions, setFilteredQuestions] = useState<OnboardingQuestion[]>(questions);
+  // Filter to show only essential questions (6 questions)
+  const essentialQuestions = questions.filter(q => q.isEssential === true);
+  const [filteredQuestions, setFilteredQuestions] = useState<OnboardingQuestion[]>(essentialQuestions);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [personalInfo, setPersonalInfo] = useState({
     name: "",
+    country: "",
+    state: "",
     city: "",
     neighborhood: "",
     gender: "",
@@ -355,7 +375,9 @@ const Onboarding = () => {
     email: "",
     password: "",
   });
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(true);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -380,13 +402,10 @@ const Onboarding = () => {
       }
 
       try {
-        const [profileRes, prefsRes] = await Promise.all([
-          supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-          supabase.from("onboarding_preferences").select("*").eq("user_id", user.id).maybeSingle(),
+        const [profile, prefs] = await Promise.all([
+          getProfile(user.id),
+          getOnboardingPreferences(user.id),
         ]);
-
-        const profile = profileRes.data;
-        const prefs = prefsRes.data;
 
         // Map existing data to answers
         const existingAnswers: Record<string, string[]> = {};
@@ -397,6 +416,8 @@ const Onboarding = () => {
           completedQuestionIds.add("personal_info");
           setPersonalInfo({
             name: profile.full_name || "",
+            country: profile.country || "",
+            state: profile.state || "",
             city: profile.city || "",
             neighborhood: profile.neighborhood || "",
             gender: profile.gender || "",
@@ -486,8 +507,11 @@ const Onboarding = () => {
 
         setAnswers(existingAnswers);
 
+        // Filter to show only essential questions, then filter out completed ones
+        const essentialQuestionsList = questions.filter(q => q.isEssential === true);
+        
         // Filter out completed questions and signup (if user is logged in)
-        const remainingQuestions = questions.filter((q) => {
+        const remainingQuestions = essentialQuestionsList.filter((q) => {
           // Skip signup step if user is already logged in
           if (q.inputType === "signup" && user) {
             return false;
@@ -503,7 +527,8 @@ const Onboarding = () => {
         setFilteredQuestions(remainingQuestions);
         setCurrentStep(0);
       } catch (error) {
-        console.error("Error loading existing data:", error);
+        const { handleError } = await import('@/utils/errorHandler');
+        handleError(error, 'Onboarding - Load Existing Data');
       } finally {
         setLoadingExisting(false);
       }
@@ -515,10 +540,32 @@ const Onboarding = () => {
   const question = filteredQuestions[currentStep];
   const currentAnswers = answers[question?.id] || [];
 
+  // Calculate progress and milestones
+  const totalSteps = filteredQuestions.length;
+  const progress = ((currentStep + 1) / totalSteps) * 100;
+  const remainingSteps = totalSteps - (currentStep + 1);
+  const estimatedMinutes = Math.ceil(remainingSteps * 0.5); // ~30 seconds per question
+  
+  // Milestone checkpoints
+  const milestones = [25, 50, 75, 100];
+  const currentMilestone = milestones.find(m => progress >= m) || 0;
+  const nextMilestone = milestones.find(m => progress < m);
+  
+  // Encouragement messages based on progress
+  const getEncouragementMessage = () => {
+    if (progress >= 100) return { text: "Almost there! 🎉", icon: Trophy };
+    if (progress >= 75) return { text: "You're doing great! Just a few more questions.", icon: Star };
+    if (progress >= 50) return { text: "Halfway there! Keep going! 💪", icon: Zap };
+    if (progress >= 25) return { text: "Great start! You're building your perfect network.", icon: Sparkles };
+    return { text: "Let's find your perfect matches!", icon: Sparkles };
+  };
+
+  const encouragement = getEncouragementMessage();
+
   // Early return if no question available
   if (loadingExisting) {
     return (
-      <div className="min-h-screen relative overflow-hidden bg-foreground flex items-center justify-center">
+      <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto mb-4" />
           <p className="text-primary-foreground/50">Loading your progress...</p>
@@ -529,7 +576,7 @@ const Onboarding = () => {
 
   if (!question || filteredQuestions.length === 0) {
     return (
-      <div className="min-h-screen relative overflow-hidden bg-foreground flex items-center justify-center">
+      <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background flex items-center justify-center">
         <div className="text-center">
           <h2 className="font-display text-2xl font-bold text-primary-foreground mb-2">All Done!</h2>
           <p className="text-primary-foreground/50 mb-4">You've completed all onboarding steps.</p>
@@ -599,6 +646,15 @@ const Onboarding = () => {
   const validateSignup = () => {
     try {
       signupSchema.parse(signupData);
+      const fieldErrors: { email?: string; password?: string } = {};
+      
+      // Check password confirmation
+      if (signupData.password !== confirmPassword) {
+        fieldErrors.password = "Passwords do not match";
+        setErrors(fieldErrors);
+        return false;
+      }
+      
       setErrors({});
       return true;
     } catch (error) {
@@ -624,7 +680,8 @@ const Onboarding = () => {
       const { error, data } = await signUp(signupData.email, signupData.password, personalInfo.name);
       
       if (error) {
-        console.error('Signup error details:', error);
+        const { logError } = await import('@/utils/logger');
+        logError('Signup error', 'Onboarding', error);
         
         // Handle specific error cases
         const extendedError = error as ExtendedError;
@@ -679,7 +736,8 @@ const Onboarding = () => {
       
       if (!newUser) {
         // User not authenticated yet - store data in localStorage to save after email confirmation
-        console.warn('⚠️ User not authenticated yet. Storing onboarding data in localStorage.');
+        const { logWarn } = await import('@/utils/logger');
+        logWarn('User not authenticated yet. Storing onboarding data in localStorage.', 'Onboarding');
         const onboardingData = {
           personalInfo,
           answers,
@@ -702,116 +760,88 @@ const Onboarding = () => {
       let licenseUrl = null;
       const saveErrors: string[] = [];
 
-      // Upload avatar if provided
+      // Upload avatar if provided using service
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${newUser.id}/avatar.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, avatarFile, { upsert: true });
-        
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-          avatarUrl = publicUrl;
+        const uploadedUrl = await uploadAvatar(newUser.id, avatarFile);
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl;
         } else {
-          console.error('Avatar upload error:', uploadError);
           saveErrors.push('Failed to upload avatar');
         }
       }
 
-      // Upload license if provided
+      // Upload license if provided using service
       if (licenseFile) {
-        const fileExt = licenseFile.name.split('.').pop();
-        const filePath = `${newUser.id}/license.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('licenses')
-          .upload(filePath, licenseFile, { upsert: true });
-        
-        if (!uploadError) {
-          // For private bucket, store the path (not public URL)
-          licenseUrl = filePath;
+        const uploadedPath = await uploadLicense(newUser.id, licenseFile);
+        if (uploadedPath) {
+          licenseUrl = uploadedPath;
         } else {
-          console.error('License upload error:', uploadError);
           saveErrors.push('Failed to upload license');
         }
       }
 
-      // Update profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          full_name: personalInfo.name || null,
-          city: personalInfo.city || null,
-          neighborhood: personalInfo.neighborhood || null,
-          gender: personalInfo.gender || null,
-          birth_year: personalInfo.birthYear ? parseInt(personalInfo.birthYear) : null,
-          gender_preference: personalInfo.genderPreference || null,
-          nationality: personalInfo.nationality || null,
-          avatar_url: avatarUrl,
-          license_url: licenseUrl,
-        })
-        .eq("user_id", newUser.id);
+      // Update profile using service
+      const profileUpdate = await updateProfile(newUser.id, {
+        full_name: personalInfo.name || null,
+        country: personalInfo.country || null,
+        state: personalInfo.state || null,
+        city: personalInfo.city || null,
+        neighborhood: personalInfo.neighborhood || null,
+        gender: personalInfo.gender || null,
+        birth_year: personalInfo.birthYear ? parseInt(personalInfo.birthYear) : null,
+        gender_preference: personalInfo.genderPreference || null,
+        nationality: personalInfo.nationality || null,
+        avatar_url: avatarUrl,
+        license_url: licenseUrl,
+      });
 
-      if (profileError) {
-        console.error('Profile update error:', profileError);
-        saveErrors.push(`Profile update failed: ${profileError.message}`);
+      if (!profileUpdate) {
+        const { logError } = await import('@/utils/logger');
+        logError('Profile update error', 'Onboarding');
+        saveErrors.push('Profile update failed');
       }
 
-      // Save preferences
-      const { error: prefsError } = await supabase.from("onboarding_preferences").upsert({
-        user_id: newUser.id,
+      // Save preferences using service
+      // Set default values for non-essential questions to ensure data integrity
+      // Map goals to social_style for match score calculation (goals are part of Interests 40%)
+      const socialStyleFromGoals = answers.goals || [];
+      
+      const prefsSuccess = await saveOnboardingPreferences(newUser.id, {
         specialty: answers.specialty?.[0] || null,
-        specialty_preference: answers.specialty_preference?.[0] || null,
+        specialty_preference: answers.specialty_preference?.[0] || "no_preference", // Default
         career_stage: answers.stage?.[0] || null,
-        sports: answers.sports || [],
-        activity_level: answers.activity_level?.[0] || null,
-        music_preferences: answers.music_preferences || [],
-        movie_preferences: answers.movie_preferences || [],
-        other_interests: answers.other_interests || [],
-        meeting_activities: answers.meeting_activities || [],
-        social_energy: answers.social_energy?.[0] || null,
-        conversation_style: answers.conversation_style?.[0] || null,
+        sports: answers.sports || [], // Default empty array
+        activity_level: answers.activity_level?.[0] || null, // Default null
+        music_preferences: answers.music_preferences || [], // Default empty array
+        movie_preferences: answers.movie_preferences || [], // Default empty array
+        other_interests: answers.other_interests || [], // Default empty array
+        meeting_activities: answers.meeting_activities || ["coffee", "dinner"], // Default common activities
+        social_energy: answers.social_energy?.[0] || "moderate", // Default moderate
+        conversation_style: answers.conversation_style?.[0] || "mix", // Default mix
         availability_slots: answers.availability || [],
-        meeting_frequency: answers.meeting_frequency?.[0] || null,
+        meeting_frequency: answers.meeting_frequency?.[0] || "flexible", // Default flexible
         goals: answers.goals || [],
-        dietary_preferences: answers.dietary_preferences || [],
-        life_stage: answers.life_stage?.[0] || null,
-        ideal_weekend: answers.ideal_weekend || [],
+        social_style: socialStyleFromGoals, // Map goals to social_style for match calculation
+        dietary_preferences: answers.dietary_preferences || [], // Default empty array
+        life_stage: answers.life_stage?.[0] || null, // Default null
+        ideal_weekend: answers.ideal_weekend || [], // Default empty array
         open_to_business: answers.goals?.includes("business") || false,
         completed_at: new Date().toISOString(),
       });
 
-      if (prefsError) {
-        console.error('Preferences save error:', prefsError);
-        saveErrors.push(`Preferences save failed: ${prefsError.message}`);
+      if (!prefsSuccess) {
+        const { logError } = await import('@/utils/logger');
+        logError('Preferences save error', 'Onboarding');
+        saveErrors.push('Preferences save failed');
       }
 
-      // Create welcome notification
-      // Note: notifications table exists in database but may not be in generated types
-      // If this fails, it's not critical - user can still proceed
-      // Using type assertion to bypass type checking since table exists but types may be outdated
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: notifError } = await (supabase as any).from("notifications").insert({
-          user_id: newUser.id,
-          type: "welcome",
-          title: "Welcome to BeyondRounds!",
-          message: "Complete your profile to start connecting with physicians who share your interests.",
-          link: "/profile",
-        });
-
-        if (notifError) {
-          console.error('Notification creation error:', notifError);
-          // Not critical, don't add to saveErrors
-        }
-      } catch (notifErr) {
-        console.warn('Could not create welcome notification (table may not be in types):', notifErr);
-        // Not critical, user can still proceed
-      }
+      // Create welcome notification using service
+      await createNotification(newUser.id, {
+        type: "welcome",
+        title: "Welcome to BeyondRounds!",
+        message: "Complete your profile to start connecting with physicians who share your interests.",
+        link: "/profile",
+      });
 
       // Show errors if any
       if (saveErrors.length > 0) {
@@ -844,29 +874,37 @@ const Onboarding = () => {
     
     setIsLoading(true);
     try {
-      // Update preferences with current answers
-      await supabase.from("onboarding_preferences").upsert({
-        user_id: user.id,
+      // Update preferences with current answers using service
+      // Set default values for non-essential questions to ensure data integrity
+      // Map goals to social_style for match score calculation (goals are part of Interests 40%)
+      const socialStyleFromGoals = answers.goals || [];
+      
+      const success = await saveOnboardingPreferences(user.id, {
         specialty: answers.specialty?.[0] || null,
-        specialty_preference: answers.specialty_preference?.[0] || null,
+        specialty_preference: answers.specialty_preference?.[0] || "no_preference", // Default
         career_stage: answers.stage?.[0] || null,
-        sports: answers.sports || [],
-        activity_level: answers.activity_level?.[0] || null,
-        music_preferences: answers.music_preferences || [],
-        movie_preferences: answers.movie_preferences || [],
-        other_interests: answers.other_interests || [],
-        meeting_activities: answers.meeting_activities || [],
-        social_energy: answers.social_energy?.[0] || null,
-        conversation_style: answers.conversation_style?.[0] || null,
+        sports: answers.sports || [], // Default empty array
+        activity_level: answers.activity_level?.[0] || null, // Default null
+        music_preferences: answers.music_preferences || [], // Default empty array
+        movie_preferences: answers.movie_preferences || [], // Default empty array
+        other_interests: answers.other_interests || [], // Default empty array
+        meeting_activities: answers.meeting_activities || ["coffee", "dinner"], // Default common activities
+        social_energy: answers.social_energy?.[0] || "moderate", // Default moderate
+        conversation_style: answers.conversation_style?.[0] || "mix", // Default mix
         availability_slots: answers.availability || [],
-        meeting_frequency: answers.meeting_frequency?.[0] || null,
+        meeting_frequency: answers.meeting_frequency?.[0] || "flexible", // Default flexible
         goals: answers.goals || [],
-        dietary_preferences: answers.dietary_preferences || [],
-        life_stage: answers.life_stage?.[0] || null,
-        ideal_weekend: answers.ideal_weekend || [],
+        social_style: socialStyleFromGoals, // Map goals to social_style for match calculation
+        dietary_preferences: answers.dietary_preferences || [], // Default empty array
+        life_stage: answers.life_stage?.[0] || null, // Default null
+        ideal_weekend: answers.ideal_weekend || [], // Default empty array
         open_to_business: answers.goals?.includes("business") || false,
         completed_at: new Date().toISOString(),
       });
+
+      if (!success) {
+        throw new Error("Failed to save preferences");
+      }
 
       toast({
         title: "Profile Updated!",
@@ -887,6 +925,18 @@ const Onboarding = () => {
 
   const handleNext = () => {
     if (!question) return;
+    
+    // Check for milestone celebration
+    const nextProgress = ((currentStep + 2) / filteredQuestions.length) * 100;
+    const milestoneReached = milestones.find(m => nextProgress >= m && progress < m);
+    
+    if (milestoneReached && milestoneReached !== 100) {
+      toast({
+        title: "Great progress! 🎉",
+        description: `You've completed ${milestoneReached}% of your profile. Keep going!`,
+        duration: 3000,
+      });
+    }
     
     if (question.inputType === "signup") {
       handleCreateAccount();
@@ -916,17 +966,36 @@ const Onboarding = () => {
     if (!question) return false;
     
     if (question.inputType === "personal-info") {
-      return personalInfo.name.trim().length > 0 && personalInfo.city.trim().length > 0 && licenseFile !== null;
+      return personalInfo.name.trim().length > 0 && 
+             personalInfo.country.trim().length > 0 &&
+             personalInfo.state.trim().length > 0 &&
+             personalInfo.city.trim().length > 0 &&
+             personalInfo.gender.trim().length > 0 &&
+             personalInfo.birthYear.trim().length > 0 &&
+             personalInfo.genderPreference.trim().length > 0 &&
+             personalInfo.nationality.trim().length > 0 &&
+             licenseFile !== null;
     }
     if (question.inputType === "signup") {
-      return signupData.email.trim().length > 0 && signupData.password.length >= 6;
+      const hasLowercase = /[a-z]/.test(signupData.password);
+      const hasUppercase = /[A-Z]/.test(signupData.password);
+      const hasNumber = /[0-9]/.test(signupData.password);
+      const minLength = signupData.password.length >= 8;
+      const passwordsMatch = signupData.password === confirmPassword && confirmPassword.length > 0;
+      
+      return signupData.email.trim().length > 0 && 
+             minLength && 
+             hasLowercase && 
+             hasUppercase && 
+             hasNumber && 
+             passwordsMatch;
     }
     if (question.skipable) return true;
     return currentAnswers.length > 0;
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-foreground">
+    <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div 
@@ -967,17 +1036,60 @@ const Onboarding = () => {
       {/* Main Content */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-20">
         <div className="w-full max-w-xl">
-          {/* Progress */}
+          {/* Enhanced Progress */}
           <div className="mb-8">
-            <div className="flex justify-between text-sm text-primary-foreground/50 mb-2">
-              <span>Step {currentStep + 1} of {filteredQuestions.length}</span>
-              <span>{Math.round(((currentStep + 1) / filteredQuestions.length) * 100)}%</span>
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const IconComponent = encouragement.icon;
+                    return <IconComponent size={16} className="text-primary" />;
+                  })()}
+                  <span className="text-sm font-medium text-primary-foreground/80">{encouragement.text}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-semibold text-primary-foreground">{Math.round(progress)}%</div>
+                {remainingSteps > 0 && (
+                  <div className="text-xs text-primary-foreground/50">
+                    ~{estimatedMinutes} min left
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="h-1.5 bg-primary-foreground/10 rounded-full overflow-hidden">
+            
+            {/* Progress bar with milestones */}
+            <div className="relative h-2 bg-primary-foreground/10 rounded-full overflow-hidden mb-2">
               <div 
-                className="h-full bg-gradient-gold rounded-full transition-all duration-500"
-                style={{ width: `${((currentStep + 1) / filteredQuestions.length) * 100}%` }}
-              />
+                className="h-full bg-gradient-gold rounded-full transition-all duration-700 ease-out relative"
+                style={{ width: `${progress}%` }}
+              >
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+              </div>
+              
+              {/* Milestone markers */}
+              {milestones.map((milestone) => (
+                <div
+                  key={milestone}
+                  className={`absolute top-0 w-0.5 h-full transition-all duration-300 ${
+                    progress >= milestone 
+                      ? 'bg-primary' 
+                      : 'bg-primary-foreground/20'
+                  }`}
+                  style={{ left: `${milestone}%` }}
+                />
+              ))}
+            </div>
+            
+            {/* Step counter */}
+            <div className="flex justify-between items-center text-xs text-primary-foreground/50">
+              <span>Step {currentStep + 1} of {totalSteps}</span>
+              {remainingSteps > 0 && (
+                <span className="flex items-center gap-1">
+                  <span>{remainingSteps} more to go</span>
+                </span>
+              )}
             </div>
           </div>
 
@@ -995,7 +1107,7 @@ const Onboarding = () => {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   {/* Profile Photo */}
                   <div>
-                    <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">Profile Photo</label>
+                    <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Profile Photo</label>
                     <input
                       ref={avatarInputRef}
                       type="file"
@@ -1028,7 +1140,7 @@ const Onboarding = () => {
 
                   {/* Medical License */}
                   <div>
-                    <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">Medical License *</label>
+                    <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Medical License *</label>
                     <input
                       ref={licenseInputRef}
                       type="file"
@@ -1040,7 +1152,7 @@ const Onboarding = () => {
                       type="button"
                       onClick={() => licenseInputRef.current?.click()}
                       aria-label="Upload medical license"
-                      className={`w-full aspect-square rounded-2xl border-2 border-dashed ${licenseFile ? 'border-green-500/50 bg-green-500/10' : 'border-primary-foreground/20 hover:border-primary/50 bg-background/10'} flex flex-col items-center justify-center transition-all overflow-hidden`}
+                      className={`w-full aspect-square rounded-2xl border-2 border-dashed ${licenseFile ? 'border-accent/50 bg-accent/10' : 'border-primary-foreground/20 hover:border-primary/50 bg-background/10'} flex flex-col items-center justify-center transition-all overflow-hidden`}
                     >
                       {licensePreview ? (
                         <img 
@@ -1052,8 +1164,8 @@ const Onboarding = () => {
                         />
                       ) : licenseFile ? (
                         <>
-                          <FileCheck className="h-8 w-8 text-green-500 mb-2" />
-                          <span className="text-xs text-green-500 font-medium">License Added</span>
+                          <FileCheck className="h-8 w-8 text-accent mb-2" />
+                          <span className="text-xs text-accent font-medium">License Added</span>
                           <span className="text-xs text-primary-foreground/40 mt-1 px-2 truncate max-w-full">{licenseFile.name}</span>
                         </>
                       ) : (
@@ -1067,48 +1179,36 @@ const Onboarding = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">Full Name *</label>
+                  <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Full Name *</label>
                   <Input
                     value={personalInfo.name}
                     onChange={(e) => handlePersonalInfoChange("name", e.target.value)}
                     placeholder="Dr. Jane Smith"
-                    className="h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl"
+                    className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl ${
+                      !personalInfo.name.trim() ? 'border-primary/50' : ''
+                    }`}
                   />
                 </div>
+                <LocationSelect
+                  country={personalInfo.country}
+                  state={personalInfo.state}
+                  city={personalInfo.city}
+                  neighborhood={personalInfo.neighborhood}
+                  nationality={personalInfo.nationality}
+                  onCountryChange={(value) => handlePersonalInfoChange("country", value)}
+                  onStateChange={(value) => handlePersonalInfoChange("state", value)}
+                  onCityChange={(value) => handlePersonalInfoChange("city", value)}
+                  onNeighborhoodChange={(value) => handlePersonalInfoChange("neighborhood", value)}
+                  onNationalityChange={(value) => handlePersonalInfoChange("nationality", value)}
+                  className="w-full"
+                />
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">City *</label>
-                    <Input
-                      value={personalInfo.city}
-                      onChange={(e) => handlePersonalInfoChange("city", e.target.value)}
-                      placeholder="Berlin"
-                      className="h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">Neighborhood</label>
-                    <Input
-                      value={personalInfo.neighborhood}
-                      onChange={(e) => handlePersonalInfoChange("neighborhood", e.target.value)}
-                      placeholder="Mitte"
-                      className="h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">Nationality</label>
-                  <Input
-                    value={personalInfo.nationality}
-                    onChange={(e) => handlePersonalInfoChange("nationality", e.target.value)}
-                    placeholder="German"
-                    className="h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">Gender</label>
+                    <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Gender *</label>
                     <Select value={personalInfo.gender} onValueChange={(value) => handlePersonalInfoChange("gender", value)}>
-                      <SelectTrigger className="h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl">
+                      <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
+                        !personalInfo.gender ? 'border-primary/50' : ''
+                      }`}>
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1120,9 +1220,11 @@ const Onboarding = () => {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">Birth Year</label>
+                    <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Birth Year *</label>
                     <Select value={personalInfo.birthYear} onValueChange={(value) => handlePersonalInfoChange("birthYear", value)}>
-                      <SelectTrigger className="h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl">
+                      <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
+                        !personalInfo.birthYear ? 'border-primary/50' : ''
+                      }`}>
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1134,9 +1236,11 @@ const Onboarding = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-primary-foreground/70 mb-2 block">Gender preference for groups</label>
+                  <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Gender preference for groups *</label>
                   <Select value={personalInfo.genderPreference} onValueChange={(value) => handlePersonalInfoChange("genderPreference", value)}>
-                    <SelectTrigger className="h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl">
+                      <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
+                        !personalInfo.genderPreference ? 'border-primary/50' : ''
+                      }`}>
                       <SelectValue placeholder="Select preference" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1160,7 +1264,7 @@ const Onboarding = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-primary-foreground/80 text-sm font-medium">
+                  <Label htmlFor="email" className="text-primary-foreground/80 text-base font-medium">
                     Email Address
                   </Label>
                   <div className="relative group">
@@ -1172,36 +1276,164 @@ const Onboarding = () => {
                       placeholder="doctor@hospital.com"
                       value={signupData.email}
                       onChange={handleSignupChange}
-                      className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-red-500' : ''}`}
+                      className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
                     />
                   </div>
-                  {errors.email && <p className="text-red-400 text-xs">{errors.email}</p>}
+                  {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-primary-foreground/80 text-sm font-medium">
+                  <Label htmlFor="password" className="text-primary-foreground/80 text-base font-medium">
                     Password
                   </Label>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
+                    {(() => {
+                      const hasLowercase = /[a-z]/.test(signupData.password);
+                      const hasUppercase = /[A-Z]/.test(signupData.password);
+                      const hasNumber = /[0-9]/.test(signupData.password);
+                      const minLength = signupData.password.length >= 8;
+                      const isValid = hasLowercase && hasUppercase && hasNumber && minLength;
+                      
+                      return (
+                        <>
+                          <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
+                            isValid 
+                              ? 'text-accent' 
+                              : signupData.password.length > 0 
+                              ? 'text-primary' 
+                              : 'text-primary-foreground/40 group-focus-within:text-primary'
+                          }`} size={18} />
+                          <Input
+                            id="password"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Enter your password"
+                            value={signupData.password}
+                            onChange={handleSignupChange}
+                            className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:ring-primary/20 transition-all ${
+                              isValid 
+                                ? 'border-accent/85 focus:border-accent/85' 
+                                : signupData.password.length > 0 
+                                ? 'border-primary/50 focus:border-primary/70' 
+                                : errors.password 
+                                ? 'border-destructive' 
+                                : 'focus:border-primary'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
+                              isValid 
+                                ? 'text-accent hover:text-accent/80' 
+                                : signupData.password.length > 0 
+                                ? 'text-primary hover:text-primary/80' 
+                                : 'text-primary-foreground/40 hover:text-primary-foreground'
+                            }`}
+                          >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {signupData.password.length > 0 && (
+                    <div className="space-y-1.5 pt-2">
+                      {(() => {
+                        const hasLowercase = /[a-z]/.test(signupData.password);
+                        const hasUppercase = /[A-Z]/.test(signupData.password);
+                        const hasNumber = /[0-9]/.test(signupData.password);
+                        const minLength = signupData.password.length >= 8;
+                        
+                        return (
+                          <>
+                            <div className={`flex items-center gap-2 text-xs ${
+                              hasLowercase ? 'text-accent' : 'text-primary/70'
+                            }`}>
+                              <span>{hasLowercase ? '✓' : '○'}</span>
+                              <span>At least one lowercase letter</span>
+                            </div>
+                            <div className={`flex items-center gap-2 text-xs ${
+                              minLength ? 'text-accent' : 'text-primary/70'
+                            }`}>
+                              <span>{minLength ? '✓' : '○'}</span>
+                              <span>Minimum 8 characters</span>
+                            </div>
+                            <div className={`flex items-center gap-2 text-xs ${
+                              hasUppercase ? 'text-accent' : 'text-primary/70'
+                            }`}>
+                              <span>{hasUppercase ? '✓' : '○'}</span>
+                              <span>At least one uppercase letter</span>
+                            </div>
+                            <div className={`flex items-center gap-2 text-xs ${
+                              hasNumber ? 'text-accent' : 'text-primary/70'
+                            }`}>
+                              <span>{hasNumber ? '✓' : '○'}</span>
+                              <span>At least one number</span>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  {errors.password && <p className="text-destructive text-xs">{errors.password}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-primary-foreground/80 text-base font-medium">
+                    Confirm Password
+                  </Label>
+                  <div className="relative group">
+                    <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
+                      confirmPassword && signupData.password === confirmPassword
+                        ? 'text-accent' 
+                        : confirmPassword && signupData.password !== confirmPassword && signupData.password.length > 0
+                        ? 'text-muted-foreground' 
+                        : confirmPassword && signupData.password !== confirmPassword
+                        ? 'text-destructive' 
+                        : 'text-primary-foreground/40 group-focus-within:text-primary'
+                    }`} size={18} />
                     <Input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Min. 6 characters"
-                      value={signupData.password}
-                      onChange={handleSignupChange}
-                      className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.password ? 'border-red-500' : ''}`}
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:ring-primary/20 transition-all ${
+                        confirmPassword && signupData.password === confirmPassword
+                          ? 'border-accent/85 focus:border-accent/85' 
+                          : confirmPassword && signupData.password !== confirmPassword && signupData.password.length > 0
+                          ? 'border-primary/50 focus:border-primary/70' 
+                          : confirmPassword && signupData.password !== confirmPassword
+                          ? 'border-destructive focus:border-destructive' 
+                          : 'focus:border-primary'
+                      }`}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-primary-foreground/40 hover:text-primary-foreground transition-colors"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
+                        confirmPassword && signupData.password === confirmPassword
+                          ? 'text-accent hover:text-accent/80' 
+                          : confirmPassword && signupData.password !== confirmPassword && signupData.password.length > 0
+                          ? 'text-muted-foreground hover:text-muted-foreground/80' 
+                          : confirmPassword && signupData.password !== confirmPassword
+                          ? 'text-destructive hover:text-destructive/80' 
+                          : 'text-primary-foreground/40 hover:text-primary-foreground'
+                      }`}
                     >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
-                  {errors.password && <p className="text-red-400 text-xs">{errors.password}</p>}
+                  {confirmPassword && signupData.password !== confirmPassword && (
+                    <p className={`text-xs ${signupData.password.length > 0 ? 'text-primary/80' : 'text-destructive'}`}>
+                      {signupData.password.length > 0 ? 'Passwords do not match yet' : 'Passwords do not match'}
+                    </p>
+                  )}
+                  {confirmPassword && signupData.password === confirmPassword && (
+                    <p className="text-accent text-xs">✓ Passwords match</p>
+                  )}
                 </div>
 
                 <p className="text-primary-foreground/40 text-xs text-center pt-2">
@@ -1226,16 +1458,16 @@ const Onboarding = () => {
                       aria-pressed={isSelected}
                       className={`relative p-3 rounded-xl border-2 text-left transition-all duration-300 ${
                         isSelected
-                          ? 'border-primary bg-primary/10 shadow-glow-sm'
-                          : 'border-primary-foreground/10 bg-background/5 hover:border-primary-foreground/30 hover:bg-background/10'
+                          ? 'border-primary bg-primary/10 shadow-glow-sm scale-[1.02]'
+                          : 'border-primary-foreground/10 bg-background/5 hover:border-primary-foreground/30 hover:bg-background/10 hover:scale-[1.01]'
                       }`}
                     >
                       {isSelected && (
-                        <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-gradient-gold flex items-center justify-center">
+                        <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-gradient-gold flex items-center justify-center animate-fade-in">
                           <Check size={10} className="text-primary-foreground" />
                         </div>
                       )}
-                      <span className="text-lg block mb-0.5">{option.icon}</span>
+                      <span className="text-lg block mb-0.5 transition-transform duration-200">{option.icon}</span>
                       <span className={`font-medium text-xs ${isSelected ? 'text-primary-foreground' : 'text-primary-foreground/70'}`}>
                         {option.label}
                       </span>
@@ -1259,7 +1491,7 @@ const Onboarding = () => {
               <Button 
                 onClick={handleNext}
                 disabled={!canProceed() || isLoading}
-                className={`h-14 font-semibold group disabled:opacity-50 ${question.skipable ? 'flex-1' : 'w-full'}`}
+                className={`h-14 font-semibold group disabled:opacity-50 shadow-glow-sm hover:shadow-glow transition-all ${question.skipable ? 'flex-1' : 'w-full'}`}
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
@@ -1283,9 +1515,16 @@ const Onboarding = () => {
             )}
           </div>
 
+          {/* Value reminder */}
           <div className="mt-8 flex items-center justify-center gap-2 text-primary-foreground/40 text-sm">
             <Sparkles size={14} className="text-primary" />
-            <span>Your answers help us find better matches</span>
+            <span>
+              {progress >= 75 
+                ? "Almost done! Your perfect matches are waiting."
+                : progress >= 50
+                ? "You're building your ideal network of physicians."
+                : "Your answers help us find better matches"}
+            </span>
           </div>
         </div>
       </div>

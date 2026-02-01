@@ -41,8 +41,8 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    /* Accent - Teal for contrast */
-    --accent: 172 66% 50%;
+    /* Accent - Muted medical green for calm validation */
+    --accent: 165 35% 50%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive */
@@ -75,6 +75,9 @@
     --cream-dark: 40 25% 93%;
     --teal: 172 66% 50%;
     --sage: 145 30% 90%;
+    /* Medical muted green for validation */
+    --success: 165 35% 50%;
+    --success-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -96,7 +99,7 @@
     --muted: 240 5% 15%;
     --muted-foreground: 240 5% 65%;
 
-    --accent: 172 66% 45%;
+    --accent: 165 35% 45%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 50%;
@@ -161,6 +164,10 @@
     @apply bg-foreground/90 backdrop-blur-xl;
   }
 
+  .dark .glass-dark {
+    @apply bg-background/90;
+  }
+
   /* Modern card styles */
   .card-modern {
     @apply bg-card rounded-2xl border border-border/50 shadow-lg shadow-foreground/5 transition-all duration-300;
@@ -170,8 +177,20 @@
     @apply shadow-xl shadow-foreground/10 -translate-y-1 border-border;
   }
 
+  .dark .card-modern {
+    @apply shadow-black/20;
+  }
+
+  .dark .card-modern:hover {
+    @apply shadow-black/30;
+  }
+
   .card-elevated {
     @apply bg-card rounded-3xl border-0 shadow-2xl shadow-foreground/10;
+  }
+
+  .dark .card-elevated {
+    @apply shadow-black/25;
   }
 
   .card-glass {

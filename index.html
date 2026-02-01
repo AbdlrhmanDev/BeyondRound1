@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>BeyondRounds | Where Doctors Become Friends</title>
     <meta name="description" content="BeyondRounds is a premium social club exclusively for verified doctors. Weekly matches with 2-3 doctors who share your interests beyond medicine. Find your tribe today." />
     <meta name="author" content="BeyondRounds" />
@@ -22,20 +23,60 @@
     <!-- Preload critical resources for faster FCP and LCP -->
     <link rel="modulepreload" href="/src/main.tsx" />
 
+    <meta property="og:url" content="https://beyond-round1.vercel.app/" />
     <meta property="og:title" content="BeyondRounds | Where Doctors Become Friends" />
     <meta property="og:description" content="Finally, a place to make genuine friendships with people who understand your world. Weekly matches with doctors who share your interests." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:image" content="https://beyond-round1.vercel.app/opengraph-image.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@BeyondRounds" />
     <meta name="twitter:title" content="BeyondRounds | Where Doctors Become Friends" />
     <meta name="twitter:description" content="A premium social club exclusively for verified doctors. Find your tribe today." />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:image" content="https://beyond-round1.vercel.app/opengraph-image.png" />
   </head>
 
   <body>
     <div id="root"></div>
+    <script>
+      // Suppress browser extension errors early, before React loads
+      (function() {
+        const originalError = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+          const errorStr = String(message || '');
+          if (errorStr.toLowerCase().includes('could not establish connection') ||
+              errorStr.toLowerCase().includes('receiving end does not exist') ||
+              errorStr.toLowerCase().includes('extension context invalidated') ||
+              errorStr.toLowerCase().includes('message channel closed') ||
+              errorStr.toLowerCase().includes('asynchronous response')) {
+            return true; // Suppress the error
+          }
+          if (originalError) {
+            return originalError.call(this, message, source, lineno, colno, error);
+          }
+          return false;
+        };
+
+        window.addEventListener('unhandledrejection', function(event) {
+          const errorMessage = event.reason?.message || String(event.reason || '');
+          const errorStr = String(event.reason || '');
+          if (errorMessage.toLowerCase().includes('could not establish connection') ||
+              errorMessage.toLowerCase().includes('receiving end does not exist') ||
+              errorMessage.toLowerCase().includes('extension context invalidated') ||
+              errorMessage.toLowerCase().includes('message channel closed') ||
+              errorMessage.toLowerCase().includes('asynchronous response') ||
+              errorStr.toLowerCase().includes('could not establish connection') ||
+              errorStr.toLowerCase().includes('receiving end does not exist') ||
+              errorStr.toLowerCase().includes('extension context invalidated') ||
+              errorStr.toLowerCase().includes('message channel closed') ||
+              errorStr.toLowerCase().includes('asynchronous response')) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+          }
+        }, true);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Defer non-critical scripts -->
     <script>

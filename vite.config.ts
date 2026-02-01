@@ -5,89 +5,62 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-  },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  base: "/",
+  plugins: [
+    react(),
+    ...(mode === "development" ? [componentTagger()] : []),
+  ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      // Force a single React instance (prevents hooks dispatcher null)
-      react: path.resolve(__dirname, "./node_modules/react"),
-      "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
-      "react-dom/client": path.resolve(__dirname, "./node_modules/react-dom/client"),
+      "@": path.resolve(__dirname, "src"),
+      react: path.resolve(__dirname, "node_modules/react"),
+      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
+      "react-dom/client": path.resolve(__dirname, "node_modules/react-dom/client"),
     },
-    // Prevent duplicate React instances (can break hooks)
     dedupe: ["react", "react-dom"],
   },
+  server: {
+    host: true,
+    port: 8080,
+    strictPort: false,
+  },
   build: {
-    minify: "esbuild", // Faster than terser and doesn't require installation
-    minifySyntax: true,
-    minifyIdentifiers: true,
-    minifyWhitespace: true,
-    // Remove console statements
-    esbuild: {
-      drop: ["console", "debugger"],
-      legalComments: "none",
-      minifyIdentifiers: true,
-      minifySyntax: true,
-      minifyWhitespace: true,
-    },
-    // Optimize asset inlining - inline small assets to reduce requests
-    assetsInlineLimit: 4096, // Inline assets smaller than 4kb
-    // Report compressed size
+    target: "es2020",
+    minify: "esbuild",
+    sourcemap: false,
     reportCompressedSize: true,
-    // Reduce chunk size for better loading
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 500,
+    assetsInlineLimit: 4096,
+    cssCodeSplit: true,
+    cssMinify: true,
+    modulePreload: {
+      polyfill: false,
+    },
     rollupOptions: {
       output: {
-        // Optimize chunk file names
         chunkFileNames: "assets/js/[name]-[hash].js",
         entryFileNames: "assets/js/[name]-[hash].js",
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name?.endsWith(".css")) {
-            return "assets/css/[name]-[hash][extname]";
-          }
-          if (/\.(png|jpe?g|svg|gif|webp|avif)$/.test(assetInfo.name || "")) {
+          const name = assetInfo.name ?? "";
+          if (name.endsWith(".css")) return "assets/css/[name]-[hash][extname]";
+          if (/\.(png|jpe?g|svg|gif|webp|avif|ico)$/i.test(name)) {
             return "assets/images/[name]-[hash][extname]";
           }
           return "assets/[name]-[hash][extname]";
         },
-        // Better code splitting - smaller chunks for faster loading
-        experimentalMinChunkSize: 20000, // 20KB minimum chunk size
-        // Manual chunks for better caching
         manualChunks: (id) => {
-          // Split vendor code for better caching
-          if (id.includes("node_modules")) {
-            // React core - most critical, load first
-            if (id.includes("react") || id.includes("react-dom") || id.includes("react-router")) {
-              return "react-vendor";
-            }
-            // Large UI libraries
-            if (id.includes("@radix-ui")) {
-              return "radix-ui-vendor";
-            }
-            // Form libraries
-            if (id.includes("react-hook-form") || id.includes("@hookform") || id.includes("zod")) {
-              return "form-vendor";
-            }
-            // Query library
-            if (id.includes("@tanstack/react-query")) {
-              return "query-vendor";
-            }
-            // Backend SDKs
-            if (id.includes("@supabase")) {
-              return "supabase-vendor";
-            }
-            if (id.includes("@stripe")) {
-              return "stripe-vendor";
-            }
-            // Chart library
-            if (id.includes("recharts")) {
-              return "chart-vendor";
-            }
+          if (!id.includes("node_modules")) return;
+          if (id.includes("@supabase")) return "supabase";
+          if (id.includes("@stripe")) return "stripe";
+          if (id.includes("@radix-ui")) return "radix-ui";
+          if (id.includes("react-dom") || id.includes("react-router") || id.includes("/react/")) {
+            return "react";
           }
+          if (id.includes("react-hook-form") || id.includes("@hookform") || id.includes("zod")) {
+            return "form";
+          }
+          if (id.includes("@tanstack/react-query")) return "query";
+          if (id.includes("recharts")) return "recharts";
         },
       },
       treeshake: {
@@ -96,21 +69,14 @@ export default defineConfig(({ mode }) => ({
         tryCatchDeoptimization: false,
       },
     },
-    // Increase chunk size warning limit
-    chunkSizeWarningLimit: 1000,
-    // Disable source maps for production (smaller bundle)
-    sourcemap: false,
-    // Optimize CSS
-    cssCodeSplit: true,
-    cssMinify: true,
-    // Target modern browsers for smaller output
-    target: "esnext",
-    // Enable module preload
-    modulePreload: {
-      polyfill: false,
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
+    esbuild: {
+      drop: mode === "production" ? ["console", "debugger"] : [],
+      legalComments: "none",
     },
   },
-  // Optimize dependencies
   optimizeDeps: {
     include: [
       "react",
@@ -119,12 +85,9 @@ export default defineConfig(({ mode }) => ({
       "@tanstack/react-query",
       "@supabase/supabase-js",
     ],
-    exclude: [
-      // Exclude large libraries that should be lazy loaded
-      "recharts",
-    ],
+    exclude: ["recharts"],
     esbuildOptions: {
-      target: "esnext",
+      target: "es2020",
     },
   },
 }));

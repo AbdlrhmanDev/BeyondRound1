@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,23 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import UserEditDialog from "@/components/admin/UserEditDialog";
 import UserBanDialog from "@/components/admin/UserBanDialog";
 import { logAdminAction } from "@/lib/auditLog";
-
-interface UserProfile {
-  id: string;
-  user_id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  city: string | null;
-  neighborhood: string | null;
-  gender: string | null;
-  created_at: string;
-  status: string;
-  banned_at: string | null;
-  ban_reason: string | null;
-  specialty?: string | null;
-  career_stage?: string | null;
-  completed_at?: string | null;
-}
+import { getAllUsers, banUser, unbanUser, updateUserProfile, UserProfile } from "@/services/adminService";
 
 const AdminUsers = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -40,36 +23,8 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     setIsLoading(true);
-    
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (profilesError || !profiles) {
-      setIsLoading(false);
-      return;
-    }
-
-    const { data: preferences } = await supabase
-      .from("onboarding_preferences")
-      .select("user_id, specialty, career_stage, completed_at");
-
-    const prefsMap = new Map(
-      (preferences || []).map((p) => [p.user_id, p])
-    );
-
-    const enrichedUsers: UserProfile[] = profiles.map((profile) => {
-      const prefs = prefsMap.get(profile.user_id);
-      return {
-        ...profile,
-        specialty: prefs?.specialty || null,
-        career_stage: prefs?.career_stage || null,
-        completed_at: prefs?.completed_at || null,
-      };
-    });
-
-    setUsers(enrichedUsers);
+    const usersData = await getAllUsers();
+    setUsers(usersData);
     setIsLoading(false);
   };
 
@@ -80,12 +35,9 @@ const AdminUsers = () => {
   const handleUnban = async (user: UserProfile) => {
     const oldValues = { status: user.status, banned_at: user.banned_at, ban_reason: user.ban_reason };
     
-    const { error } = await supabase
-      .from("profiles")
-      .update({ status: "active", banned_at: null, ban_reason: null })
-      .eq("id", user.id);
+    const success = await unbanUser(user.id);
 
-    if (error) {
+    if (!success) {
       toast({ title: "Error", description: "Failed to unban user", variant: "destructive" });
     } else {
       await logAdminAction({

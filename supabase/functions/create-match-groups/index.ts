@@ -285,8 +285,29 @@ serve(async (req) => {
             .eq("group_id", group.id);
 
           if (members && members.length < 5) {
-            targetGroup = group.id;
-            break;
+            // التحقق من وجود تطابق بين المستخدم وأعضاء المجموعة
+            const memberIds = members.map((m) => m.user_id);
+            let hasMatch = false;
+            
+            for (const memberId of memberIds) {
+              const { data: match } = await supabase
+                .from("matches")
+                .select("id")
+                .or(
+                  `and(user_id.eq.${user.user_id},matched_user_id.eq.${memberId}),and(user_id.eq.${memberId},matched_user_id.eq.${user.user_id})`
+                )
+                .maybeSingle();
+              
+              if (match) {
+                hasMatch = true;
+                break;
+              }
+            }
+            
+            if (hasMatch) {
+              targetGroup = group.id;
+              break;
+            }
           }
         }
 
@@ -306,8 +327,29 @@ serve(async (req) => {
               .eq("group_id", group.id);
 
             if (members && members.length < 5) {
-              targetGroup = group.id;
-              break;
+              // التحقق من وجود تطابق بين المستخدم وأعضاء المجموعة
+              const memberIds = members.map((m) => m.user_id);
+              let hasMatch = false;
+              
+              for (const memberId of memberIds) {
+                const { data: match } = await supabase
+                  .from("matches")
+                  .select("id")
+                  .or(
+                    `and(user_id.eq.${user.user_id},matched_user_id.eq.${memberId}),and(user_id.eq.${memberId},matched_user_id.eq.${user.user_id})`
+                  )
+                  .maybeSingle();
+                
+                if (match) {
+                  hasMatch = true;
+                  break;
+                }
+              }
+              
+              if (hasMatch) {
+                targetGroup = group.id;
+                break;
+              }
             }
           }
         }
@@ -328,8 +370,29 @@ serve(async (req) => {
             .eq("group_id", group.id);
 
           if (members && members.length < 5) {
-            targetGroup = group.id;
-            break;
+            // التحقق من وجود تطابق بين المستخدم وأعضاء المجموعة
+            const memberIds = members.map((m) => m.user_id);
+            let hasMatch = false;
+            
+            for (const memberId of memberIds) {
+              const { data: match } = await supabase
+                .from("matches")
+                .select("id")
+                .or(
+                  `and(user_id.eq.${user.user_id},matched_user_id.eq.${memberId}),and(user_id.eq.${memberId},matched_user_id.eq.${user.user_id})`
+                )
+                .maybeSingle();
+              
+              if (match) {
+                hasMatch = true;
+                break;
+              }
+            }
+            
+            if (hasMatch) {
+              targetGroup = group.id;
+              break;
+            }
           }
         }
 
@@ -349,15 +412,76 @@ serve(async (req) => {
               .eq("group_id", group.id);
 
             if (members && members.length < 5) {
-              targetGroup = group.id;
-              break;
+              // التحقق من وجود تطابق بين المستخدم وأعضاء المجموعة
+              const memberIds = members.map((m) => m.user_id);
+              let hasMatch = false;
+              
+              for (const memberId of memberIds) {
+                const { data: match } = await supabase
+                  .from("matches")
+                  .select("id")
+                  .or(
+                    `and(user_id.eq.${user.user_id},matched_user_id.eq.${memberId}),and(user_id.eq.${memberId},matched_user_id.eq.${user.user_id})`
+                  )
+                  .maybeSingle();
+                
+                if (match) {
+                  hasMatch = true;
+                  break;
+                }
+              }
+              
+              if (hasMatch) {
+                targetGroup = group.id;
+                break;
+              }
             }
           }
         }
       }
 
       // إنشاء مجموعة جديدة إذا لم تجد واحدة مناسبة
+      // لكن فقط إذا كان المستخدم لديه تطابق مع مستخدمين آخرين
       if (!targetGroup) {
+        // البحث عن مستخدمين آخرين لديهم تطابق مع هذا المستخدم
+        const { data: userMatches } = await supabase
+          .from("matches")
+          .select("user_id, matched_user_id")
+          .or(
+            `user_id.eq.${user.user_id},matched_user_id.eq.${user.user_id}`
+          );
+
+        if (!userMatches || userMatches.length === 0) {
+          // لا يوجد تطابق لهذا المستخدم، تخطيه
+          console.log(
+            `⏭️ Skipping user ${user.user_id} - no matches found`
+          );
+          continue;
+        }
+
+        // الحصول على قائمة المستخدمين المتطابقين
+        const matchedUserIds = new Set<string>();
+        userMatches.forEach((match) => {
+          if (match.user_id === user.user_id) {
+            matchedUserIds.add(match.matched_user_id);
+          } else {
+            matchedUserIds.add(match.user_id);
+          }
+        });
+
+        // التحقق من وجود مستخدمين متطابقين متاحين (ليسوا في مجموعات)
+        const availableMatchedUsers = Array.from(matchedUserIds).filter(
+          (matchedId) => !usersInGroups.has(matchedId)
+        );
+
+        if (availableMatchedUsers.length === 0) {
+          // لا يوجد مستخدمين متطابقين متاحين
+          console.log(
+            `⏭️ Skipping user ${user.user_id} - matched users already in groups`
+          );
+          continue;
+        }
+
         const { data: existingGroups } = await supabase
           .from("match_groups")
           .select("group_type")
@@ -455,9 +579,51 @@ serve(async (req) => {
       // Process each gender group
       for (const [gender, users] of Object.entries(remainingByGender)) {
         if (users.length >= minGroupSize) {
-          // Create a smaller group
-          const groupSize = Math.min(users.length, maxGroupSize);
-          const groupMembers = users.slice(0, groupSize);
+          // التحقق من وجود تطابق بين المستخدمين قبل إنشاء المجموعة
+          const groupMembers: typeof users = [];
+          
+          for (const user of users) {
+            // التحقق من وجود تطابق مع الأعضاء الموجودين في المجموعة
+            let hasMatchWithGroup = false;
+            
+            if (groupMembers.length > 0) {
+              for (const existingMember of groupMembers) {
+                const { data: match } = await supabase
+                  .from("matches")
+                  .select("id")
+                  .or(
+                    `and(user_id.eq.${user.user_id},matched_user_id.eq.${existingMember.user_id}),and(user_id.eq.${existingMember.user_id},matched_user_id.eq.${user.user_id})`
+                  )
+                  .maybeSingle();
+                
+                if (match) {
+                  hasMatchWithGroup = true;
+                  break;
+                }
+              }
+            } else {
+              // أول عضو في المجموعة - قبوله
+              hasMatchWithGroup = true;
+            }
+            
+            if (hasMatchWithGroup && groupMembers.length < maxGroupSize) {
+              groupMembers.push(user);
+            }
+            
+            if (groupMembers.length >= maxGroupSize) {
+              break;
+            }
+          }
+          
+          // إنشاء المجموعة فقط إذا كان هناك على الأقل عضوين متطابقين
+          if (groupMembers.length < 2) {
+            console.log(
+              `⏭️ Skipping partial group creation - insufficient matches (${groupMembers.length} members)`
+            );
+            continue;
+          }
+          
+          const groupSize = groupMembers.length;
 
           // Partial groups are always same-gender since we're processing by gender
           const groupType = "same_gender";

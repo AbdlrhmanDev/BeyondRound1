@@ -2,7 +2,7 @@ import { Quote, Heart } from "lucide-react";
 
 const AboutSection = () => {
   return (
-    <section id="about" className="py-28 lg:py-36 bg-foreground relative overflow-hidden">
+    <section id="about" className="py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 blur-[150px]" />
