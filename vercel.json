@@ -7,7 +7,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|favicon\\.svg|opengraph-image\\.png|robots\\.txt).*)",
       "destination": "/index.html"
     }
   ],
@@ -31,8 +31,25 @@
       ]
     },
     {
-      "source": "/(.*)\\.(js|css)",
+      "source": "/assets/js/(.*)\\.js",
       "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/css/(.*)\\.css",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/css; charset=utf-8"
+        },
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
