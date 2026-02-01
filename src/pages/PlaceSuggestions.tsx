@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,7 @@ interface PlaceSuggestion {
 }
 
 const PlaceSuggestions = () => {
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [city, setCity] = useState("");
@@ -118,7 +118,7 @@ const PlaceSuggestions = () => {
   if (authLoading || initialLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <Skeleton className="h-10 w-48 mb-8" />
           <Skeleton className="h-12 w-full max-w-md mb-8" />
           <div className="grid md:grid-cols-2 gap-6">
@@ -134,7 +134,7 @@ const PlaceSuggestions = () => {
   return (
     <div className="min-h-screen bg-gradient-mesh">
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto px-6 h-16 flex items-center gap-4">
+        <div className="container mx-auto px-4 sm:px-6 min-h-14 sm:h-16 flex items-center gap-3 sm:gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -147,7 +147,7 @@ const PlaceSuggestions = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Search Section */}
         <Card className="border-0 shadow-xl rounded-3xl mb-8 max-w-2xl mx-auto">
           <CardHeader className="pb-4">

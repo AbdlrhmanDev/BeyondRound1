@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import LocalizedLink from "@/components/LocalizedLink";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocale } from "@/contexts/LocaleContext";
+import type { Locale } from "@/lib/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +19,7 @@ import {
   Smartphone,
   Moon,
   Globe,
+  Languages,
   Trash2,
   ChevronRight,
   Lock,
@@ -21,6 +27,7 @@ import {
   EyeOff
 } from "lucide-react";
 import { BillingSection } from "@/components/BillingSection";
+import { PageLoadingSkeleton } from "@/components/ui/skeleton-loader";
 import { getSettings, updateSettings } from "@/services/settingsService";
 import { toast } from "sonner";
 import {
@@ -36,8 +43,10 @@ import { Label } from "@/components/ui/label";
 import { validatePassword } from "@/utils/validation";
 
 const Settings = () => {
+  const { t } = useTranslation();
   const { user, loading: authLoading, signOut, updatePassword } = useAuth();
-  const navigate = useNavigate();
+  const { locale, setLocaleAndNavigate } = useLocale();
+  const navigate = useLocalizedNavigate();
   
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -58,7 +67,6 @@ const Settings = () => {
 
   const loadSettings = useCallback(async () => {
     if (!user?.id) return;
-    setLoadingSettings(true);
     try {
       const settings = await getSettings(user.id);
       if (settings) {
@@ -81,7 +89,12 @@ const Settings = () => {
       navigate("/auth");
       return;
     }
-    if (user?.id) loadSettings();
+    if (user?.id) {
+      setLoadingSettings(true);
+      loadSettings();
+    } else {
+      setLoadingSettings(false);
+    }
   }, [user, authLoading, navigate, loadSettings]);
 
   useEffect(() => {
@@ -146,24 +159,21 @@ const Settings = () => {
     closePasswordDialog();
   };
 
-  if (authLoading || loadingSettings) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
+  // Show page immediately; settings load in background (no blocking skeleton)
+  if (authLoading) {
+    return <PageLoadingSkeleton />;
   }
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-6 py-8 lg:py-12 max-w-3xl">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-12 max-w-3xl">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-8 animate-fade-up">
-          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Dashboard
-          </Link>
+          <LocalizedLink to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            {t("dashboard.title")}
+          </LocalizedLink>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-primary">Settings</span>
+          <span className="text-sm font-medium text-primary">{t("dashboard.settings")}</span>
         </div>
 
         <div className="space-y-6">
@@ -175,8 +185,8 @@ const Settings = () => {
                   <User className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-display">Account</CardTitle>
-                  <CardDescription>Manage your account settings</CardDescription>
+                  <CardTitle className="text-lg font-display">{t("settings.account")}</CardTitle>
+                  <CardDescription>{t("settings.accountDesc")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -185,12 +195,12 @@ const Settings = () => {
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Email</p>
+                    <p className="text-sm font-medium">{t("settings.email")}</p>
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" disabled aria-label="Change email (not implemented)">
-                  Change
+                <Button variant="outline" size="sm" disabled aria-label={t("settings.change")}>
+                  {t("settings.change")}
                 </Button>
               </div>
 
@@ -198,12 +208,12 @@ const Settings = () => {
                 <div className="flex items-center gap-3">
                   <Lock className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Password</p>
-                    <p className="text-xs text-muted-foreground">Update your password</p>
+                    <p className="text-sm font-medium">{t("settings.password")}</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.updatePasswordHint")}</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={openPasswordDialog} aria-label="Change password">
-                  Change
+                <Button variant="outline" size="sm" onClick={openPasswordDialog} aria-label={t("settings.changePassword")}>
+                  {t("settings.change")}
                 </Button>
               </div>
               
@@ -213,13 +223,13 @@ const Settings = () => {
                 className="w-full justify-between p-4 h-auto rounded-xl hover:bg-secondary/50"
                 asChild
               >
-                <Link to="/profile" className="flex items-center justify-between w-full">
+                <LocalizedLink to="/profile" className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-3">
                     <User className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">Edit Profile</span>
+                    <span className="text-sm font-medium">{t("settings.editProfile")}</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Link>
+                </LocalizedLink>
               </Button>
             </CardContent>
           </Card>
@@ -232,8 +242,8 @@ const Settings = () => {
                   <Bell className="h-5 w-5 text-accent" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-display">Notifications</CardTitle>
-                  <CardDescription>Configure how you receive notifications</CardDescription>
+                  <CardTitle className="text-lg font-display">{t("settings.notifications")}</CardTitle>
+                  <CardDescription>{t("settings.notificationsDesc")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -242,8 +252,8 @@ const Settings = () => {
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Email Notifications</p>
-                    <p className="text-xs text-muted-foreground">Receive updates via email</p>
+                    <p className="text-sm font-medium">{t("settings.emailNotifications")}</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.emailNotificationsDesc")}</p>
                   </div>
                 </div>
                 <Switch 
@@ -259,8 +269,8 @@ const Settings = () => {
                 <div className="flex items-center gap-3">
                   <Smartphone className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Push Notifications</p>
-                    <p className="text-xs text-muted-foreground">Receive push notifications</p>
+                    <p className="text-sm font-medium">{t("settings.pushNotifications")}</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.pushNotificationsDesc")}</p>
                   </div>
                 </div>
                 <Switch 
@@ -276,8 +286,8 @@ const Settings = () => {
               
               <div className="flex items-center justify-between p-4 rounded-xl hover:bg-secondary/30 transition-colors">
                 <div>
-                  <p className="text-sm font-medium">New Matches</p>
-                  <p className="text-xs text-muted-foreground">When someone matches with you</p>
+                  <p className="text-sm font-medium">{t("settings.newMatches")}</p>
+                  <p className="text-xs text-muted-foreground">{t("settings.newMatchesDesc")}</p>
                 </div>
                 <Switch 
                   checked={matchNotifications} 
@@ -290,8 +300,8 @@ const Settings = () => {
               
               <div className="flex items-center justify-between p-4 rounded-xl hover:bg-secondary/30 transition-colors">
                 <div>
-                  <p className="text-sm font-medium">Events & Meetups</p>
-                  <p className="text-xs text-muted-foreground">Upcoming physician events</p>
+                  <p className="text-sm font-medium">{t("settings.eventsMeetups")}</p>
+                  <p className="text-xs text-muted-foreground">{t("settings.eventsMeetupsDesc")}</p>
                 </div>
                 <Switch 
                   checked={eventNotifications} 
@@ -312,8 +322,8 @@ const Settings = () => {
                   <Shield className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-display">Privacy</CardTitle>
-                  <CardDescription>Control your privacy settings</CardDescription>
+                  <CardTitle className="text-lg font-display">{t("settings.privacy")}</CardTitle>
+                  <CardDescription>{t("settings.privacyDesc")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -322,8 +332,8 @@ const Settings = () => {
                 <div className="flex items-center gap-3">
                   <Globe className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Profile Visibility</p>
-                    <p className="text-xs text-muted-foreground">Allow others to find you</p>
+                    <p className="text-sm font-medium">{t("settings.profileVisibility")}</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.profileVisibilityDesc")}</p>
                   </div>
                 </div>
                 <Switch 
@@ -345,18 +355,41 @@ const Settings = () => {
                   <Moon className="h-5 w-5 text-accent" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-display">Appearance</CardTitle>
-                  <CardDescription>Customize your experience</CardDescription>
+                  <CardTitle className="text-lg font-display">{t("settings.appearance")}</CardTitle>
+                  <CardDescription>{t("settings.appearanceDesc")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="px-6 pb-6">
+            <CardContent className="px-6 pb-6 space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50">
+                <div className="flex items-center gap-3">
+                  <Languages className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{t("settings.language")}</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.languageDesc")}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
+                  {(["de", "en"] as const).map((l) => (
+                    <Button
+                      key={l}
+                      variant={locale === l ? "secondary" : "ghost"}
+                      size="sm"
+                      className="min-w-[2.5rem] font-medium transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => setLocaleAndNavigate(l as Locale)}
+                      aria-label={l === "de" ? t("settings.deutsch") : t("settings.english")}
+                    >
+                      {l === "de" ? "DE" : "EN"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
               <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50">
                 <div className="flex items-center gap-3">
                   <Moon className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Dark Mode</p>
-                    <p className="text-xs text-muted-foreground">Switch to dark theme</p>
+                    <p className="text-sm font-medium">{t("settings.darkMode")}</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.darkModeDesc")}</p>
                   </div>
                 </div>
                 <Switch 
@@ -381,8 +414,8 @@ const Settings = () => {
                   <Trash2 className="h-5 w-5 text-destructive" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-display text-destructive">Danger Zone</CardTitle>
-                  <CardDescription>Irreversible actions</CardDescription>
+                  <CardTitle className="text-lg font-display text-destructive">{t("settings.dangerZone")}</CardTitle>
+                  <CardDescription>{t("settings.dangerZoneDesc")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -392,13 +425,13 @@ const Settings = () => {
                 className="w-full justify-start text-muted-foreground hover:text-foreground rounded-xl h-12"
                 onClick={handleSignOut}
               >
-                Sign Out
+                {t("settings.signOut")}
               </Button>
               <Button 
                 variant="outline" 
                 className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl h-12"
               >
-                Delete Account
+                {t("settings.deleteAccount")}
               </Button>
             </CardContent>
           </Card>
@@ -408,21 +441,21 @@ const Settings = () => {
         <Dialog open={passwordDialogOpen} onOpenChange={(open) => !open && closePasswordDialog()}>
           <DialogContent className="sm:max-w-md rounded-2xl">
             <DialogHeader>
-              <DialogTitle className="font-display">Change Password</DialogTitle>
+              <DialogTitle className="font-display">{t("settings.changePassword")}</DialogTitle>
               <DialogDescription>
-                Enter your current password and choose a new one. Use at least 8 characters with uppercase, lowercase, and a number.
+                {t("settings.changePasswordDesc")}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="current-password">Current password</Label>
+                <Label htmlFor="current-password">{t("settings.currentPassword")}</Label>
                 <div className="relative">
                   <Input
                     id="current-password"
                     type={showCurrentPassword ? "text" : "password"}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
+                    placeholder={t("settings.currentPasswordPlaceholder")}
                     className={passwordErrors.current ? "border-destructive pr-10" : "pr-10"}
                     autoComplete="current-password"
                     disabled={passwordLoading}
@@ -441,14 +474,14 @@ const Settings = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-password">New password</Label>
+                <Label htmlFor="new-password">{t("settings.newPassword")}</Label>
                 <div className="relative">
                   <Input
                     id="new-password"
                     type={showNewPassword ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
+                    placeholder={t("settings.newPasswordPlaceholder")}
                     className={passwordErrors.new ? "border-destructive pr-10" : "pr-10"}
                     autoComplete="new-password"
                     disabled={passwordLoading}
@@ -467,14 +500,14 @@ const Settings = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm new password</Label>
+                <Label htmlFor="confirm-password">{t("settings.confirmPassword")}</Label>
                 <div className="relative">
                   <Input
                     id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
+                    placeholder={t("settings.confirmPasswordPlaceholder")}
                     className={passwordErrors.confirm ? "border-destructive pr-10" : "pr-10"}
                     autoComplete="new-password"
                     disabled={passwordLoading}
@@ -494,10 +527,10 @@ const Settings = () => {
               </div>
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button type="button" variant="outline" onClick={closePasswordDialog} disabled={passwordLoading}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button type="submit" disabled={passwordLoading}>
-                  {passwordLoading ? "Updating…" : "Update password"}
+                  {passwordLoading ? t("settings.updating") : t("settings.updatePasswordButton")}
                 </Button>
               </DialogFooter>
             </form>

@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Mail, Lock, Eye, EyeOff, Sparkles, ArrowLeft, Check } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import LocalizedLink from "@/components/LocalizedLink";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
@@ -22,7 +23,7 @@ const Auth = () => {
   const { toast } = useToast();
   const { signIn, user, loading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdminCheck();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   
   const [formData, setFormData] = useState({
     email: "",
@@ -196,35 +197,34 @@ const Auth = () => {
         }}
       />
 
-      {/* Back to Home */}
-      <Link 
-        to="/" 
-        className="absolute top-6 left-6 z-20 flex items-center gap-2 text-primary-foreground/60 hover:text-primary-foreground transition-colors group"
+      {/* Back to Home (touch target) */}
+      <LocalizedLink
+        to="/"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center gap-2 min-h-[44px] min-w-[44px] rounded-lg -ml-1 -mt-1 pl-1 pt-1 text-primary-foreground/60 hover:text-primary-foreground active:bg-primary-foreground/10 transition-colors group"
       >
-        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-        <span className="text-sm font-medium">Back</span>
-      </Link>
+        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform shrink-0" />
+        <span className="text-sm font-medium hidden sm:inline">Back</span>
+      </LocalizedLink>
 
-      {/* Main content container */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-8 lg:gap-16 items-center">
-          
+      {/* Main content: mobile-first padding and stacking */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-8 sm:py-12 pt-20 sm:pt-24">
+        <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-6 sm:gap-8 lg:gap-16 items-center">
           {/* Left side - Branding & Features */}
-          <div className="flex-1 text-center lg:text-left max-w-lg animate-fade-up">
+          <div className="flex-1 text-center lg:text-left max-w-lg animate-fade-up w-full">
             {/* Logo */}
-            <div className="flex items-center gap-3 justify-center lg:justify-start mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow">
-                <Sparkles className="w-6 h-6 text-primary-foreground" />
+            <div className="flex items-center gap-2 sm:gap-3 justify-center lg:justify-start mb-6 sm:mb-8">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow shrink-0">
+                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
               </div>
-              <span className="font-display font-bold text-2xl text-primary-foreground">BeyondRounds</span>
+              <span className="font-display font-bold text-xl sm:text-2xl text-primary-foreground">BeyondRounds</span>
             </div>
 
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-foreground leading-[1.1] mb-6">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground leading-[1.1] mb-4 sm:mb-6">
               Welcome
               <span className="block text-gradient-gold">back!</span>
             </h1>
             
-            <p className="text-primary-foreground/60 text-lg mb-10 max-w-md mx-auto lg:mx-0">
+            <p className="text-primary-foreground/60 text-base sm:text-lg mb-8 sm:mb-10 max-w-md mx-auto lg:mx-0">
               Sign in to continue building meaningful friendships with fellow doctors.
             </p>
 
@@ -245,28 +245,25 @@ const Auth = () => {
             </div>
           </div>
 
-          {/* Right side - Login Card */}
+          {/* Right side - Login Card (full width on mobile) */}
           <div className="w-full max-w-md animate-fade-up delay-200">
             <div className="relative">
               {/* Glow effect behind card */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-3xl blur-xl opacity-60" />
-              
-              {/* Card */}
-              <div className="relative bg-background/5 backdrop-blur-2xl border border-primary-foreground/10 rounded-3xl p-8 sm:p-10">
-                {/* Header */}
-                <div className="text-center mb-8">
-                  <h2 className="font-display text-2xl font-bold text-primary-foreground mb-2">Sign In</h2>
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-2xl sm:rounded-3xl blur-xl opacity-60" />
+              {/* Card: mobile-first padding and inputs */}
+              <div className="relative bg-background/5 backdrop-blur-2xl border border-primary-foreground/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10">
+                <div className="text-center mb-6 sm:mb-8">
+                  <h2 className="font-display text-xl sm:text-2xl font-bold text-primary-foreground mb-1 sm:mb-2">Sign In</h2>
                   <p className="text-primary-foreground/60 text-sm">Enter your credentials to continue</p>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-primary-foreground/80 text-base font-medium">
+                    <Label htmlFor="email" className="text-primary-foreground/80 text-sm sm:text-base font-medium">
                       Email Address
                     </Label>
                     <div className="relative group">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/70 group-hover:text-primary group-focus-within:text-primary transition-colors z-10" size={18} />
+                      <Mail className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-primary-foreground/70 group-hover:text-primary group-focus-within:text-primary transition-colors z-10" size={18} />
                       <Input
                         id="email"
                         name="email"
@@ -274,7 +271,7 @@ const Auth = () => {
                         placeholder="doctor@hospital.com"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
+                        className={`pl-10 sm:pl-12 min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all text-base ${errors.email ? 'border-destructive' : ''}`}
                         required
                       />
                     </div>
@@ -283,12 +280,12 @@ const Auth = () => {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="password" className="text-primary-foreground/80 text-base font-medium">
+                      <Label htmlFor="password" className="text-primary-foreground/80 text-sm sm:text-base font-medium">
                         Password
                       </Label>
-                      <Link to="/forgot-password" className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
+                      <LocalizedLink to="/forgot-password" className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
                         Forgot?
-                      </Link>
+                      </LocalizedLink>
                     </div>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/70 group-hover:text-primary group-focus-within:text-primary transition-colors z-10" size={18} />
@@ -299,7 +296,7 @@ const Auth = () => {
                         placeholder="Enter your password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.password ? 'border-destructive' : ''}`}
+                        className={`pl-10 sm:pl-12 pr-12 min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all text-base ${errors.password ? 'border-destructive' : ''}`}
                         required
                       />
                       <button
@@ -313,9 +310,9 @@ const Auth = () => {
                     {errors.password && <p className="text-destructive text-xs mt-1">{errors.password}</p>}
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full h-14 rounded-2xl bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold text-base shadow-glow hover:shadow-[0_0_80px_-12px_hsl(28_100%_50%_/_0.5)] transition-all group"
+                  <Button
+                    type="submit"
+                    className="w-full min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold text-base shadow-glow hover:shadow-[0_0_80px_-12px_hsl(28_100%_50%_/_0.5)] transition-all group"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -340,24 +337,24 @@ const Auth = () => {
                 </div>
 
                 {/* Join Now CTA */}
-                <Link to="/onboarding">
-                  <Button 
+                <LocalizedLink to="/onboarding" className="block">
+                  <Button
                     variant="outline"
-                    className="w-full h-14 rounded-2xl border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-semibold"
+                    className="w-full min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-semibold"
                   >
                     Join Now
                     <ArrowRight className="ml-2" size={18} />
                   </Button>
-                </Link>
+                </LocalizedLink>
               </div>
             </div>
 
             {/* Terms note */}
             <p className="text-center text-primary-foreground/40 text-xs mt-6 px-4">
               By continuing, you agree to our{" "}
-              <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+              <LocalizedLink to="/terms" className="text-primary hover:underline">Terms of Service</LocalizedLink>
               {" "}and{" "}
-              <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+              <LocalizedLink to="/privacy" className="text-primary hover:underline">Privacy Policy</LocalizedLink>
             </p>
           </div>
         </div>

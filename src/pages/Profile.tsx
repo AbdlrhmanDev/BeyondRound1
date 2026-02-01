@@ -1,5 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import LocalizedLink from "@/components/LocalizedLink";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,8 +61,9 @@ interface OnboardingPreferences {
 }
 
 const Profile = () => {
+  const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { toast } = useToast();
   
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -84,7 +88,7 @@ const Profile = () => {
     if (!file || !user) return;
     
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Max 5MB allowed", variant: "destructive" });
+      toast({ title: t("profile.toastFileTooLarge"), description: t("profile.toastMax5MB"), variant: "destructive" });
       return;
     }
     
@@ -109,10 +113,10 @@ const Profile = () => {
         });
       }
       
-      toast({ title: "Profile photo updated!" });
+      toast({ title: t("profile.toastProfilePhotoUpdated") });
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
+      toast({ title: t("profile.toastUploadFailed"), description: t("profile.toastPleaseTryAgain"), variant: "destructive" });
     } finally {
       setAvatarUploading(false);
     }
@@ -123,7 +127,7 @@ const Profile = () => {
     if (!file || !user) return;
     
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Max 10MB allowed", variant: "destructive" });
+      toast({ title: t("profile.toastFileTooLarge"), description: t("profile.toastMax10MB"), variant: "destructive" });
       return;
     }
     
@@ -165,14 +169,14 @@ const Profile = () => {
       }
       
       toast({ 
-        title: "Medical license updated!",
+        title: t("profile.toastLicenseUpdated"),
         description: isNowComplete
-          ? "✅ Your profile is now complete! Refresh the dashboard to see the changes."
-          : "Make sure to fill in your City and click Save to complete your profile."
+          ? t("profile.toastProfileCompleteRefresh")
+          : t("profile.toastFillCityAndSave")
       });
     } catch (error) {
       console.error("Error uploading license:", error);
-      toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
+      toast({ title: t("profile.toastUploadFailed"), description: t("profile.toastPleaseTryAgain"), variant: "destructive" });
     } finally {
       setLicenseUploading(false);
     }
@@ -276,10 +280,10 @@ const Profile = () => {
       }
       
       toast({
-        title: "Profile updated",
+        title: t("profile.toastProfileUpdated"),
         description: isComplete 
-          ? "✅ Your profile is now complete! You'll be included in the next matching round. Refresh the dashboard to see the changes."
-          : "Your changes have been saved successfully. Make sure to fill in City and upload your Medical License to complete your profile.",
+          ? t("profile.toastProfileCompleteNextRound")
+          : t("profile.toastChangesSavedFillCity"),
       });
       
       // If profile is complete, refresh preferences to update UI
@@ -297,8 +301,8 @@ const Profile = () => {
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to update profile. Please try again.",
+        title: t("common.error"),
+        description: error.message || t("profile.toastFailedToUpdateProfile"),
         variant: "destructive",
       });
     } finally {
@@ -322,9 +326,9 @@ const Profile = () => {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-6 py-8">
-          <Skeleton className="h-12 w-48 mb-8" />
-          <Skeleton className="h-96 rounded-3xl" />
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <Skeleton className="h-10 sm:h-12 w-40 sm:w-48 mb-6 sm:mb-8 rounded-xl" />
+          <Skeleton className="h-80 sm:h-96 rounded-2xl sm:rounded-3xl" />
         </div>
       </div>
     );
@@ -338,15 +342,15 @@ const Profile = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-6 py-8 lg:py-12 max-w-3xl">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-12 max-w-3xl">
         {/* Breadcrumb */}
-        <div className="flex items-center justify-between mb-8 animate-fade-up">
-          <div className="flex items-center gap-2">
-            <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Dashboard
-            </Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 animate-fade-up">
+          <div className="flex items-center gap-2 min-w-0">
+            <LocalizedLink to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              {t("common.dashboard")}
+            </LocalizedLink>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-primary">Profile</span>
+            <span className="text-sm font-medium text-primary">{t("dashboard.profile")}</span>
           </div>
           <Button 
             onClick={handleSave}
@@ -354,7 +358,7 @@ const Profile = () => {
             className="gap-2"
           >
             <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save"}
+            {saving ? t("profile.saving") : t("profile.save")}
           </Button>
         </div>
 
@@ -394,7 +398,7 @@ const Profile = () => {
                 </div>
                 <div className="flex-1 pt-4 sm:pt-0">
                   <h2 className="font-display text-2xl font-bold text-foreground">
-                    {profile?.full_name || "Add your name"}
+                    {profile?.full_name || t("profile.addYourName")}
                   </h2>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
                   {profile?.city && (
@@ -415,7 +419,7 @@ const Profile = () => {
                 <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
-                <CardTitle className="text-lg font-display">Medical License</CardTitle>
+                <CardTitle className="text-lg font-display">{t("profile.medicalLicense")}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="px-6 pb-6">
@@ -433,8 +437,8 @@ const Profile = () => {
                       <Check className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground">License uploaded</p>
-                      <p className="text-xs text-muted-foreground">Click to update</p>
+                      <p className="text-sm font-medium text-foreground">{t("profile.licenseUploaded")}</p>
+                      <p className="text-xs text-muted-foreground">{t("profile.clickToUpdate")}</p>
                     </div>
                   </div>
                   <Button
@@ -444,7 +448,7 @@ const Profile = () => {
                     disabled={licenseUploading}
                     className="rounded-lg"
                   >
-                    {licenseUploading ? "Uploading..." : "Update"}
+                    {licenseUploading ? t("profile.uploading") : t("profile.update")}
                   </Button>
                 </div>
               ) : (
@@ -456,13 +460,13 @@ const Profile = () => {
                   {licenseUploading ? (
                     <div className="flex flex-col items-center gap-2">
                       <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      <p className="text-sm text-muted-foreground">Uploading...</p>
+                      <p className="text-sm text-muted-foreground">{t("profile.uploading")}</p>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <Upload className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Upload Medical License</p>
-                      <p className="text-xs text-muted-foreground">JPG, PNG or PDF (max 10MB)</p>
+                      <p className="text-sm font-medium text-foreground">{t("profile.uploadMedicalLicense")}</p>
+                      <p className="text-xs text-muted-foreground">{t("profile.licenseFileHint")}</p>
                     </div>
                   )}
                 </button>
@@ -473,23 +477,23 @@ const Profile = () => {
           {/* Basic Info */}
           <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-100">
             <CardHeader className="px-6 pt-6 pb-4">
-              <CardTitle className="text-lg font-display">Basic Information</CardTitle>
+              <CardTitle className="text-lg font-display">{t("profile.basicInformation")}</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName">{t("profile.fullName")}</Label>
                 <Input
                   id="fullName"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter your full name"
+                  placeholder={t("profile.fullNamePlaceholder")}
                   className="rounded-xl h-12"
                 />
               </div>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Location</p>
-                  <p className="text-xs text-muted-foreground">Country, state, and city help others find you.</p>
+                  <p className="text-sm font-medium text-foreground">{t("profile.location")}</p>
+                  <p className="text-xs text-muted-foreground">{t("profile.locationHint")}</p>
                 </div>
                 <LocationSelect
                   country={country}
@@ -506,7 +510,7 @@ const Profile = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("profile.email")}</Label>
                 <Input
                   id="email"
                   value={user?.email || ""}
@@ -521,14 +525,14 @@ const Profile = () => {
           <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-200">
             <CardHeader className="px-6 pt-6 pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-display">Professional Details</CardTitle>
+                <CardTitle className="text-lg font-display">{t("profile.professionalDetails")}</CardTitle>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   className="rounded-lg"
                   onClick={() => navigate("/onboarding")}
                 >
-                  Edit Preferences
+                  {t("profile.editPreferences")}
                 </Button>
               </div>
             </CardHeader>
@@ -540,7 +544,7 @@ const Profile = () => {
                       <Stethoscope className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Specialty</p>
+                      <p className="text-xs text-muted-foreground">{t("profile.specialty")}</p>
                       <p className="text-sm font-medium text-foreground">{preferences.specialty}</p>
                     </div>
                   </div>
@@ -551,7 +555,7 @@ const Profile = () => {
                         <Sparkles className="h-5 w-5 text-accent" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Career Stage</p>
+                        <p className="text-xs text-muted-foreground">{t("profile.careerStage")}</p>
                         <p className="text-sm font-medium text-foreground">{preferences.career_stage}</p>
                       </div>
                     </div>
@@ -563,7 +567,7 @@ const Profile = () => {
                         <Users className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Meeting Preference</p>
+                        <p className="text-xs text-muted-foreground">{t("profile.meetingPreference")}</p>
                         <p className="text-sm font-medium text-foreground">{preferences.meeting_frequency}</p>
                       </div>
                     </div>
@@ -571,19 +575,19 @@ const Profile = () => {
 
                   {preferences.open_to_business && (
                     <Badge className="bg-primary/10 text-primary border-0">
-                      Open to Business Connections
+                      {t("profile.openToBusiness")}
                     </Badge>
                   )}
                 </>
               ) : (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground mb-4">
-                    Complete your onboarding to add professional details.
+                    {t("profile.completeOnboardingHint")}
                   </p>
                   <Button 
                     onClick={() => navigate("/onboarding")}
                   >
-                    Complete Onboarding
+                    {t("profile.completeOnboarding")}
                   </Button>
                 </div>
               )}
@@ -598,7 +602,7 @@ const Profile = () => {
                   <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
                     <Dumbbell className="h-5 w-5 text-green-600" />
                   </div>
-                  <CardTitle className="text-lg font-display">Sports & Fitness</CardTitle>
+                  <CardTitle className="text-lg font-display">{t("profile.sportsAndFitness")}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="px-6 pb-6">
@@ -625,7 +629,7 @@ const Profile = () => {
                   <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                     <Calendar className="h-5 w-5 text-blue-600" />
                   </div>
-                  <CardTitle className="text-lg font-display">Weekend Availability</CardTitle>
+                  <CardTitle className="text-lg font-display">{t("profile.weekendAvailability")}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="px-6 pb-6">
@@ -651,7 +655,7 @@ const Profile = () => {
                 <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
                   <Heart className="h-5 w-5 text-accent" />
                 </div>
-                <CardTitle className="text-lg font-display">Interests & Goals</CardTitle>
+                <CardTitle className="text-lg font-display">{t("profile.interestsAndGoals")}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="px-6 pb-6">
@@ -659,7 +663,7 @@ const Profile = () => {
                 <div className="space-y-4">
                   {preferences?.social_style && preferences.social_style.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground mb-3">Social Style</p>
+                      <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.socialStyle")}</p>
                       <div className="flex flex-wrap gap-2">
                         {preferences.social_style.map((style) => (
                           <Badge 
@@ -676,7 +680,7 @@ const Profile = () => {
 
                   {preferences?.culture_interests && preferences.culture_interests.length > 0 && (
                     <div className="pt-4 border-t border-border/40">
-                      <p className="text-sm font-medium text-muted-foreground mb-3">Culture</p>
+                      <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.culture")}</p>
                       <div className="flex flex-wrap gap-2">
                         {preferences.culture_interests.map((interest) => (
                           <Badge 
@@ -693,7 +697,7 @@ const Profile = () => {
 
                   {preferences?.lifestyle && preferences.lifestyle.length > 0 && (
                     <div className="pt-4 border-t border-border/40">
-                      <p className="text-sm font-medium text-muted-foreground mb-3">Lifestyle</p>
+                      <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.lifestyle")}</p>
                       <div className="flex flex-wrap gap-2">
                         {preferences.lifestyle.map((item) => (
                           <Badge 
@@ -710,7 +714,7 @@ const Profile = () => {
                   
                   {preferences?.goals && preferences.goals.length > 0 && (
                     <div className="pt-4 border-t border-border/40">
-                      <p className="text-sm font-medium text-muted-foreground mb-3">Looking For</p>
+                      <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.lookingFor")}</p>
                       <div className="flex flex-wrap gap-2">
                         {preferences.goals.map((goal) => (
                           <Badge 
@@ -727,7 +731,7 @@ const Profile = () => {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  Add your interests through onboarding.
+                  {t("profile.addInterestsThroughOnboarding")}
                 </p>
               )}
             </CardContent>

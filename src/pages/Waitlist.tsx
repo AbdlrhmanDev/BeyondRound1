@@ -195,7 +195,7 @@ const Waitlist = () => {
       <header className="relative z-20 sticky top-0">
         <div className="mx-4 mt-4">
           <div className="bg-primary-foreground/5 backdrop-blur-2xl border border-primary-foreground/10 rounded-2xl shadow-lg">
-            <div className="container mx-auto px-6">
+            <div className="container mx-auto px-4 sm:px-6">
               <div className="flex items-center justify-center h-16">
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-lg bg-gradient-gold flex items-center justify-center shadow-glow-sm">
@@ -267,7 +267,7 @@ const Waitlist = () => {
         </section>
 
         {/* Features Section */}
-        <section className="container mx-auto px-6 py-16 md:py-24">
+        <section className="container mx-auto px-4 sm:px-6 py-10 sm:py-16 md:py-24">
           <div className="max-w-6xl mx-auto">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-12 text-primary-foreground animate-fade-up">
               Why <span className="text-gradient-gold">BeyondRounds</span>?
@@ -307,7 +307,7 @@ const Waitlist = () => {
         </section>
 
         {/* Three Steps Section */}
-        <section className="container mx-auto px-6 py-16 md:py-24">
+        <section className="container mx-auto px-4 sm:px-6 py-10 sm:py-16 md:py-24">
           <div className="max-w-5xl mx-auto">
             <div className="grid md:grid-cols-3 gap-8">
               {/* Step 1 */}
@@ -396,7 +396,7 @@ const Waitlist = () => {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
-                          className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50"
+                          className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground"
                         />
                       </div>
 
@@ -412,7 +412,7 @@ const Waitlist = () => {
                           placeholder="e.g., New York, San Francisco"
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50"
+                          className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground"
                         />
                       </div>
 
@@ -456,7 +456,7 @@ const Waitlist = () => {
 
       {/* Footer */}
       <footer className="relative z-20 border-t border-primary-foreground/10 bg-primary-foreground/5 backdrop-blur-xl">
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="flex items-center justify-center gap-2">
             <div className="h-6 w-6 rounded bg-gradient-gold flex items-center justify-center shadow-glow-sm">
               <Heart className="h-4 w-4 text-primary-foreground" />

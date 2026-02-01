@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, Phone, MapPin, Send, CheckCircle, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 import { submitContactForm, validateContactForm } from "@/services/contactService";
 import { handleError } from "@/utils/errorHandler";
+import LocalizedLink from "@/components/LocalizedLink";
 
 const Contact = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -45,8 +48,8 @@ const Contact = () => {
     if (!validation.valid) {
       setErrors(validation.errors);
       toast({
-        title: "Validation Error",
-        description: "Please fix the errors in the form",
+        title: t("contact.validationError"),
+        description: t("contact.fixErrors"),
         variant: "destructive",
       });
       return;
@@ -61,8 +64,8 @@ const Contact = () => {
       if (result.success) {
         setIsSubmitted(true);
         toast({
-          title: "Message sent!",
-          description: "We'll get back to you within 24 hours.",
+          title: t("contact.messageSent"),
+          description: t("contact.replyWithin"),
         });
 
         // Reset form after 3 seconds
@@ -72,15 +75,15 @@ const Contact = () => {
         }, 3000);
       } else {
         toast({
-          title: "Failed to send message",
-          description: result.error || "Please try again later",
+          title: t("contact.failedToSend"),
+          description: result.error || t("contact.tryAgain"),
           variant: "destructive",
         });
       }
     } catch (error) {
       const errorMessage = handleError(error, 'Contact Form');
       toast({
-        title: "Error",
+        title: t("common.error"),
         description: errorMessage,
         variant: "destructive",
       });
@@ -107,13 +110,13 @@ const Contact = () => {
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-6">
                 <Mail size={14} className="text-primary" />
-                Get in Touch
+                {t("contact.getInTouch")}
               </span>
               <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-foreground tracking-tight mb-6">
-                Contact <span className="text-gradient-gold">Us</span>
+                {t("contact.contactUs")} <span className="text-gradient-gold">Us</span>
               </h1>
               <p className="text-xl text-primary-foreground/60">
-                Have a question or feedback? We'd love to hear from you.
+                {t("contact.subtitle")}
               </p>
             </div>
 
@@ -122,10 +125,10 @@ const Contact = () => {
               <div className="space-y-8">
                 <div className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-3xl p-8">
                   <h2 className="font-display text-2xl font-bold text-primary-foreground mb-6">
-                    Let's Connect
+                    {t("contact.letsConnect")}
                   </h2>
                   <p className="text-primary-foreground/60 mb-8 leading-relaxed">
-                    Whether you have a question about BeyondRounds, need support, or want to share feedback, we're here to help. Our team typically responds within 24 hours.
+                    {t("contact.intro")}
                   </p>
 
                   <div className="space-y-6">
@@ -134,7 +137,7 @@ const Contact = () => {
                         <Mail className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div>
-                        <h3 className="font-display font-semibold text-primary-foreground mb-1">Email</h3>
+                        <h3 className="font-display font-semibold text-primary-foreground mb-1">{t("contact.email")}</h3>
                         <a 
                           href="mailto:support@beyondrounds.com" 
                           className="text-primary-foreground/60 hover:text-primary transition-colors"
@@ -149,9 +152,9 @@ const Contact = () => {
                         <Phone className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div>
-                        <h3 className="font-display font-semibold text-primary-foreground mb-1">Response Time</h3>
+                        <h3 className="font-display font-semibold text-primary-foreground mb-1">{t("contact.responseTime")}</h3>
                         <p className="text-primary-foreground/60">
-                          We typically respond within 24 hours during business days
+                          {t("contact.responseTimeDesc")}
                         </p>
                       </div>
                     </div>
@@ -161,9 +164,9 @@ const Contact = () => {
                         <MapPin className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div>
-                        <h3 className="font-display font-semibold text-primary-foreground mb-1">Location</h3>
+                        <h3 className="font-display font-semibold text-primary-foreground mb-1">{t("contact.location")}</h3>
                         <p className="text-primary-foreground/60">
-                          Remote-first team serving doctors worldwide
+                          {t("contact.locationDesc")}
                         </p>
                       </div>
                     </div>
@@ -173,16 +176,16 @@ const Contact = () => {
                 {/* FAQ Link */}
                 <div className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-3xl p-6">
                   <h3 className="font-display font-semibold text-primary-foreground mb-2">
-                    Before you reach out
+                    {t("contact.beforeReachOut")}
                   </h3>
                   <p className="text-primary-foreground/60 text-sm mb-4">
-                    Check out our FAQ page — you might find the answer you're looking for.
+                    {t("contact.checkFaq")}
                   </p>
-                  <a href="/faq">
+                  <LocalizedLink to="/faq">
                     <Button variant="outline" className="w-full border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10">
-                      Visit FAQ
+                      {t("contact.visitFaq")}
                     </Button>
-                  </a>
+                  </LocalizedLink>
                 </div>
               </div>
 
@@ -204,7 +207,7 @@ const Contact = () => {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                       <Label htmlFor="name" className="text-base font-medium text-primary-foreground/70 mb-2 block">
-                        Full Name *
+                        {t("contact.fullName")}
                       </Label>
                       <Input
                         id="name"
@@ -214,7 +217,7 @@ const Contact = () => {
                         onChange={handleChange}
                         placeholder="Dr. Jane Smith"
                         required
-                        className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl ${
+                        className={`h-14 bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl ${
                           errors.name ? 'border-destructive' : !formData.name.trim() ? 'border-primary/50' : ''
                         }`}
                       />
@@ -235,7 +238,7 @@ const Contact = () => {
                         onChange={handleChange}
                         placeholder="doctor@hospital.com"
                         required
-                        className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl ${
+                        className={`h-14 bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl ${
                           errors.email ? 'border-destructive' : !formData.email.trim() ? 'border-primary/50' : ''
                         }`}
                       />
@@ -246,7 +249,7 @@ const Contact = () => {
 
                     <div>
                       <Label htmlFor="subject" className="text-base font-medium text-primary-foreground/70 mb-2 block">
-                        Subject *
+                        {t("contact.subjectRequired")}
                       </Label>
                       <Input
                         id="subject"
@@ -256,7 +259,7 @@ const Contact = () => {
                         onChange={handleChange}
                         placeholder="How can we help?"
                         required
-                        className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl ${
+                        className={`h-14 bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl ${
                           errors.subject ? 'border-destructive' : !formData.subject.trim() ? 'border-primary/50' : ''
                         }`}
                       />
@@ -267,7 +270,7 @@ const Contact = () => {
 
                     <div>
                       <Label htmlFor="message" className="text-base font-medium text-primary-foreground/70 mb-2 block">
-                        Message *
+                        {t("contact.messageRequired")}
                       </Label>
                       <Textarea
                         id="message"
@@ -277,7 +280,7 @@ const Contact = () => {
                         placeholder="Tell us more about your question or feedback..."
                         required
                         rows={6}
-                        className={`bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl resize-none ${
+                        className={`bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl resize-none ${
                           errors.message ? 'border-destructive' : !formData.message.trim() ? 'border-primary/50' : ''
                         }`}
                       />
@@ -294,11 +297,11 @@ const Contact = () => {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                          Sending...
+                          {t("contact.sending")}
                         </>
                       ) : (
                         <>
-                          Send Message
+                          {t("contact.sendMessage")}
                           <Send className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />
                         </>
                       )}

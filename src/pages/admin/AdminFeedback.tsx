@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ const categoryConfig = {
 };
 
 const AdminFeedback = () => {
+  const { t } = useTranslation();
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
@@ -26,7 +28,7 @@ const AdminFeedback = () => {
       const feedbackData = await getFeedback(filter === "all" ? undefined : filter);
       setFeedback(feedbackData);
     } catch (error) {
-      toast({ title: "Error", description: "Failed to fetch feedback", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("admin.failedToFetchFeedback"), variant: "destructive" });
     }
     setIsLoading(false);
   };
@@ -38,9 +40,9 @@ const AdminFeedback = () => {
   const handleDelete = async (id: string) => {
     const success = await deleteFeedback(id);
     if (!success) {
-      toast({ title: "Error", description: "Failed to delete feedback", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("admin.failedToDeleteFeedback"), variant: "destructive" });
     } else {
-      toast({ title: "Deleted", description: "Feedback removed" });
+      toast({ title: t("admin.deleted"), description: t("admin.feedbackRemoved") });
       setFeedback((prev) => prev.filter((f) => f.id !== id));
     }
   };
@@ -78,7 +80,7 @@ const AdminFeedback = () => {
         {/* Feedback List */}
         <div className="space-y-4">
           {isLoading ? (
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground">{t("common.loading")}</p>
           ) : feedback.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">

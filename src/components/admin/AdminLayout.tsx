@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { useLocale } from "@/contexts/LocaleContext";
 import AdminSidebar from "./AdminSidebar";
 import { Loader2 } from "lucide-react";
 
@@ -12,6 +13,7 @@ interface AdminLayoutProps {
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdminCheck();
+  const { pathWithLocale } = useLocale();
 
   if (authLoading || adminLoading) {
     return (
@@ -22,11 +24,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to={pathWithLocale("/auth")} replace />;
   }
 
   if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={pathWithLocale("/dashboard")} replace />;
   }
 
   return (

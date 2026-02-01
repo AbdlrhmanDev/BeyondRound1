@@ -1,12 +1,18 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Cookie } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { getLocaleFromPath, pathWithLocale } from "@/lib/locale";
 
 const STORAGE_KEY = "cookie_consent_accepted";
 
 export function CookieConsent() {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
+  const location = useLocation();
+  const locale = getLocaleFromPath(location.pathname);
+  const privacyPath = pathWithLocale("/privacy", locale);
 
   useEffect(() => {
     try {
@@ -30,7 +36,7 @@ export function CookieConsent() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-[100] p-4 md:p-6 animate-in slide-in-from-bottom duration-300"
+      className="fixed bottom-0 left-0 right-0 z-[100] p-4 md:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-300"
       role="dialog"
       aria-label="Cookie consent"
     >
@@ -42,15 +48,15 @@ export function CookieConsent() {
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">
-                We use cookies to keep you signed in and remember your preferences.
+                {t("cookieConsent.message")}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                By continuing, you agree to our use of cookies.{" "}
+                {t("cookieConsent.agree")}{" "}
                 <Link
-                  to="/privacy"
+                  to={privacyPath}
                   className="underline hover:text-primary transition-colors"
                 >
-                  Privacy policy
+                  {t("cookieConsent.privacyPolicy")}
                 </Link>
               </p>
             </div>
@@ -59,7 +65,7 @@ export function CookieConsent() {
             onClick={accept}
             className="w-full sm:w-auto shrink-0 rounded-xl"
           >
-            Accept
+            {t("common.accept")}
           </Button>
         </div>
       </div>

@@ -99,7 +99,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     // THEN check for existing session (only once on mount)
+    const sessionTimeoutMs = 3000; // Stop loading after 3s so UI appears; listener will update when session resolves
+    const sessionTimeoutId = window.setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, sessionTimeoutMs);
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      window.clearTimeout(sessionTimeoutId);
       if (!isMounted) return;
       
       // تحسين: تعيين الحالة فوراً بدون انتظار التحقق من الحالة
@@ -121,6 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => {
+      window.clearTimeout(sessionTimeoutId);
       isMounted = false;
       subscription.unsubscribe();
       statusCheckCache.clear();

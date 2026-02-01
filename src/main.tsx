@@ -1,3 +1,4 @@
+import "./i18n";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
@@ -39,7 +40,8 @@ const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
   console.error('Unhandled promise rejection:', event.reason);
 };
 
-window.addEventListener('unhandledrejection', handleUnhandledRejection, true);
+// Use capture phase and register early so we run before other listeners
+window.addEventListener('unhandledrejection', handleUnhandledRejection, { capture: true });
 
 // Handle general errors
 const handleError = (event: ErrorEvent) => {

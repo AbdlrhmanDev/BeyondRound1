@@ -1,47 +1,49 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { submitSurvey } from "@/services/surveyService";
+import LocalizedLink from "@/components/LocalizedLink";
 import { Mail, Sparkles, CheckCircle2, ArrowRight, Heart } from "lucide-react";
 
-const QUESTIONS = [
+const QUESTION_KEYS = [
   {
     id: "biggest_challenge",
-    label: "What's your biggest challenge as a physician?",
+    labelKey: "survey.q1Label",
     options: [
-      "Feeling isolated despite being surrounded by colleagues",
-      "No time for friendships or hobbies outside work",
-      "Conversations always circle back to medicine",
-      "Want to find peers who really get the lifestyle",
-      "Other",
+      { value: "isolated", labelKey: "survey.q1Isolated" },
+      { value: "no_time", labelKey: "survey.q1NoTime" },
+      { value: "medicine_talk", labelKey: "survey.q1MedicineTalk" },
+      { value: "peers_lifestyle", labelKey: "survey.q1PeersLifestyle" },
+      { value: "other", labelKey: "survey.q1Other" },
     ],
   },
   {
     id: "connection_type",
-    label: "What kind of connections are you looking for?",
+    labelKey: "survey.q2Label",
     options: [
-      "Real friendships beyond the hospital",
-      "Professional network only",
-      "Both — friends who also happen to be doctors",
-      "Not sure yet, just exploring",
+      { value: "real_friendships", labelKey: "survey.q2RealFriendships" },
+      { value: "professional_only", labelKey: "survey.q2ProfessionalOnly" },
+      { value: "both", labelKey: "survey.q2Both" },
+      { value: "not_sure", labelKey: "survey.q2NotSure" },
     ],
   },
   {
     id: "hear_about",
-    label: "How did you hear about BeyondRounds?",
+    labelKey: "survey.q3Label",
     options: [
-      "Social media",
-      "A colleague or friend",
-      "Search / web",
-      "Other",
+      { value: "social_media", labelKey: "survey.q3SocialMedia" },
+      { value: "colleague_friend", labelKey: "survey.q3ColleagueFriend" },
+      { value: "search_web", labelKey: "survey.q3SearchWeb" },
+      { value: "other", labelKey: "survey.q3Other" },
     ],
   },
 ];
 
 const Survey = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -52,6 +54,7 @@ const Survey = () => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
+  const QUESTIONS = QUESTION_KEYS;
   const allAnswered = QUESTIONS.every((q) => answers[q.id]?.trim());
   const canSubmit = email.trim() && allAnswered;
 
@@ -65,9 +68,9 @@ const Survey = () => {
 
     if (result.success) {
       setSubmitted(true);
-      toast({ title: "Thank you!", description: "Your responses have been saved." });
+      toast({ title: t("survey.thanksTitle"), description: t("survey.toastSuccess") });
     } else {
-      toast({ title: "Error", description: result.error || "Something went wrong.", variant: "destructive" });
+      toast({ title: t("common.error"), description: result.error || t("survey.toastError"), variant: "destructive" });
     }
   };
 
@@ -80,20 +83,20 @@ const Survey = () => {
               <CheckCircle2 className="w-8 h-8 text-primary" />
             </div>
             <h1 className="font-display text-2xl font-bold text-primary-foreground mb-3">
-              Thanks for sharing!
+              {t("survey.thanksTitle")}
             </h1>
             <p className="text-primary-foreground/60 mb-8">
-              Your answers help us build a better experience for doctors. Ready to get early access?
+              {t("survey.thanksDesc")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button className="group" asChild>
-                <Link to="/waitlist">
-                  Join the waitlist
+                <LocalizedLink to="/waitlist">
+                  {t("survey.joinWaitlist")}
                   <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </LocalizedLink>
               </Button>
               <Button variant="outline" className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10" asChild>
-                <Link to="/">Back to home</Link>
+                <LocalizedLink to="/">{t("common.backToHome")}</LocalizedLink>
               </Button>
             </div>
           </CardContent>
@@ -110,10 +113,10 @@ const Survey = () => {
 
       <header className="relative z-20 py-6">
         <div className="container mx-auto px-4 flex justify-center">
-          <Link to="/" className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground">
+          <LocalizedLink to="/" className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground">
             <Heart className="h-5 w-5" />
-            <span className="font-display font-bold text-lg">BeyondRounds</span>
-          </Link>
+            <span className="font-display font-bold text-lg">{t("common.brand")}</span>
+          </LocalizedLink>
         </div>
       </header>
 
@@ -122,13 +125,13 @@ const Survey = () => {
           <div className="text-center mb-10">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-4">
               <Sparkles size={14} className="text-primary" />
-              2-minute quiz
+              {t("survey.quizLabel")}
             </span>
             <h1 className="font-display text-3xl sm:text-4xl font-bold text-primary-foreground mb-3">
-              Help us understand what doctors need
+              {t("survey.title")}
             </h1>
             <p className="text-primary-foreground/60">
-              A few quick questions so we can build the right experience for you.
+              {t("survey.subtitle")}
             </p>
           </div>
 
@@ -138,37 +141,37 @@ const Survey = () => {
                 <div>
                   <label htmlFor="survey-email" className="flex items-center gap-2 text-sm font-medium mb-2 text-primary-foreground">
                     <Mail className="h-4 w-4" />
-                    Email *
+                    {t("survey.emailLabel")}
                   </label>
                   <Input
                     id="survey-email"
                     type="email"
-                    placeholder="your.email@example.com"
+                    placeholder={t("survey.emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="h-12 bg-background/50 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50"
+                    className="h-12 bg-background/50 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
 
                 {QUESTIONS.map((q) => (
                   <div key={q.id}>
                     <label className="block text-sm font-medium mb-3 text-primary-foreground">
-                      {q.label}
+                      {t(q.labelKey)}
                     </label>
                     <div className="space-y-2">
                       {q.options.map((opt) => (
                         <button
-                          key={opt}
+                          key={opt.value}
                           type="button"
-                          onClick={() => handleAnswer(q.id, opt)}
+                          onClick={() => handleAnswer(q.id, opt.value)}
                           className={`w-full text-left px-4 py-3 rounded-xl border transition-colors ${
-                            answers[q.id] === opt
+                            answers[q.id] === opt.value
                               ? "border-primary bg-primary/20 text-primary-foreground"
                               : "border-primary-foreground/20 text-primary-foreground/80 hover:border-primary-foreground/40 hover:bg-primary-foreground/5"
                           }`}
                         >
-                          {opt}
+                          {t(opt.labelKey)}
                         </button>
                       ))}
                     </div>
@@ -180,20 +183,20 @@ const Survey = () => {
                   disabled={!canSubmit || loading}
                   className="w-full h-12 text-base"
                 >
-                  {loading ? "Submitting..." : "Submit"}
+                  {loading ? t("survey.submitting") : t("survey.submit")}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
           <p className="text-center text-sm text-primary-foreground/50 mt-6">
-            <Link to="/for-doctors" className="underline hover:text-primary-foreground/70">
-              Why we ask this
-            </Link>
+            <LocalizedLink to="/for-doctors" className="underline hover:text-primary-foreground/70">
+              {t("survey.whyAskThis")}
+            </LocalizedLink>
             {" · "}
-            <Link to="/waitlist" className="underline hover:text-primary-foreground/70">
-              Skip to waitlist
-            </Link>
+            <LocalizedLink to="/waitlist" className="underline hover:text-primary-foreground/70">
+              {t("survey.skipWaitlist")}
+            </LocalizedLink>
           </p>
         </div>
       </main>

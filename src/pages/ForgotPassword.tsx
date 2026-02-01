@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Mail, Sparkles, ArrowLeft, Check, MailCheck } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import LocalizedLink from "@/components/LocalizedLink";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
@@ -17,7 +18,7 @@ const ForgotPassword = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<{ email?: string }>({});
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   
   const [formData, setFormData] = useState({
     email: "",
@@ -114,13 +115,13 @@ const ForgotPassword = () => {
       />
 
       {/* Back to Login */}
-      <Link 
+      <LocalizedLink 
         to="/auth" 
         className="absolute top-6 left-6 z-20 flex items-center gap-2 text-primary-foreground/60 hover:text-primary-foreground transition-colors group"
       >
         <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
         <span className="text-sm font-medium">Back to Login</span>
-      </Link>
+      </LocalizedLink>
 
       {/* Main content container */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
@@ -196,14 +197,14 @@ const ForgotPassword = () => {
                       >
                         Send Another Email
                       </Button>
-                      <Link to="/auth">
+                      <LocalizedLink to="/auth">
                         <Button 
                           variant="ghost"
                           className="w-full h-12 rounded-2xl text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/5"
                         >
                           Back to Login
                         </Button>
-                      </Link>
+                      </LocalizedLink>
                     </div>
                   </div>
                 ) : (
@@ -229,7 +230,7 @@ const ForgotPassword = () => {
                             placeholder="doctor@hospital.com"
                             value={formData.email}
                             onChange={handleInputChange}
-                            className={`pl-12 h-14 rounded-2xl bg-primary-foreground/5 border-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-red-500' : ''}`}
+                            className={`pl-12 h-14 rounded-2xl bg-primary-foreground/5 border-primary-foreground/10 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-red-500' : ''}`}
                             required
                           />
                         </div>
@@ -280,9 +281,9 @@ const ForgotPassword = () => {
             {/* Terms note */}
             <p className="text-center text-primary-foreground/40 text-xs mt-6 px-4">
               Need help?{" "}
-              <Link to="/faq" className="text-primary hover:underline">Visit our FAQ</Link>
+              <LocalizedLink to="/faq" className="text-primary hover:underline">Visit our FAQ</LocalizedLink>
               {" "}or{" "}
-              <Link to="/about" className="text-primary hover:underline">Contact Support</Link>
+              <LocalizedLink to="/about" className="text-primary hover:underline">Contact Support</LocalizedLink>
             </p>
           </div>
         </div>

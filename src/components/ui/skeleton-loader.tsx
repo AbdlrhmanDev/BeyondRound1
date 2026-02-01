@@ -89,3 +89,20 @@ export const CardSkeleton = () => (
     <SkeletonLoader variant="rounded" height={100} />
   </div>
 );
+
+/**
+ * Page loading skeleton – title placeholder + content block placeholders.
+ * Use on white/background pages while data is loading.
+ */
+export const PageLoadingSkeleton = () => (
+  <div className="min-h-screen bg-background p-6">
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div className="h-10 w-48 rounded-2xl animate-pulse bg-muted" />
+      <div className="space-y-4">
+        <div className="h-32 w-full rounded-2xl animate-pulse bg-muted" />
+        <div className="h-32 w-full rounded-2xl animate-pulse bg-muted" />
+        <div className="h-32 w-full rounded-2xl animate-pulse bg-muted" />
+      </div>
+    </div>
+  </div>
+);

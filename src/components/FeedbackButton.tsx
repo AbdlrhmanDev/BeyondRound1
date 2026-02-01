@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageCircle, Send, X, Bug, Lightbulb, MessageSquare } from "lucide-react";
@@ -20,13 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { submitFeedback } from "@/services/feedbackService";
 
-const categories = [
-  { id: "bug", label: "Bug Report", icon: Bug, color: "text-red-500" },
-  { id: "feature", label: "Feature Request", icon: Lightbulb, color: "text-yellow-500" },
-  { id: "general", label: "General", icon: MessageSquare, color: "text-blue-500" },
-];
-
 const FeedbackButton = () => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [category, setCategory] = useState<string>("");
   const [feedback, setFeedback] = useState("");
@@ -34,11 +30,20 @@ const FeedbackButton = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  const categories = useMemo(
+    () => [
+      { id: "bug", labelKey: "feedbackModal.bugReport", icon: Bug, color: "text-red-500" },
+      { id: "feature", labelKey: "feedbackModal.featureRequest", icon: Lightbulb, color: "text-yellow-500" },
+      { id: "general", labelKey: "feedbackModal.general", icon: MessageSquare, color: "text-blue-500" },
+    ],
+    []
+  );
+
   const handleSubmit = async () => {
     if (!category) {
       toast({
-        title: "Select a category",
-        description: "Please choose a feedback category",
+        title: t("feedbackModal.selectCategoryToast"),
+        description: t("feedbackModal.selectCategoryToastDesc"),
         variant: "destructive",
       });
       return;
@@ -46,8 +51,8 @@ const FeedbackButton = () => {
 
     if (!feedback.trim()) {
       toast({
-        title: "Please enter feedback",
-        description: "Your feedback cannot be empty",
+        title: t("feedbackModal.enterFeedbackToast"),
+        description: t("feedbackModal.enterFeedbackToastDesc"),
         variant: "destructive",
       });
       return;
@@ -64,8 +69,8 @@ const FeedbackButton = () => {
 
     if (!success) {
       toast({
-        title: "Error",
-        description: "Failed to submit feedback. Please try again.",
+        title: t("feedbackModal.errorToast"),
+        description: t("feedbackModal.errorToastDesc"),
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -73,8 +78,8 @@ const FeedbackButton = () => {
     }
     
     toast({
-      title: "Thank you! 💜",
-      description: "Your feedback has been submitted",
+      title: t("feedbackModal.thankYouTitle"),
+      description: t("feedbackModal.thankYouDesc"),
     });
     
     setFeedback("");
@@ -94,63 +99,62 @@ const FeedbackButton = () => {
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.currentTarget.click(); }}
                 className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 rounded-full bg-orange-500 pl-3 pr-2 py-2 shadow-lg shadow-orange-500/30 hover:bg-orange-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-background"
-                aria-label="Feedback — أرسل رأيك أو اقتراحك"
+                aria-label={t("feedbackModal.tooltip")}
               >
                 <MessageCircle className="h-5 w-5 text-white shrink-0" aria-hidden />
-                <span className="text-sm font-semibold text-white whitespace-nowrap pr-1">Feedback</span>
+                <span className="text-sm font-semibold text-white whitespace-nowrap pr-1">{t("feedbackModal.button")}</span>
               </div>
             </TooltipTrigger>
           </DialogTrigger>
           <TooltipContent side="left" className="font-medium">
-            أرسل رأيك أو اقتراحك — Send feedback
+            {t("feedbackModal.tooltip")}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-2xl sm:rounded-2xl border-2">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-primary" />
-            Send Feedback
+            {t("feedbackModal.title")}
           </DialogTitle>
           <DialogDescription>
-            Share your thoughts, report bugs, or suggest new features. We'd love to hear from you!
+            {t("feedbackModal.description")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Category Selection */}
           <div className="grid grid-cols-3 gap-2">
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setCategory(cat.id)}
-                aria-label={`Select ${cat.label} category`}
+                aria-label={t("feedbackModal.selectCategory", { label: t(cat.labelKey) })}
                 aria-pressed={category === cat.id}
-                className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all ${
+                className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${
                   category === cat.id
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"
                 }`}
               >
                 <cat.icon className={`h-5 w-5 ${cat.color}`} />
-                <span className="text-xs font-medium">{cat.label}</span>
+                <span className="text-xs font-medium">{t(cat.labelKey)}</span>
               </button>
             ))}
           </div>
 
           <Textarea
-            placeholder="Tell us what you think... suggestions, bugs, or anything else!"
+            placeholder={t("feedbackModal.placeholder")}
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            className="min-h-[120px] resize-none"
+            className="min-h-[120px] resize-none rounded-xl border-2"
           />
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
+            <Button variant="outline" onClick={() => setIsOpen(false)} className="rounded-xl">
               <X className="h-4 w-4 mr-1" />
-              Cancel
+              {t("common.cancel")}
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="rounded-xl">
               <Send className="h-4 w-4 mr-1" />
-              {isSubmitting ? "Sending..." : "Send"}
+              {isSubmitting ? t("feedbackModal.sending") : t("feedbackModal.send")}
             </Button>
           </div>
         </div>

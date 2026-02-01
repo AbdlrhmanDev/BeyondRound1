@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Calendar, Sparkles, Users } from "lucide-react";
+import { Clock, Calendar } from "lucide-react";
 
 interface TimeLeft {
   days: number;
@@ -59,8 +60,10 @@ const calculateTimeLeft = (targetDate: Date): TimeLeft => {
 };
 
 const MatchCountdown = () => {
+  const { t, i18n } = useTranslation();
   const [nextThursday, setNextThursday] = useState<Date>(getNextThursday());
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft(nextThursday));
+  const locale = i18n.language === "de" ? "de-DE" : "en-US";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -79,10 +82,10 @@ const MatchCountdown = () => {
   }, [nextThursday]);
 
   const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      month: 'long', 
-      day: 'numeric' 
+    return date.toLocaleDateString(locale, { 
+      weekday: "long", 
+      month: "long", 
+      day: "numeric" 
     });
   };
 
@@ -121,7 +124,7 @@ const MatchCountdown = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="font-display font-medium text-base text-foreground">
-                  Next Group Matching
+                  {t("dashboard.nextGroupMatching")}
                 </h3>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
@@ -129,20 +132,20 @@ const MatchCountdown = () => {
                 <span>{formatDate(nextThursday)}</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Groups are created every Thursday at 4 PM based on shared interests and specialty.
+                {t("dashboard.groupsCreatedDesc")}
               </p>
             </div>
           </div>
           
           {/* Right Section - Countdown Timer */}
           <div className="flex items-center justify-center lg:justify-end gap-2">
-            <TimeUnit value={timeLeft.days} label="DAYS" />
+            <TimeUnit value={timeLeft.days} label={t("dashboard.days")} />
             <span className="text-primary text-xs leading-none">:</span>
-            <TimeUnit value={timeLeft.hours} label="HOURS" />
+            <TimeUnit value={timeLeft.hours} label={t("dashboard.hours")} />
             <span className="text-primary text-xs leading-none">:</span>
-            <TimeUnit value={timeLeft.minutes} label="MINS" />
+            <TimeUnit value={timeLeft.minutes} label={t("dashboard.mins")} />
             <span className="text-primary text-xs leading-none">:</span>
-            <TimeUnit value={timeLeft.seconds} label="SECS" />
+            <TimeUnit value={timeLeft.seconds} label={t("dashboard.secs")} />
           </div>
         </div>
       </CardContent>

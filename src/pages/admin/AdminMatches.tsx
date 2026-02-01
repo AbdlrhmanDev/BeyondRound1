@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getMatches, getMatchGroups, Match, MatchGroup } from "@/services/adminService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ const statusColors: Record<string, string> = {
 };
 
 const AdminMatches = () => {
+  const { t } = useTranslation();
   const [matches, setMatches] = useState<Match[]>([]);
   const [groups, setGroups] = useState<MatchGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +111,7 @@ const AdminMatches = () => {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <p className="text-muted-foreground">Loading...</p>
+                  <p className="text-muted-foreground">{t("common.loading")}</p>
                 ) : matches.length === 0 ? (
                   <p className="text-muted-foreground">No matches found</p>
                 ) : (
@@ -154,7 +156,7 @@ const AdminMatches = () => {
           <TabsContent value="groups" className="mt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {isLoading ? (
-                <p className="text-muted-foreground col-span-full">Loading...</p>
+                <p className="text-muted-foreground col-span-full">{t("common.loading")}</p>
               ) : groups.length === 0 ? (
                 <Card className="col-span-full">
                   <CardContent className="py-8 text-center text-muted-foreground">

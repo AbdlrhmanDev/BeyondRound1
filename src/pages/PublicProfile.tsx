@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,7 +42,7 @@ interface PublicPreferences {
 
 const PublicProfile = () => {
   const { userId } = useParams<{ userId: string }>();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -92,7 +93,7 @@ const PublicProfile = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <Skeleton className="h-10 w-24 mb-8" />
           <div className="max-w-2xl mx-auto">
             <Skeleton className="h-96 rounded-3xl" />
@@ -124,7 +125,7 @@ const PublicProfile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-mesh">
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <Button 
           variant="ghost" 
           onClick={() => navigate(-1)}

@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight, ArrowLeft, Sparkles, Check, Mail, Lock, Eye, EyeOff, Camera, Upload, FileCheck, Zap, Star, Trophy } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import LocalizedLink from "@/components/LocalizedLink";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -389,7 +391,7 @@ const Onboarding = () => {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const licenseInputRef = useRef<HTMLInputElement>(null);
   
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { signUp } = useAuth();
   const { toast } = useToast();
 
@@ -1184,7 +1186,7 @@ const Onboarding = () => {
                     value={personalInfo.name}
                     onChange={(e) => handlePersonalInfoChange("name", e.target.value)}
                     placeholder="Dr. Jane Smith"
-                    className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 rounded-2xl ${
+                    className={`h-14 bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl ${
                       !personalInfo.name.trim() ? 'border-primary/50' : ''
                     }`}
                   />
@@ -1276,7 +1278,7 @@ const Onboarding = () => {
                       placeholder="doctor@hospital.com"
                       value={signupData.email}
                       onChange={handleSignupChange}
-                      className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
+                      className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
                     />
                   </div>
                   {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
@@ -1310,7 +1312,7 @@ const Onboarding = () => {
                             placeholder="Enter your password"
                             value={signupData.password}
                             onChange={handleSignupChange}
-                            className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:ring-primary/20 transition-all ${
+                            className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground focus:ring-primary/20 transition-all ${
                               isValid 
                                 ? 'border-accent/85 focus:border-accent/85' 
                                 : signupData.password.length > 0 
@@ -1400,7 +1402,7 @@ const Onboarding = () => {
                       placeholder="Confirm your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/30 focus:ring-primary/20 transition-all ${
+                      className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground focus:ring-primary/20 transition-all ${
                         confirmPassword && signupData.password === confirmPassword
                           ? 'border-accent/85 focus:border-accent/85' 
                           : confirmPassword && signupData.password !== confirmPassword && signupData.password.length > 0
@@ -1438,9 +1440,9 @@ const Onboarding = () => {
 
                 <p className="text-primary-foreground/40 text-xs text-center pt-2">
                   By creating an account, you agree to our{" "}
-                  <Link to="/terms" className="text-primary hover:underline">Terms</Link>
+                  <LocalizedLink to="/terms" className="text-primary hover:underline">Terms</LocalizedLink>
                   {" "}and{" "}
-                  <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+                  <LocalizedLink to="/privacy" className="text-primary hover:underline">Privacy Policy</LocalizedLink>
                 </p>
               </div>
             )}
@@ -1509,7 +1511,7 @@ const Onboarding = () => {
               <div className="mt-6 text-center">
                 <p className="text-primary-foreground/50 text-sm">
                   Already have an account?{" "}
-                  <Link to="/auth" className="text-primary hover:underline font-medium">Sign in</Link>
+                  <LocalizedLink to="/auth" className="text-primary hover:underline font-medium">Sign in</LocalizedLink>
                 </p>
               </div>
             )}

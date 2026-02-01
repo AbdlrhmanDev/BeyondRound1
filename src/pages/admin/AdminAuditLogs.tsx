@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { getAuditLogs, AuditLog } from "@/services/adminService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ const actionConfig: Record<string, { label: string; icon: typeof Pencil; color: 
 };
 
 const AdminAuditLogs = () => {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -54,7 +56,7 @@ const AdminAuditLogs = () => {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <p className="text-muted-foreground">Loading...</p>
+              <p className="text-muted-foreground">{t("common.loading")}</p>
             ) : logs.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No audit logs yet</p>
             ) : (

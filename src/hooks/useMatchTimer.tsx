@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { getUserGroupMemberships, getGroupsByIds } from "@/services/matchService";
@@ -43,7 +43,7 @@ const shouldShowSurvey = (matchWeek: string): boolean => {
 
 export const useMatchTimer = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { toast } = useToast();
   const [nextMatchTime, setNextMatchTime] = useState<Date>(getNextThursday4PM());
   const [hasCheckedMatch, setHasCheckedMatch] = useState(false);

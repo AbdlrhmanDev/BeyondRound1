@@ -17,16 +17,19 @@ export const useMatches = () => {
   const [surveyGroupId, setSurveyGroupId] = useState<string>("");
   const [surveyMatchWeek, setSurveyMatchWeek] = useState<string>("");
 
-  const fetchGroups = useCallback(async () => {
-    if (!user) return;
+  const userId = user?.id;
+
+  const fetchGroups = useCallback(async (isRefetch = false) => {
+    if (!userId) return;
 
     try {
-      setLoading(true);
-      
+      // Only show loading on initial load so we don't flash skeleton on refetch
+      if (!isRefetch) setLoading(true);
+
       // Fetch groups and profile completion status in parallel
       const [groupsData, profileComplete] = await Promise.all([
-        fetchUserGroups(user.id),
-        checkProfileCompletion(user.id),
+        fetchUserGroups(userId),
+        checkProfileCompletion(userId),
       ]);
 
       setGroups(groupsData);
@@ -35,8 +38,8 @@ export const useMatches = () => {
       // Check if survey should be shown for the best group
       if (groupsData.length > 0) {
         const bestGroup = groupsData[0];
-        const shouldShow = await shouldShowEvaluationSurvey(user.id, bestGroup);
-        
+        const shouldShow = await shouldShowEvaluationSurvey(userId, bestGroup);
+
         if (shouldShow) {
           setSurveyGroupId(bestGroup.id);
           setSurveyMatchWeek(bestGroup.match_week);
@@ -49,11 +52,15 @@ export const useMatches = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
-    fetchGroups();
-  }, [fetchGroups]);
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    fetchGroups(false);
+  }, [userId, fetchGroups]);
 
   return {
     groups,
@@ -63,6 +70,6 @@ export const useMatches = () => {
     surveyGroupId,
     surveyMatchWeek,
     setShowSurvey,
-    refetch: fetchGroups,
+    refetch: () => fetchGroups(true),
   };
 };

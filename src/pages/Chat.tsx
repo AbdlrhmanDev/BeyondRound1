@@ -22,7 +22,7 @@ interface OtherUser {
 
 const Chat = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);

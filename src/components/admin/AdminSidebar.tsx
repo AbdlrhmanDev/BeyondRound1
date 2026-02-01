@@ -1,8 +1,10 @@
 import { LayoutDashboard, MessageSquare, Users, Heart, LogOut, History } from "lucide-react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocale } from "@/contexts/LocaleContext";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 
 const navItems = [
   { title: "Overview", url: "/admin", icon: LayoutDashboard },
@@ -13,7 +15,8 @@ const navItems = [
 ];
 
 const AdminSidebar = () => {
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
+  const { pathWithLocale } = useLocale();
   const { signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -32,7 +35,7 @@ const AdminSidebar = () => {
         {navItems.map((item) => (
           <NavLink
             key={item.url}
-            to={item.url}
+            to={pathWithLocale(item.url)}
             end={item.url === "/admin"}
             className={({ isActive }) =>
               cn(

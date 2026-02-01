@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
 
 interface Notification {
   id: string;
@@ -24,8 +26,9 @@ interface Notification {
 }
 
 const NotificationPopover = () => {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -69,15 +72,16 @@ const NotificationPopover = () => {
             .maybeSingle();
           
           if (!existingWelcome) {
-            // Create welcome notification
+            // Create welcome notification (keys for i18n; app resolves with current locale)
             const { data: newNotification } = await supabase
               .from("notifications")
               .insert({
                 user_id: user.id,
                 type: "welcome",
-                title: "Welcome to BeyondRounds!",
-                message: "Complete your profile to start connecting with physicians who share your interests.",
+                title: "notifications.welcome.title",
+                message: "notifications.welcome.message",
                 link: "/profile",
+                metadata: {},
               })
               .select()
               .single();
@@ -248,10 +252,70 @@ const NotificationPopover = () => {
 
   const formatTime = (dateString: string) => {
     try {
-      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+      const locale = i18n.language === "de" ? de : undefined;
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale });
     } catch {
-      return "Recently";
+      return t("notifications.recently");
     }
+  };
+
+  // Map known English text (from old DB rows) to translation keys so they show in current locale
+  const getDisplayTitle = (notification: Notification): string => {
+    const title = notification.title ?? "";
+    if (title.startsWith("notifications.")) return t(title, notification.metadata || {});
+    const known: Record<string, string> = {
+      "New Group Message": "notifications.group_message.title",
+      "New Message": "notifications.message.title",
+      "New Connection Request": "notifications.match.title",
+      "Connection Accepted!": "notifications.match_accepted.title",
+      "New Member Joined": "notifications.group_invite.title",
+      "Welcome to BeyondRounds!": "notifications.welcome.title",
+    };
+    const key = known[title];
+    return key ? t(key, notification.metadata || {}) : title;
+  };
+
+  const getDisplayMessage = (notification: Notification): string => {
+    const message = notification.message ?? "";
+    if (message.startsWith("notifications.")) return t(message, notification.metadata || {});
+    const meta = { ...(notification.metadata || {}) } as Record<string, string>;
+    const type = notification.type;
+    // Extract from_user_name from old English message patterns when metadata lacks it
+    let fromUserName = meta.from_user_name;
+    if (!fromUserName && message) {
+      const inGroup = message.match(/^(.+?)\s+sent a message in the group\.?$/i);
+      if (inGroup) fromUserName = inGroup[1].trim();
+      else {
+        const sentYou = message.match(/^(.+?)\s+sent you a message\.?$/i);
+        if (sentYou) fromUserName = sentYou[1].trim();
+        else {
+          const requestFrom = message.match(/You have a new connection request from\s+(.+?)\.?$/i);
+          if (requestFrom) fromUserName = requestFrom[1].trim();
+          else {
+            const accepted = message.match(/^(.+?)\s+accepted your connection request\.?$/i);
+            if (accepted) fromUserName = accepted[1].trim();
+            else {
+              const joined = message.match(/^(.+?)\s+joined\s+(.+?)\.?$/i);
+              if (joined) {
+                fromUserName = joined[1].trim();
+                if (!meta.group_name) meta.group_name = joined[2].trim();
+              }
+            }
+          }
+        }
+      }
+    }
+    const keyByType: Partial<Record<Notification["type"], string>> = {
+      group_message: "notifications.group_message.message",
+      message: "notifications.message.message",
+      match: "notifications.match.message",
+      match_accepted: "notifications.match_accepted.message",
+      group_invite: "notifications.group_invite.message",
+      welcome: "notifications.welcome.message",
+    };
+    const key = keyByType[type];
+    if (key) return t(key, { ...meta, from_user_name: fromUserName || "Someone" });
+    return message;
   };
 
   const getIcon = (type: Notification["type"]) => {
@@ -288,13 +352,13 @@ const NotificationPopover = () => {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-80 p-0 rounded-2xl border-border/50 shadow-xl" 
+      <PopoverContent
+        className="w-[calc(100vw-2rem)] max-w-80 p-0 rounded-xl sm:rounded-2xl border-border/50 shadow-xl" 
         align="end"
         sideOffset={8}
       >
         <div className="flex items-center justify-between p-4 border-b border-border/40">
-          <h3 className="font-display font-semibold">Notifications</h3>
+          <h3 className="font-display font-semibold">{t("notifications.heading")}</h3>
           {unreadCount > 0 && (
             <Button 
               variant="ghost" 
@@ -303,7 +367,7 @@ const NotificationPopover = () => {
               onClick={markAllRead}
             >
               <Check className="h-3 w-3 mr-1" />
-              Mark all read
+              {t("notifications.markAllRead")}
             </Button>
           )}
         </div>
@@ -312,7 +376,7 @@ const NotificationPopover = () => {
           {loading ? (
             <div className="p-8 text-center">
               <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Loading notifications...</p>
+              <p className="text-sm text-muted-foreground">{t("notifications.loading")}</p>
             </div>
           ) : notifications.length > 0 ? (
             <div className="divide-y divide-border/40">
@@ -321,7 +385,10 @@ const NotificationPopover = () => {
                   // Remove duplicates by keeping only first occurrence of each id
                   index === self.findIndex((t) => t.id === n.id)
                 )
-                .map((notification) => (
+                .map((notification) => {
+                  const displayTitle = getDisplayTitle(notification);
+                  const displayMessage = getDisplayMessage(notification);
+                  return (
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
@@ -340,29 +407,32 @@ const NotificationPopover = () => {
                           "text-sm",
                           !notification.read && "font-medium"
                         )}>
-                          {notification.title}
+                          {displayTitle}
                         </p>
                         {!notification.read && (
                           <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                        {notification.message}
-                      </p>
+                      {displayMessage ? (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {displayMessage}
+                        </p>
+                      ) : null}
                       <p className="text-xs text-muted-foreground/70 mt-1">
                         {formatTime(notification.created_at)}
                       </p>
                     </div>
                   </div>
                 </div>
-              ))}
+                  );
+              })}
             </div>
           ) : (
             <div className="p-8 text-center">
               <div className="h-12 w-12 rounded-xl bg-secondary mx-auto mb-3 flex items-center justify-center">
                 <Bell className="h-6 w-6 text-muted-foreground/50" />
               </div>
-              <p className="text-sm text-muted-foreground">No notifications yet</p>
+              <p className="text-sm text-muted-foreground">{t("notifications.empty")}</p>
             </div>
           )}
         </div>
@@ -372,7 +442,7 @@ const NotificationPopover = () => {
             variant="ghost" 
             className="w-full text-sm text-muted-foreground hover:text-foreground rounded-xl"
           >
-            View all notifications
+            {t("notifications.viewAll")}
           </Button>
         </div>
       </PopoverContent>

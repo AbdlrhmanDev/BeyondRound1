@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Calendar, Verified, Check, Users } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import LocalizedLink from "@/components/LocalizedLink";
 import heroImage from "@/assets/hero-doctors-friendship.jpg";
 
 const getNextThursday = (): Date => {
@@ -45,6 +46,7 @@ const formatMatchDate = (date: Date): string => {
 };
 
 const HeroSection = () => {
+  const { t } = useTranslation();
   const [displayDate, setDisplayDate] = useState<string>(() =>
     formatMatchDate(getNextThursday())
   );
@@ -58,7 +60,7 @@ const HeroSection = () => {
 
   return (
     <section
-      className="relative min-h-screen flex items-center pt-32 pb-24 overflow-hidden bg-foreground dark:bg-background"
+      className="relative min-h-screen flex items-center pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-24 overflow-hidden bg-foreground dark:bg-background"
       aria-label="Welcome to BeyondRounds - Your next great friendship awaits"
     >
       {/* Animated Gradient Orbs */}
@@ -91,49 +93,49 @@ const HeroSection = () => {
               <div className="w-5 h-5 rounded-full bg-gradient-gold flex items-center justify-center">
                 <Verified size={12} className="text-primary-foreground" aria-hidden="true" />
               </div>
-              <span>Exclusively for Verified Doctors</span>
+              <span>{t("home.badge")}</span>
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-1" aria-hidden="true" />
             </div>
 
             {/* Main Headline */}
             <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold text-primary-foreground leading-[1.05] tracking-tight mb-8 animate-fade-up delay-100">
-              Your Next Great
+              {t("home.headlineNext")}
               <br />
-              <span className="text-gradient-gold">Friendship Awaits</span>
+              <span className="text-gradient-gold">{t("home.headlineHighlight")}</span>
             </h1>
 
             {/* Subheadline */}
             <p className="text-xl lg:text-2xl text-primary-foreground/70 max-w-2xl mx-auto lg:mx-0 mb-12 animate-fade-up delay-200 leading-relaxed">
-              Life in medicine can be isolating. BeyondRounds matches you with fellow doctors who share your interests, lifestyle, and values —{" "}
-              <span className="text-primary-foreground font-medium">because the best friendships start with common ground.</span>
+              {t("home.subheadline")}{" "}
+              <span className="text-primary-foreground font-medium">{t("home.subheadlineBold")}</span>
             </p>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-16 animate-fade-up delay-300">
-              <Link to="/onboarding" aria-label="Start your journey - go to onboarding">
+              <LocalizedLink to="/onboarding" aria-label="Start your journey - go to onboarding">
                 <Button className="group text-base h-14 px-8">
-                  Start Your Journey
+                  {t("home.cta")}
                   <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                 </Button>
-              </Link>
+              </LocalizedLink>
             </div>
 
-            {/* Features list - 30-Day Guarantee kept once; no duplicate */}
+            {/* Features list */}
             <div
               className="flex flex-wrap gap-6 justify-center lg:justify-start animate-fade-up delay-400"
               role="list"
               aria-label="Key benefits"
             >
               {[
-                { icon: Shield, label: "Verified Doctors Only" },
-                { icon: Calendar, label: "Curated Weekly Matches" },
-                { icon: Check, label: "30-Day Guarantee" },
+                { icon: Shield, labelKey: "home.verifiedOnly" },
+                { icon: Calendar, labelKey: "home.weeklyMatches" },
+                { icon: Check, labelKey: "home.guarantee" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2 text-primary-foreground/70" role="listitem">
                   <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center" aria-hidden="true">
                     <item.icon size={14} className="text-primary" />
                   </div>
-                  <span className="font-medium">{item.label}</span>
+                  <span className="font-medium">{t(item.labelKey)}</span>
                 </div>
               ))}
             </div>
@@ -154,7 +156,7 @@ const HeroSection = () => {
                   className="w-full h-auto object-cover aspect-[4/5]"
                   loading="eager"
                   decoding="async"
-                  fetchPriority="high"
+                  fetchpriority="high"
                   width={500}
                   height={625}
                 />
@@ -171,12 +173,12 @@ const HeroSection = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-primary-foreground font-display font-bold text-lg">Next match in</p>
+                        <p className="text-primary-foreground font-display font-bold text-lg">{t("home.nextMatchIn")}</p>
                         <p className="text-primary-foreground/70 text-sm">{displayDate}</p>
                       </div>
                       <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
                         <div className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse" aria-hidden="true" />
-                        Live
+                        {t("home.live")}
                       </div>
                     </div>
                   </div>
@@ -193,8 +195,8 @@ const HeroSection = () => {
                     <Users className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <div>
-                    <p className="font-display font-bold text-primary-foreground">2+ Meaningful Meetups</p>
-                    <p className="text-sm text-primary-foreground/70">Real connections, not just chats</p>
+                    <p className="font-display font-bold text-primary-foreground">{t("home.meaningfulMeetups")}</p>
+                    <p className="text-sm text-primary-foreground/70">{t("home.realConnections")}</p>
                   </div>
                 </div>
               </div>
@@ -209,7 +211,7 @@ const HeroSection = () => {
                     <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
                     <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
                   </div>
-                  <span className="text-sm font-semibold text-primary-foreground">5,000+ doctors</span>
+                  <span className="text-sm font-semibold text-primary-foreground">{t("home.doctorsOnPlatform")}</span>
                 </div>
               </div>
             </div>

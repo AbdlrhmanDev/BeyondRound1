@@ -1,5 +1,6 @@
 import { useState, useCallback, lazy, Suspense, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatches } from "@/hooks/useMatches";
 import { useMatchDetails } from "@/hooks/useMatchDetails";
@@ -45,7 +46,8 @@ const GroupEvaluationSurvey = lazy(() => import("@/components/GroupEvaluationSur
 
 
 const Matches = () => {
-  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const navigate = useLocalizedNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const {
@@ -82,12 +84,12 @@ const Matches = () => {
     } catch (error) {
       console.error("Error starting group chat:", error);
       toast({
-        title: "Error",
-        description: "Failed to start group chat. Please try again.",
+        title: t("matches.toastErrorStartChat"),
+        description: t("matches.toastErrorStartChatDesc"),
         variant: "destructive",
       });
     }
-  }, [navigate, toast]);
+  }, [navigate, toast, t]);
 
   const handleFetchMatchDetails = useCallback(async (group: MatchGroup) => {
     setSelectedGroup(group);
@@ -101,22 +103,22 @@ const Matches = () => {
       // we might need to refetch or handle this differently
     } else if (detailsError) {
       toast({
-        title: "Error",
+        title: t("matches.toastErrorStartChat"),
         description: detailsError,
         variant: "destructive",
       });
     }
-  }, [fetchDetails, detailsError, toast]);
+  }, [fetchDetails, detailsError, toast, t]);
 
   if (authLoading || loading) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto px-6 py-8">
-          <Skeleton className="h-10 w-48 mb-6" />
-          <Skeleton className="h-32 rounded-2xl mb-6" />
-          <div className="space-y-4">
-            <Skeleton className="h-40 rounded-2xl" />
-            <Skeleton className="h-40 rounded-2xl" />
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <Skeleton className="h-9 sm:h-10 w-36 sm:w-48 mb-4 sm:mb-6 rounded-xl" />
+          <Skeleton className="h-24 sm:h-32 rounded-xl sm:rounded-2xl mb-4 sm:mb-6" />
+          <div className="space-y-3 sm:space-y-4">
+            <Skeleton className="h-32 sm:h-40 rounded-xl sm:rounded-2xl" />
+            <Skeleton className="h-32 sm:h-40 rounded-xl sm:rounded-2xl" />
           </div>
         </div>
       </DashboardLayout>
@@ -125,20 +127,20 @@ const Matches = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-6 py-8 max-w-7xl">
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-2xl font-bold">Your Matches</h1>
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="font-display text-xl sm:text-2xl font-bold truncate">{t("dashboard.yourMatches")}</h1>
               <p className="text-muted-foreground text-sm mt-1">
-                Connect with physicians who share your interests
+                {t("dashboard.physiciansShareInterests")}
               </p>
             </div>
             {highestScoreGroup.length > 0 && highestScoreGroup[0].average_score !== null && highestScoreGroup[0].average_score !== undefined && (
               <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 shadow-md">
                 <Crown className="h-5 w-5 text-yellow-600" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground font-medium">Best Score</span>
+                  <span className="text-xs text-muted-foreground font-medium">{t("matches.bestScore")}</span>
                   <span className="font-display font-bold text-xl text-foreground">
                     {Math.round(highestScoreGroup[0].average_score)}%
                   </span>
@@ -153,26 +155,12 @@ const Matches = () => {
           <MatchCountdown />
         </div>
 
-        {/* Filter by specialty */}
-        <div className="mb-6">
-          <Card className="border-primary/20 bg-primary-foreground/5 rounded-2xl">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium text-primary-foreground/80">
-                Filter by specialty, age & location — available on your plan.
-              </p>
-              <p className="text-xs text-primary-foreground/50 mt-1">
-                Use filters when more match options are available.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Tabs */}
         <Tabs defaultValue="your-groups" className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-1 mb-5">
             <TabsTrigger value="your-groups">
               <Users className="h-4 w-4 mr-2" />
-              Your Groups
+              {t("matches.yourGroups")}
             </TabsTrigger>
           </TabsList>
 
@@ -180,20 +168,20 @@ const Matches = () => {
           <TabsContent value="your-groups" className="space-y-5">
           {/* Best Score Banner */}
           {highestScoreGroup.length > 0 && highestScoreGroup[0].average_score !== null && highestScoreGroup[0].average_score !== undefined && (
-            <Card className="border-2 border-yellow-500/60 bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 rounded-3xl overflow-hidden shadow-2xl ring-4 ring-yellow-500/20 shadow-[0_12px_32px_rgba(251,146,60,0.25)]">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between gap-5 flex-wrap">
-                  <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500 via-orange-500 to-yellow-500 flex items-center justify-center shadow-2xl ring-4 ring-yellow-500/30">
-                      <Crown className="h-8 w-8 text-white drop-shadow-lg" />
+            <Card className="border-2 border-yellow-500/60 bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl ring-2 sm:ring-4 ring-yellow-500/20 shadow-[0_12px_32px_rgba(251,146,60,0.25)]">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 flex-wrap">
+                  <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-yellow-500 via-orange-500 to-yellow-500 flex items-center justify-center shadow-2xl ring-2 sm:ring-4 ring-yellow-500/30 shrink-0">
+                      <Crown className="h-6 w-6 sm:h-8 sm:w-8 text-white drop-shadow-lg" />
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-display font-black text-2xl text-foreground tracking-tight">Best Match Score</span>
-                      <span className="text-sm text-muted-foreground font-medium">Your highest compatibility group</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-display font-black text-lg sm:text-2xl text-foreground tracking-tight">{t("matches.bestMatchScore")}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground font-medium">{t("matches.yourHighestCompatibilityGroup")}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge className="bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white border-0 text-4xl font-black px-8 py-4 shadow-2xl ring-4 ring-yellow-500/30">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <Badge className="bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white border-0 text-2xl sm:text-4xl font-black px-4 py-2 sm:px-8 sm:py-4 shadow-2xl ring-2 sm:ring-4 ring-yellow-500/30">
                       {Math.round(highestScoreGroup[0].average_score)}%
                     </Badge>
                     <Sparkles className="h-7 w-7 text-yellow-600" />
@@ -209,24 +197,24 @@ const Matches = () => {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary flex items-center justify-center">
                   <Sparkles className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-display text-lg font-semibold mb-2">No groups yet</h3>
+                <h3 className="font-display text-lg font-semibold mb-2">{t("matches.noGroupsYet")}</h3>
                 {isProfileComplete ? (
                   <>
                     <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
-                      Groups are formed every Thursday at 4 PM. Your profile is complete and you'll be included in the next matching round!
+                      {t("matches.groupsFormedThursdayComplete")}
                     </p>
                     <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                       <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      <span>Profile complete - You're all set!</span>
+                      <span>{t("matches.profileCompleteAllSet")}</span>
                     </div>
                   </>
                 ) : (
                   <>
                     <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
-                      Groups are formed every Thursday. Complete your profile and preferences to be included in the next matching round!
+                      {t("matches.groupsFormedThursdayIncomplete")}
                     </p>
                     <Button onClick={() => navigate("/onboarding")}>
-                      Complete Profile
+                      {t("dashboard.completeProfile")}
                     </Button>
                   </>
                 )}
@@ -267,7 +255,7 @@ const Matches = () => {
                     <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white px-3 py-1 rounded-bl-lg rounded-tr-lg shadow-[0_2px_4px_rgba(251,146,60,0.3)] z-10">
                       <div className="flex items-center gap-1.5 font-bold">
                         <Crown className="h-3 w-3 drop-shadow-lg" />
-                        <span className="text-xs tracking-wider uppercase">Best Score</span>
+                        <span className="text-xs tracking-wider uppercase">{t("matches.bestScore")}</span>
                         <span className="text-base font-black drop-shadow-lg">{scoreValue}%</span>
                       </div>
                     </div>
@@ -293,12 +281,12 @@ const Matches = () => {
                               {hasScore && (
                                 <Badge className="bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white border-0 shadow-lg px-3 py-1 text-xs font-bold ring-2 ring-yellow-500/30">
                                   <Crown className="h-3 w-3 mr-1" />
-                                  {scoreValue}% Match
+                                  {t("matches.percentMatch", { percent: scoreValue })}
                                 </Badge>
                               )}
                               {!hasScore && (
                                 <Badge variant="secondary" className="text-xs font-semibold px-2 py-1">
-                                  Your Group
+                                  {t("matches.yourGroup")}
                                 </Badge>
                               )}
                             </div>
@@ -313,18 +301,18 @@ const Matches = () => {
                               {isThisWeek && (
                                 <Badge variant="secondary" className="text-xs bg-primary/15 text-primary border-primary/30 px-2 py-0.5 font-semibold">
                                   <Clock className="h-3 w-3 mr-1" />
-                                  This Week
+                                  {t("matches.thisWeek")}
                                 </Badge>
                               )}
                               {group.gender_composition && (
                                 <Badge variant="outline" className="text-xs px-2 py-0.5 font-medium border">
-                                  {getGroupTypeLabel(group)}
+                                  {getGroupTypeLabel(group) === "All Male" ? t("matches.allMale") : getGroupTypeLabel(group) === "All Female" ? t("matches.allFemale") : getGroupTypeLabel(group)}
                                 </Badge>
                               )}
                               {group.is_partial_group && (
                                 <Badge variant="secondary" className="text-xs bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30 px-2 py-0.5">
                                   <Info className="h-3 w-3 mr-1" />
-                                  Smaller Group
+                                  {t("matches.smallerGroup")}
                                 </Badge>
                               )}
                             </div>
@@ -339,7 +327,7 @@ const Matches = () => {
                         <div className="flex items-center gap-1.5 text-xs text-yellow-700 dark:text-yellow-400">
                           <Info className="h-3 w-3" />
                           <span>
-                            Smaller group this week ({memberCount} members). We'll add more members in the next matching round!
+                            {t("matches.smallerGroupThisWeek", { count: memberCount })}
                           </span>
                         </div>
                       </div>
@@ -350,10 +338,10 @@ const Matches = () => {
                       <div className="mb-3">
                         <div className="flex items-center justify-between mb-1.5">
                           <h4 className="text-xs font-semibold text-foreground">
-                            Group Progress
+                            {t("matches.groupProgress")}
                           </h4>
                           <span className="text-xs font-semibold text-muted-foreground">
-                            {memberCount} of {MIN_GROUP_SIZE} members joined
+                            {t("matches.membersJoined", { current: memberCount, total: MIN_GROUP_SIZE })}
                           </span>
                         </div>
                         <Progress 
@@ -362,12 +350,12 @@ const Matches = () => {
                         />
                         {!isGroupComplete && (
                           <p className="text-xs font-medium text-primary mt-1">
-                            {MIN_GROUP_SIZE - memberCount} more {MIN_GROUP_SIZE - memberCount === 1 ? 'physician' : 'physicians'} needed to complete this group
+                            {t("matches.morePhysiciansNeeded", { count: MIN_GROUP_SIZE - memberCount, physician: MIN_GROUP_SIZE - memberCount === 1 ? t("matches.physician") : t("matches.physicians") })}
                           </p>
                         )}
                         {isGroupComplete && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            {hasScore ? `Matched with ${scoreValue}% compatibility` : 'Your matched group members'}
+                            {hasScore ? t("matches.matchedWithCompatibility", { percent: scoreValue }) : t("matches.yourMatchedGroupMembers")}
                           </p>
                         )}
                       </div>
@@ -379,14 +367,14 @@ const Matches = () => {
                             <Hourglass className="h-6 w-6 text-primary animate-pulse" />
                           </div>
                           <h4 className="font-display text-sm font-semibold text-foreground mb-1">
-                            On Waiting List
+                            {t("dashboard.onWaitingList")}
                           </h4>
                           <p className="text-muted-foreground text-xs max-w-md mx-auto mb-2 leading-relaxed">
-                            Your group is being formed. New members will be added in the next matching round on Thursday at 4 PM.
+                            {t("dashboard.groupBeingFormed")}
                           </p>
                           <Badge variant="secondary" className="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary border-primary/20">
                             <Clock className="h-3 w-3 mr-1" />
-                            {MIN_GROUP_SIZE - memberCount} more {MIN_GROUP_SIZE - memberCount === 1 ? 'physician' : 'physicians'} needed to complete this group
+                            {t("matches.morePhysiciansNeeded", { count: MIN_GROUP_SIZE - memberCount, physician: MIN_GROUP_SIZE - memberCount === 1 ? t("matches.physician") : t("matches.physicians") })}
                           </Badge>
                         </div>
                       ) : (
@@ -423,7 +411,7 @@ const Matches = () => {
                                   </span>
                                 ) : (
                                   <span className="text-xs text-muted-foreground/60 italic">
-                                    No specialty listed
+                                    {t("matches.noSpecialtyListed")}
                                   </span>
                                 )}
                               </div>
@@ -438,7 +426,7 @@ const Matches = () => {
                       <div className={`px-3 py-3 border-b border-border/30 ${hasScore ? 'bg-gradient-to-br from-yellow-50/50 via-card to-orange-50/30 dark:from-yellow-500/5 dark:via-card dark:to-orange-500/5' : 'bg-background'}`}>
                         <div className="flex items-center gap-2 mb-2">
                           <Info className="h-4 w-4 text-primary" />
-                          <h4 className="text-xs font-semibold text-foreground">Matched based on:</h4>
+                          <h4 className="text-xs font-semibold text-foreground">{t("matches.matchedBasedOn")}</h4>
                         </div>
                         <div className="flex flex-wrap gap-1.5 pl-6">
                           {group.matchDetails.sharedInterests.slice(0, 3).map((interest) => (
@@ -459,7 +447,7 @@ const Matches = () => {
                           onClick={() => handleFetchMatchDetails(group)}
                           className="mt-2 h-7 text-xs text-muted-foreground hover:text-foreground"
                         >
-                          View full details
+                          {t("matches.viewFullDetails")}
                           <ChevronRight className="h-3 w-3 ml-1" />
                         </Button>
                       </div>
@@ -479,7 +467,7 @@ const Matches = () => {
                           }`}
                         >
                           <Info className="h-3 w-3 mr-1.5" />
-                          Why this match?
+                          {t("dashboard.whyThisMatch")}
                         </Button>
                       </div>
                     )}
@@ -489,7 +477,7 @@ const Matches = () => {
                       <div className={`px-3 py-2 space-y-2 border-b border-border/30 ${hasScore ? 'bg-gradient-to-br from-yellow-50/50 via-card to-orange-50/30 dark:from-yellow-500/5 dark:via-card dark:to-orange-500/5' : 'bg-background'}`}>
                         <div className="flex items-center gap-1.5 mb-2">
                           <Clock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs font-medium text-foreground">Suggested meetup times</span>
+                          <span className="text-xs font-medium text-foreground">{t("matches.suggestedMeetupTimes")}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           {group.matchDetails.sharedAvailability.slice(0, 3).map((slot) => (
@@ -500,7 +488,7 @@ const Matches = () => {
                         </div>
                         <Button variant="outline" size="sm" className="w-full h-8 text-xs">
                           <Calendar className="h-3 w-3 mr-1.5" />
-                          Create Poll
+                          {t("matches.createPoll")}
                         </Button>
                       </div>
                     )}
@@ -514,10 +502,10 @@ const Matches = () => {
                           <Info className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-500 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
                             <p className="font-medium text-foreground mb-0.5">
-                              Group chat unlocks when {MIN_GROUP_SIZE} members join
+                              {t("matches.groupChatUnlocksWhen", { count: MIN_GROUP_SIZE })}
                             </p>
                             <p className="text-muted-foreground">
-                              Currently {memberCount} of {MIN_GROUP_SIZE} members. {MIN_GROUP_SIZE - memberCount} more {MIN_GROUP_SIZE - memberCount === 1 ? 'physician' : 'physicians'} needed.
+                              {t("matches.currentlyMembersNeeded", { current: memberCount, total: MIN_GROUP_SIZE, more: MIN_GROUP_SIZE - memberCount, physician: MIN_GROUP_SIZE - memberCount === 1 ? t("matches.physician") : t("matches.physicians") })}
                             </p>
                           </div>
                         </div>
@@ -535,7 +523,7 @@ const Matches = () => {
                           }`}
                         >
                           <MessageCircle className="h-4 w-4 mr-2" />
-                          Group Chat
+                          {t("matches.groupChat")}
                         </Button>
                         <Button 
                           variant="outline"
@@ -550,7 +538,7 @@ const Matches = () => {
                           }`}
                         >
                           <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                          Plan Meetup
+                          {t("matches.planMeetup")}
                         </Button>
                       </div>
                     </div>
@@ -569,10 +557,10 @@ const Matches = () => {
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-display text-2xl">
-                Why this match?
+                {t("dashboard.whyThisMatch")}
               </DialogTitle>
               <DialogDescription>
-                Understanding how this group was matched based on your preferences
+                {t("matches.whyMatchModalDescription")}
               </DialogDescription>
             </DialogHeader>
 
@@ -585,21 +573,20 @@ const Matches = () => {
               if (!details) {
                 return (
                   <div className="py-8 text-center">
-                    <p className="text-muted-foreground">Unable to load match details</p>
+                    <p className="text-muted-foreground">{t("matches.unableToLoadMatchDetails")}</p>
                   </div>
                 );
               }
               return (
               <div className="space-y-6 py-4">
-                {/* Interests Overlap */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
                       <Heart className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-foreground">Interests Alignment</h4>
-                      <p className="text-xs text-muted-foreground">Highest weight in matching</p>
+                      <h4 className="font-semibold text-foreground">{t("matches.interestsAlignment")}</h4>
+                      <p className="text-xs text-muted-foreground">{t("matches.highestWeightInMatching")}</p>
                     </div>
                   </div>
                   {details.sharedInterests.length > 0 ? (
@@ -611,19 +598,18 @@ const Matches = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground pl-14">No shared interests found</p>
+                    <p className="text-sm text-muted-foreground pl-14">{t("matches.noSharedInterestsFound")}</p>
                   )}
                 </div>
 
-                {/* Specialty */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
                       <Stethoscope className="h-5 w-5 text-accent" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-foreground">Specialty</h4>
-                      <p className="text-xs text-muted-foreground">Medical specialty similarity</p>
+                      <h4 className="font-semibold text-foreground">{t("dashboard.specialty")}</h4>
+                      <p className="text-xs text-muted-foreground">{t("matches.medicalSpecialtySimilarity")}</p>
                     </div>
                   </div>
                   <div className="pl-14">
@@ -633,21 +619,20 @@ const Matches = () => {
                     >
                       {details.specialtyMatch.type === 'same' && <CheckCircle2 className="h-3 w-3 mr-1" />}
                       {details.specialtyMatch.value}
-                      {details.specialtyMatch.type === 'same' && ' (Same)'}
-                      {details.specialtyMatch.type === 'related' && ' (Related)'}
+                      {details.specialtyMatch.type === 'same' && ` ${t("matches.same")}`}
+                      {details.specialtyMatch.type === 'related' && ` ${t("matches.related")}`}
                     </Badge>
                   </div>
                 </div>
 
-                {/* Location */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
                       <MapPin className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-foreground">Location</h4>
-                      <p className="text-xs text-muted-foreground">Same city required; neighborhood/area matters</p>
+                      <h4 className="font-semibold text-foreground">{t("matches.location")}</h4>
+                      <p className="text-xs text-muted-foreground">{t("matches.locationDescription")}</p>
                     </div>
                   </div>
                   <div className="pl-14">
@@ -673,15 +658,14 @@ const Matches = () => {
                   </div>
                 </div>
 
-                {/* Availability */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
                       <Calendar className="h-5 w-5 text-accent" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-foreground">Availability Overlap</h4>
-                      <p className="text-xs text-muted-foreground">Fri–Sun time slots</p>
+                      <h4 className="font-semibold text-foreground">{t("matches.availabilityOverlap")}</h4>
+                      <p className="text-xs text-muted-foreground">{t("matches.friSunTimeSlots")}</p>
                     </div>
                   </div>
                   {details.sharedAvailability.length > 0 ? (
@@ -693,7 +677,7 @@ const Matches = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground pl-14">No overlapping availability found</p>
+                    <p className="text-sm text-muted-foreground pl-14">{t("matches.noOverlappingAvailabilityFound")}</p>
                   )}
                 </div>
               </div>

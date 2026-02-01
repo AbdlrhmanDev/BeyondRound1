@@ -18,7 +18,9 @@ export interface Notification {
 }
 
 /**
- * Creates a notification
+ * Creates a notification.
+ * For i18n (Option A): title and message can be translation keys (e.g. "notifications.welcome.title");
+ * put dynamic values in metadata so the app can call t(key, metadata).
  */
 export const createNotification = async (
   userId: string,

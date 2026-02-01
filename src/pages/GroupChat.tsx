@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ interface Member {
 
 const GroupChat = () => {
   const { conversationId } = useParams();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
@@ -860,7 +861,7 @@ const GroupChat = () => {
         
         {/* Centered chat container */}
         <div className="relative max-w-3xl mx-auto h-full flex flex-col">
-          <div className="flex-1 px-6 py-8 space-y-4">
+          <div className="flex-1 px-4 sm:px-6 py-6 sm:py-8 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-6 shadow-xl border border-primary/10">

@@ -8,7 +8,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { ThemeSync } from "@/components/ThemeSync";
 import { CookieConsent } from "@/components/CookieConsent";
-import { Skeleton } from "@/components/ui/skeleton";
+import RedirectToLocale from "@/components/RedirectToLocale";
+import LocaleLayout from "@/components/LocaleLayout";
 import { Analytics } from "@vercel/analytics/react";
 
 // Lazy load non-critical components
@@ -25,7 +26,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const Matches = lazy(() => import("./pages/Matches"));
 const Chat = lazy(() => import("./pages/Chat"));
-const GroupChat = lazy(() => import("./pages/GroupChat"));
+const GroupChat = lazy(() => import("@/pages/GroupChat"));
 const PlaceSuggestions = lazy(() => import("./pages/PlaceSuggestions"));
 const About = lazy(() => import("./pages/About"));
 const LearnMore = lazy(() => import("./pages/LearnMore"));
@@ -45,14 +46,10 @@ const AdminMatches = lazy(() => import("./pages/admin/AdminMatches"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 
-// Loading fallback component
+// Lightweight loading fallback – minimal DOM/CSS for faster paint
 const PageLoader = () => (
-  <div className="min-h-screen bg-foreground dark:bg-background flex items-center justify-center">
-    <div className="space-y-4 w-full max-w-md px-4">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-64 w-full" />
-      <Skeleton className="h-32 w-full" />
-    </div>
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" aria-hidden />
   </div>
 );
 
@@ -91,79 +88,88 @@ const App = () => (
           </Suspense>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />  
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/u/:userId" element={<PublicProfile />} />
-              <Route path="/matches" element={<Matches />} />
-              <Route path="/chat/:conversationId" element={<Chat />} />
-              <Route path="/group-chat/:conversationId" element={<GroupChat />} />
-              <Route path="/places" element={<PlaceSuggestions />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/learn-more" element={<LearnMore />} />
-              <Route path="/faq" element={<FAQ />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/waitlist" element={<Waitlist />} />
-              <Route path="/for-doctors" element={<ForDoctors />} />
-              <Route path="/survey" element={<Survey />} />
-              
-       
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminOverview />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/feedback" 
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminFeedback />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/users" 
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminUsers />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/matches" 
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminMatches />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/audit-logs" 
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminAuditLogs />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<NotFound />} />
+              <Route path="/" element={<RedirectToLocale />} />
+              <Route path="/:locale" element={<LocaleLayout />}>
+                <Route index element={<Index />} />
+                <Route path="onboarding" element={<Onboarding />} />
+                <Route path="auth" element={<Auth />} />
+                <Route path="forgot-password" element={<ForgotPassword />} />
+                <Route path="auth/callback" element={<AuthCallback />} />
+                <Route
+                  path="dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="profile" element={<Profile />} />
+                <Route path="u/:userId" element={<PublicProfile />} />
+                <Route path="matches" element={<Matches />} />
+                <Route path="chat/:conversationId" element={<Chat />} />
+                <Route path="group-chat/:conversationId" element={<GroupChat />} />
+                <Route path="places" element={<PlaceSuggestions />} />
+                <Route path="about" element={<About />} />
+                <Route path="learn-more" element={<LearnMore />} />
+                <Route path="faq" element={<FAQ />} />
+                <Route path="contact" element={<Contact />} />
+                <Route path="pricing" element={<Pricing />} />
+                <Route path="terms" element={<Terms />} />
+                <Route path="privacy" element={<Privacy />} />
+                <Route path="waitlist" element={<Waitlist />} />
+                <Route path="for-doctors" element={<ForDoctors />} />
+                <Route path="survey" element={<Survey />} />
+                <Route
+                  path="admin"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <AdminOverview />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="admin/feedback"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <AdminFeedback />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="admin/users"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <AdminUsers />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="admin/matches"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <AdminMatches />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="admin/audit-logs"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <AdminAuditLogs />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+              <Route path="*" element={<RedirectToLocale />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

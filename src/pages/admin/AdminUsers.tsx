@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { logAdminAction } from "@/lib/auditLog";
 import { getAllUsers, banUser, unbanUser, updateUserProfile, UserProfile } from "@/services/adminService";
 
 const AdminUsers = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,7 +99,7 @@ const AdminUsers = () => {
         {/* Users Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {isLoading ? (
-            <p className="text-muted-foreground col-span-full">Loading...</p>
+            <p className="text-muted-foreground col-span-full">{t("common.loading")}</p>
           ) : filteredUsers.length === 0 ? (
             <Card className="col-span-full">
               <CardContent className="py-8 text-center text-muted-foreground">

@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -75,14 +76,17 @@ interface MatchGroup {
 }
 
 const Dashboard = () => {
+  const { t, i18n } = useTranslation();
   const { user, loading: authLoading, signOut } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
+  const locale = i18n.language === "de" ? "de-DE" : "en-US";
   const [profile, setProfile] = useState<Profile | null>(null);
   const [preferences, setPreferences] = useState<OnboardingPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<MatchGroup[]>([]);
   const [groupsCount, setGroupsCount] = useState(0);
+  const fetchInProgressRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -93,32 +97,30 @@ const Dashboard = () => {
   const formatGroupName = useCallback((group: MatchGroup): string => {
     const allMembers = group.allMembers || group.members;
     const cities = Array.from(new Set(allMembers.map(m => m.profile.city).filter(Boolean)));
-    const city = cities[0] || "Unknown";
+    const city = cities[0] || t("dashboard.unknown");
     
-    // Format match_week date as "Nov 2"
     let dateStr = "";
     if (group.match_week) {
       try {
         const matchDate = new Date(group.match_week);
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const month = monthNames[matchDate.getMonth()];
-        const day = matchDate.getDate();
-        dateStr = `${month} ${day}`;
+        dateStr = matchDate.toLocaleDateString(locale, { month: "short", day: "numeric" });
       } catch (e) {
-        dateStr = "Unknown";
+        dateStr = t("dashboard.unknown");
       }
     } else {
-      dateStr = "Unknown";
+      dateStr = t("dashboard.unknown");
     }
     
     return `${dateStr} - ${city}`;
-  }, []);
+  }, [t, locale]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
+    const userId = user?.id;
+    if (!userId) return;
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
 
+    const fetchData = async () => {
       try {
         // Check for pending onboarding data in localStorage
         const pendingDataStr = localStorage.getItem('pending_onboarding_data');
@@ -132,7 +134,7 @@ const Dashboard = () => {
             logInfo('Found pending onboarding data, saving now...', 'Dashboard');
             
             // Update profile using service
-            const profileUpdate = await updateProfile(user.id, {
+            const profileUpdate = await updateProfile(userId, {
               full_name: personalInfo?.name || null,
               city: personalInfo?.city || null,
               neighborhood: personalInfo?.neighborhood || null,
@@ -147,7 +149,7 @@ const Dashboard = () => {
             }
 
             // Save preferences using service
-            const prefsSuccess = await saveOnboardingPreferences(user.id, {
+            const prefsSuccess = await saveOnboardingPreferences(userId, {
               specialty: answers?.specialty?.[0] || null,
               specialty_preference: answers?.specialty_preference?.[0] || null,
               career_stage: answers?.stage?.[0] || null,
@@ -172,8 +174,8 @@ const Dashboard = () => {
             if (!prefsSuccess) {
               logError('Preferences save error', 'Dashboard');
               toast({
-                title: "Error saving data",
-                description: "Preferences save failed. Click \"Save Pending Data\" button to retry.",
+                title: t("dashboard.toastPendingSaveFailed"),
+                description: t("dashboard.toastPendingSaveFailedDesc"),
                 variant: "destructive",
               });
             } else {
@@ -183,16 +185,16 @@ const Dashboard = () => {
               
               // Refresh data using services
               const [profileData, prefsData] = await Promise.all([
-                getProfile(user.id),
-                getOnboardingPreferences(user.id),
+                getProfile(userId),
+                getOnboardingPreferences(userId),
               ]);
 
               if (profileData) setProfile(profileData);
               if (prefsData) setPreferences(prefsData);
               
               toast({
-                title: "Profile data saved",
-                description: "Your onboarding data has been saved successfully!",
+                title: t("dashboard.toastProfileDataSaved"),
+                description: t("dashboard.toastProfileDataSavedDesc"),
               });
             }
           } catch (parseError) {
@@ -204,9 +206,9 @@ const Dashboard = () => {
 
         // Fetch profile and preferences using services
         const [profileData, prefsData, memberData] = await Promise.all([
-          getProfile(user.id),
-          getOnboardingPreferences(user.id),
-          getUserGroupMemberships(user.id),
+          getProfile(userId),
+          getOnboardingPreferences(userId),
+          getUserGroupMemberships(userId),
         ]);
 
         if (profileData) setProfile(profileData);
@@ -235,7 +237,7 @@ const Dashboard = () => {
 
             // Get all unique member user IDs
             const allMemberUserIds = Array.from(new Set(
-              allMembersData.map(m => m.user_id).filter(id => id !== user.id)
+              allMembersData.map(m => m.user_id).filter(id => id !== userId)
             ));
 
             // Fetch all profiles and preferences using service
@@ -288,7 +290,7 @@ const Dashboard = () => {
             // Build enriched groups synchronously (no async needed)
             const enrichedGroups: MatchGroup[] = groupsData.map((group) => {
               const memberUserIds = membersByGroup.get(group.id) || [];
-              const otherMemberIds = memberUserIds.filter((id) => id !== user.id);
+              const otherMemberIds = memberUserIds.filter((id) => id !== userId);
               const displayMemberIds = otherMemberIds.slice(0, 4);
 
               const completeProfiles = otherMemberIds.map(memberId => {
@@ -327,19 +329,20 @@ const Dashboard = () => {
         const { handleError } = await import('@/utils/errorHandler');
         const errorMessage = handleError(error, 'Dashboard');
         toast({
-          title: "Error loading data",
+          title: t("dashboard.toastErrorLoadingData"),
           description: errorMessage,
           variant: "destructive",
         });
       } finally {
         setLoading(false);
+        fetchInProgressRef.current = false;
       }
     };
 
-    if (user) {
-      fetchData();
-    }
-  }, [user, toast, navigate]);
+    fetchData();
+    // Only refetch when user id changes; toast/navigate are stable enough for use inside effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Memoize displayed group to prevent unnecessary re-renders
   const displayedGroup = useMemo(() => groups[0], [groups]);
@@ -371,17 +374,17 @@ const Dashboard = () => {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex justify-between items-center mb-12">
-            <Skeleton className="h-12 w-56 rounded-2xl" />
-            <div className="flex gap-3">
-              <Skeleton className="h-10 w-10 rounded-full" />
-              <Skeleton className="h-10 w-10 rounded-full" />
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex justify-between items-center mb-8 sm:mb-12">
+            <Skeleton className="h-10 sm:h-12 w-40 sm:w-56 rounded-xl sm:rounded-2xl" />
+            <div className="flex gap-2 sm:gap-3">
+              <Skeleton className="h-9 w-9 sm:h-10 sm:w-10 rounded-full" />
+              <Skeleton className="h-9 w-9 sm:h-10 sm:w-10 rounded-full" />
             </div>
           </div>
-          <div className="grid gap-6 lg:grid-cols-12">
-            <Skeleton className="h-80 rounded-3xl lg:col-span-4" />
-            <Skeleton className="h-80 rounded-3xl lg:col-span-8" />
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+            <Skeleton className="h-64 sm:h-80 rounded-2xl sm:rounded-3xl lg:col-span-4" />
+            <Skeleton className="h-64 sm:h-80 rounded-2xl sm:rounded-3xl lg:col-span-8" />
           </div>
         </div>
       </div>
@@ -421,8 +424,8 @@ const Dashboard = () => {
     const pendingDataStr = localStorage.getItem('pending_onboarding_data');
     if (!pendingDataStr) {
       toast({
-        title: "No pending data",
-        description: "There's no pending onboarding data to save.",
+        title: t("dashboard.toastNoPendingData"),
+        description: t("dashboard.toastNoPendingDataDesc"),
         variant: "default",
       });
       return;
@@ -433,8 +436,8 @@ const Dashboard = () => {
       const { personalInfo, answers } = pendingData;
       
       toast({
-        title: "Saving data...",
-        description: "Please wait while we save your onboarding data.",
+        title: t("dashboard.toastSavingData"),
+        description: t("dashboard.toastSavingDataDesc"),
       });
 
       // Update profile using service
@@ -451,8 +454,8 @@ const Dashboard = () => {
       if (!profileUpdate) {
         console.error('Profile update error');
         toast({
-          title: "Profile update failed",
-          description: "Failed to update profile",
+          title: t("dashboard.toastProfileUpdateFailed"),
+          description: t("dashboard.toastProfileUpdateFailedDesc"),
           variant: "destructive",
         });
         return;
@@ -485,8 +488,8 @@ const Dashboard = () => {
         const { logError } = await import('@/utils/logger');
         logError('Preferences save error', 'Dashboard');
         toast({
-          title: "Preferences save failed",
-          description: "Failed to save preferences. Please try again.",
+          title: t("dashboard.toastPreferencesFailed"),
+          description: t("dashboard.toastPreferencesFailedDesc"),
           variant: "destructive",
         });
         return;
@@ -506,14 +509,14 @@ const Dashboard = () => {
       if (prefsData) setPreferences(prefsData);
       
       toast({
-        title: "✅ Data saved successfully!",
-        description: "Your onboarding data has been saved and your profile is now complete!",
+        title: t("dashboard.toastDataSaved"),
+        description: t("dashboard.toastDataSavedDesc"),
       });
     } catch (error: any) {
       console.error('Manual save error:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to save data. Please try again.",
+        title: t("dashboard.toastErrorSaving"),
+        description: error.message || t("dashboard.toastErrorSavingDesc"),
         variant: "destructive",
       });
     }
@@ -525,21 +528,21 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-6 py-8 lg:py-12 max-w-7xl">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-12 max-w-7xl">
         {/* Welcome Section */}
         <div className="mb-8 animate-fade-up">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-medium text-muted-foreground">Dashboard</span>
+            <span className="text-sm font-medium text-muted-foreground">{t("common.dashboard")}</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Overview</span>
+            <span className="text-sm text-muted-foreground">{t("dashboard.overview")}</span>
           </div>
           <div className="flex items-start justify-between flex-col sm:flex-row gap-4">
             <div>
               <h1 className="font-display text-4xl lg:text-5xl font-bold text-foreground mb-3">
-                Hey, {firstName} <span className="inline-block animate-float">👋</span>
+                {t("dashboard.hey", { name: firstName })} <span className="inline-block animate-float">👋</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-xl">
-                Ready to connect with physicians who share your journey?
+                {t("dashboard.readyToConnect")}
               </p>
             </div>
             {hasPendingData && (
@@ -547,15 +550,15 @@ const Dashboard = () => {
                 onClick={handleManualSave}
                 className="bg-primary hover:opacity-90 text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-shadow w-full sm:w-auto"
               >
-                💾 Save Pending Data
+                💾 {t("dashboard.savePendingData")}
               </Button>
             )}
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-12">
-          {/* Left Column - Profile */}
-          <div className="lg:col-span-4 space-y-5 order-2 lg:order-1">
+          {/* Left Column - Profile (first on mobile so incomplete users see it immediately) */}
+          <div className="lg:col-span-4 space-y-5 order-1">
             {/* Profile Card */}
             <Card 
               className="overflow-hidden border-0 rounded-3xl animate-fade-up cursor-pointer transition-all duration-300 bg-card
@@ -580,14 +583,14 @@ const Dashboard = () => {
                         e.stopPropagation();
                         navigate("/profile");
                       }}
-                      title="Add profile photo">
+                      title={t("dashboard.addProfilePhoto")}>
                       <Camera className="h-4 w-4 text-primary-foreground" />
                     </div>
                   )}
                 </div>
                 <div className="mt-5">
                   <h3 className="font-display text-xl font-bold text-foreground">
-                    {profile?.full_name || "Complete Your Profile"}
+                    {profile?.full_name || t("dashboard.completeProfile")}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1.5">{user?.email}</p>
                 </div>
@@ -596,12 +599,12 @@ const Dashboard = () => {
                 {!preferences?.completed_at && (
                   <div className="mt-6 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground font-medium">Profile {calculateProfileCompletion}% complete</span>
+                      <span className="text-muted-foreground font-medium">{t("dashboard.profilePercentComplete", { percent: calculateProfileCompletion })}</span>
                       <span className="text-muted-foreground">{calculateProfileCompletion}%</span>
                     </div>
                     <Progress value={calculateProfileCompletion} className="h-2" />
                     <p className="text-xs text-muted-foreground">
-                      Finish profile to join the next matching round
+                      {t("dashboard.finishProfile")}
                     </p>
                   </div>
                 )}
@@ -611,10 +614,10 @@ const Dashboard = () => {
                   <div className="mt-6 p-4 rounded-xl bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-2 mb-1">
                       <CheckCircle2 className="h-5 w-5 text-primary" />
-                      <span className="text-sm font-semibold text-foreground">You're ready for the next matching round 🎉</span>
+                      <span className="text-sm font-semibold text-foreground">{t("dashboard.readyForNextRound")} 🎉</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Your profile is complete. You'll be matched in the next round on Thursday at 4 PM.
+                      {t("dashboard.profileCompleteReady")}
                     </p>
                   </div>
                 )}
@@ -626,7 +629,7 @@ const Dashboard = () => {
                         <Stethoscope className="h-4 w-4 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground mb-0.5">Specialty</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t("dashboard.specialty")}</p>
                         <p className="text-sm font-semibold text-foreground truncate">{preferences.specialty}</p>
                       </div>
                     </div>
@@ -637,7 +640,7 @@ const Dashboard = () => {
                         <Sparkles className="h-4 w-4 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground mb-0.5">Career Stage</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t("dashboard.careerStage")}</p>
                         <p className="text-sm font-semibold text-foreground truncate">{preferences.career_stage}</p>
                       </div>
                     </div>
@@ -652,7 +655,7 @@ const Dashboard = () => {
                     }} 
                     className="w-full mt-6 bg-primary hover:opacity-90 rounded-xl h-11 font-medium shadow-md hover:shadow-lg transition-all"
                   >
-                    Complete Profile
+                    {t("dashboard.completeProfile")}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 )}
@@ -662,7 +665,7 @@ const Dashboard = () => {
           </div>
 
           {/* Right Column - Main Content */}
-          <div className="lg:col-span-8 space-y-5 order-1 lg:order-2">
+          <div className="lg:col-span-8 space-y-5 order-2">
             {/* Next Group Matching - Supporting Display */}
             <div className="animate-fade-up delay-100">
               <MatchCountdown />
@@ -680,8 +683,8 @@ const Dashboard = () => {
                       <Users className="h-5 w-5 text-primary-foreground" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg font-display font-semibold">Your Matches</CardTitle>
-                      <p className="text-sm text-muted-foreground">Physicians who share your interests</p>
+                      <CardTitle className="text-lg font-display font-semibold">{t("dashboard.yourMatches")}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{t("dashboard.physiciansShareInterests")}</p>
                     </div>
                   </div>
                   {groups.length > 0 && (
@@ -691,7 +694,7 @@ const Dashboard = () => {
                       onClick={() => navigate("/matches")}
                       className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
                     >
-                      View All
+                      {t("dashboard.viewAll")}
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   )}
@@ -703,11 +706,11 @@ const Dashboard = () => {
                     {(() => {
                       const group = displayedGroup;
                       const groupDate = group.match_week 
-                        ? new Date(group.match_week).toLocaleDateString("en-US", {
+                        ? new Date(group.match_week).toLocaleDateString(locale, {
                             month: "short",
                             day: "numeric",
                           })
-                        : new Date(group.created_at).toLocaleDateString("en-US", {
+                        : new Date(group.created_at).toLocaleDateString(locale, {
                             month: "short",
                             day: "numeric",
                           });
@@ -766,7 +769,7 @@ const Dashboard = () => {
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                {group.member_count} physicians • Matched {groupDate}
+                                {t("dashboard.physiciansMatched", { count: group.member_count, date: groupDate })}
                               </p>
                             </div>
                             <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors mt-1" />
@@ -775,14 +778,14 @@ const Dashboard = () => {
                           {/* Match Reason */}
                           {(sharedInterests.length > 0 || uniqueSpecialties.length > 0) && (
                             <div className="px-4 py-3 rounded-lg bg-primary/5 border border-primary/10">
-                              <p className="text-xs text-muted-foreground mb-1.5 font-medium">Why this match?</p>
+                              <p className="text-xs text-muted-foreground mb-1.5 font-medium">{t("dashboard.whyThisMatch")}</p>
                               <p className="text-sm text-foreground">
                                 {uniqueSpecialties.length > 0 && (
-                                  <>Matched because you share <span className="font-semibold text-primary">{uniqueSpecialties.join(", ")}</span> specialty</>
+                                  <>{t("dashboard.matchedBecauseSpecialty", { specialties: uniqueSpecialties.join(", ") })}</>
                                 )}
-                                {uniqueSpecialties.length > 0 && sharedInterests.length > 0 && " and "}
+                                {uniqueSpecialties.length > 0 && sharedInterests.length > 0 && t("dashboard.andSelected")}
                                 {sharedInterests.length > 0 && (
-                                  <>selected: <span className="font-semibold text-primary">{sharedInterests.join(", ")}</span></>
+                                  <>{t("dashboard.selected")}<span className="font-semibold text-primary">{sharedInterests.join(", ")}</span></>
                                 )}
                               </p>
                             </div>
@@ -797,19 +800,19 @@ const Dashboard = () => {
                       <Hourglass className="h-14 w-14 text-primary animate-pulse" />
                     </div>
                     <h4 className="font-display text-2xl font-semibold text-foreground mb-3">
-                      {preferences?.completed_at ? "On Waiting List" : "Start Your Journey"}
+                      {preferences?.completed_at ? t("dashboard.onWaitingList") : t("dashboard.startYourJourney")}
                     </h4>
                     <p className="text-muted-foreground max-w-md mx-auto mb-6 leading-relaxed">
                       {preferences?.completed_at 
-                        ? "Your group is being formed. New members will be added in the next matching round on Thursday at 4 PM."
-                        : "Complete your profile to start connecting with physicians who understand your world and share your interests."}
+                        ? t("dashboard.groupBeingFormed")
+                        : t("dashboard.completeProfileToStart")}
                     </p>
                     {!preferences?.completed_at && (
                       <Button 
                         onClick={() => navigate("/onboarding")} 
                         className="bg-primary hover:opacity-90 rounded-xl px-8 h-12 font-medium shadow-md hover:shadow-lg transition-all"
                       >
-                        Complete Your Profile
+                        {t("dashboard.completeProfile")}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     )}
@@ -817,7 +820,7 @@ const Dashboard = () => {
                       <div className="mt-6 pt-6 border-t border-border/50">
                         <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-primary/10 text-primary border-primary/20">
                           <Clock className="h-4 w-4 mr-2" />
-                          Next matching round coming soon
+                          {t("dashboard.nextMatchingRoundSoon")}
                         </Badge>
                       </div>
                     )}
@@ -837,7 +840,7 @@ const Dashboard = () => {
                     <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
                       <Heart className="h-5 w-5 text-primary" />
                     </div>
-                    <CardTitle className="text-lg font-display font-semibold">Interests</CardTitle>
+                    <CardTitle className="text-lg font-display font-semibold">{t("dashboard.interests")}</CardTitle>
                   </div>
                   <Button
                     variant="ghost"
@@ -845,7 +848,7 @@ const Dashboard = () => {
                     onClick={() => navigate("/profile")}
                     className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
                   >
-                    + Add
+                    + {t("dashboard.add")}
                   </Button>
                 </div>
               </CardHeader>
@@ -870,7 +873,7 @@ const Dashboard = () => {
                         variant="secondary" 
                         className="px-3.5 py-2 rounded-full text-xs font-medium bg-secondary/80 hover:bg-secondary/90 border border-border/50 transition-colors"
                       >
-                        +{allInterests.length - 12} more
+                        +{t("dashboard.more", { count: allInterests.length - 12 })}
                       </Badge>
                     )}
                   </div>
@@ -880,10 +883,10 @@ const Dashboard = () => {
                       <Heart className="h-8 w-8 text-primary/30" />
                     </div>
                     <p className="text-sm font-medium text-foreground mb-2">
-                      Your interests determine who you get matched with
+                      {t("dashboard.interestsDetermine")}
                     </p>
                     <p className="text-xs text-muted-foreground mb-4">
-                      Add at least 3 interests to improve your matches
+                      {t("dashboard.addAtLeast3")}
                     </p>
                     <Button
                       variant="outline"
@@ -892,7 +895,7 @@ const Dashboard = () => {
                       className="gap-2 border-primary/20 hover:bg-primary/5"
                     >
                       <Heart className="h-4 w-4 text-primary" />
-                      Add Interests
+                      {t("dashboard.addInterests")}
                     </Button>
                   </div>
                 )}

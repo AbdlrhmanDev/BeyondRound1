@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { useLocale } from "@/contexts/LocaleContext";
 import { isUserBanned } from "@/services/userService";
 import { Loader2 } from "lucide-react";
 
@@ -19,6 +20,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
   const { user, loading: authLoading, signOut } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdminCheck();
+  const { pathWithLocale } = useLocale();
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [isBanned, setIsBanned] = useState(false);
 
@@ -46,28 +48,28 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     }
   }, [user, authLoading, signOut]);
 
-  // Show loading while checking auth, admin status, and user status
+  // Show loading while checking auth, admin status, and user status (mobile-safe)
   if (authLoading || adminLoading || checkingStatus) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 pb-[env(safe-area-inset-bottom)]">
+        <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" aria-hidden />
       </div>
     );
   }
 
   // Redirect to auth if not logged in or if banned
   if (!user || isBanned) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to={pathWithLocale("/auth")} replace />;
   }
 
   // If admin tries to access regular dashboard, redirect to admin dashboard
   if (isAdmin && !requireAdmin) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={pathWithLocale("/admin")} replace />;
   }
 
   // If non-admin tries to access admin route, redirect to regular dashboard
   if (requireAdmin && !isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={pathWithLocale("/dashboard")} replace />;
   }
 
   return <>{children}</>;

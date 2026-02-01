@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Users, Shield, Calendar, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import LocalizedLink from "@/components/LocalizedLink";
 
 const CTASection = () => {
+  const { t } = useTranslation();
   return (
     <section className="py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
-      {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/20 blur-[200px]" />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-accent/10 blur-[150px]" />
@@ -16,32 +17,31 @@ const CTASection = () => {
         <div className="text-center max-w-4xl mx-auto">
           <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-8">
             <Sparkles size={14} className="text-primary" />
-            Join the Community
+            {t("home.joinCommunity")}
           </span>
           
           <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold mb-8 tracking-tight text-primary-foreground">
-            Ready to Find{" "}
-            <span className="text-gradient-gold">Your Tribe?</span>
+            {t("home.readyToFind")}{" "}
+            <span className="text-gradient-gold">{t("home.yourTribe")}</span>
           </h2>
           
           <p className="text-xl text-primary-foreground/60 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Join thousands of doctors who've discovered meaningful friendships through BeyondRounds. Your next great connection is just one match away.
+            {t("home.ctaSubtext")}
           </p>
 
-          {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-            <Link to="/auth">
+            <LocalizedLink to="/auth">
               <Button className="group text-base h-14 px-8">
-                Start Your Journey
+                {t("home.cta")}
                 <ArrowRight className="group-hover:translate-x-1 transition-transform" />
               </Button>
-            </Link>
+            </LocalizedLink>
             <Button
               variant="outline"
               className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 text-base h-14 px-8 rounded-2xl"
               asChild
             >
-              <Link to="/learn-more">Learn More</Link>
+              <LocalizedLink to="/learn-more">{t("common.learnMore")}</LocalizedLink>
             </Button>
           </div>
 
@@ -57,7 +57,7 @@ const CTASection = () => {
                   <stat.icon className="w-6 h-6 text-primary" />
                 </div>
                 <p className="number-display text-4xl lg:text-5xl text-primary-foreground mb-2">{stat.value}</p>
-                <p className="text-sm text-primary-foreground/50 font-medium">{stat.label}</p>
+                <p className="text-sm text-primary-foreground/50 font-medium">{t(stat.labelKey)}</p>
               </div>
             ))}
           </div>

@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import i18n from "@/i18n";
 
 interface Props {
   children: ReactNode;
@@ -32,7 +33,7 @@ class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      const errorMessage = this.state.error?.message || "An unexpected error occurred";
+      const errorMessage = this.state.error?.message || i18n.t("common.somethingWentWrong");
       const isConfigError = errorMessage.includes("Missing Supabase") || 
                            errorMessage.includes("VITE_SUPABASE") ||
                            errorMessage.includes("environment");
@@ -43,12 +44,12 @@ class ErrorBoundary extends Component<Props, State> {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-destructive" />
-                <CardTitle>Application Error</CardTitle>
+                <CardTitle>{i18n.t("common.applicationError")}</CardTitle>
               </div>
               <CardDescription>
                 {isConfigError 
-                  ? "Configuration error detected"
-                  : "Something went wrong"}
+                  ? i18n.t("common.configurationError")
+                  : i18n.t("common.somethingWentWrongShort")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -61,8 +62,7 @@ class ErrorBoundary extends Component<Props, State> {
               {isConfigError && (
                 <div className="rounded-md bg-muted p-3 space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    This error usually means environment variables are not configured correctly.
-                    Please ensure the following are set:
+                    {i18n.t("common.configErrorHint")}
                   </p>
                   <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
                     <li><code className="text-xs bg-background px-1 py-0.5 rounded">VITE_SUPABASE_URL</code></li>
@@ -70,10 +70,10 @@ class ErrorBoundary extends Component<Props, State> {
                   </ul>
                   <div className="pt-2 border-t border-border">
                     <p className="text-xs text-muted-foreground mb-2">
-                      <strong>For local development:</strong> Create a <code className="text-xs bg-background px-1 py-0.5 rounded">.env.local</code> file in the project root.
+                      {i18n.t("common.configErrorLocal")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      <strong>For Vercel:</strong> Add these variables in Project Settings → Environment Variables, then redeploy.
+                      {i18n.t("common.configErrorVercel")}
                     </p>
                   </div>
                 </div>
@@ -81,7 +81,7 @@ class ErrorBoundary extends Component<Props, State> {
 
               <div className="flex gap-2">
                 <Button onClick={this.handleReload} className="flex-1">
-                  Reload Page
+                  {i18n.t("common.reloadPage")}
                 </Button>
               </div>
             </CardContent>

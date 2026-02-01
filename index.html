@@ -3,6 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Suppress browser extension errors FIRST (before any other script)
+      (function() {
+        function isExtensionError(msg) {
+          var s = (msg || '').toLowerCase();
+          return s.indexOf('could not establish connection') !== -1 ||
+            s.indexOf('receiving end does not exist') !== -1 ||
+            s.indexOf('extension context invalidated') !== -1 ||
+            s.indexOf('message channel closed') !== -1 ||
+            s.indexOf('asynchronous response') !== -1;
+        }
+        function stringifyArgs(args) {
+          try {
+            return Array.prototype.map.call(args, function(a) {
+              if (a && typeof a === 'object' && a.message) return String(a.message);
+              if (a && typeof a === 'object') try { return JSON.stringify(a); } catch (e) { return String(a); }
+              return String(a);
+            }).join(' ');
+          } catch (e) { return ''; }
+        }
+        var origError = console.error;
+        var origWarn = console.warn;
+        console.error = function() {
+          if (isExtensionError(stringifyArgs(arguments))) return;
+          origError.apply(console, arguments);
+        };
+        console.warn = function() {
+          if (isExtensionError(stringifyArgs(arguments))) return;
+          origWarn.apply(console, arguments);
+        };
+        window.addEventListener('unhandledrejection', function(ev) {
+          var reason = ev.reason;
+          var msg = (reason && (reason.message || reason)) || '';
+          if (isExtensionError(String(msg)) || (reason && reason.message && isExtensionError(String(reason.message)))) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation();
+            return;
+          }
+        }, true);
+        window.addEventListener('error', function(ev) {
+          if (isExtensionError(ev.message || '')) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>BeyondRounds | Where Doctors Become Friends</title>
     <meta name="description" content="BeyondRounds is a premium social club exclusively for verified doctors. Weekly matches with 2-3 doctors who share your interests beyond medicine. Find your tribe today." />
@@ -43,45 +93,6 @@
 
   <body>
     <div id="root"></div>
-    <script>
-      // Suppress browser extension errors early, before React loads
-      (function() {
-        const originalError = window.onerror;
-        window.onerror = function(message, source, lineno, colno, error) {
-          const errorStr = String(message || '');
-          if (errorStr.toLowerCase().includes('could not establish connection') ||
-              errorStr.toLowerCase().includes('receiving end does not exist') ||
-              errorStr.toLowerCase().includes('extension context invalidated') ||
-              errorStr.toLowerCase().includes('message channel closed') ||
-              errorStr.toLowerCase().includes('asynchronous response')) {
-            return true; // Suppress the error
-          }
-          if (originalError) {
-            return originalError.call(this, message, source, lineno, colno, error);
-          }
-          return false;
-        };
-
-        window.addEventListener('unhandledrejection', function(event) {
-          const errorMessage = event.reason?.message || String(event.reason || '');
-          const errorStr = String(event.reason || '');
-          if (errorMessage.toLowerCase().includes('could not establish connection') ||
-              errorMessage.toLowerCase().includes('receiving end does not exist') ||
-              errorMessage.toLowerCase().includes('extension context invalidated') ||
-              errorMessage.toLowerCase().includes('message channel closed') ||
-              errorMessage.toLowerCase().includes('asynchronous response') ||
-              errorStr.toLowerCase().includes('could not establish connection') ||
-              errorStr.toLowerCase().includes('receiving end does not exist') ||
-              errorStr.toLowerCase().includes('extension context invalidated') ||
-              errorStr.toLowerCase().includes('message channel closed') ||
-              errorStr.toLowerCase().includes('asynchronous response')) {
-            event.preventDefault();
-            event.stopPropagation();
-            return false;
-          }
-        }, true);
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Defer non-critical scripts -->
     <script>

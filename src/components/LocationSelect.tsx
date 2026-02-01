@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,13 +39,14 @@ export const LocationSelect = ({
   showNationality = true,
   variant = "default",
 }: LocationSelectProps) => {
+  const { t } = useTranslation();
   const isProfile = variant === "profile";
   const labelClass = isProfile
     ? "text-sm font-medium text-foreground"
     : "text-base font-medium text-primary-foreground/70";
   const triggerClass = isProfile
     ? "h-12 rounded-xl bg-background border-border text-foreground placeholder:text-muted-foreground focus:ring-ring"
-    : "h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl";
+    : "h-14 bg-background/10 border-primary-foreground/20 text-foreground rounded-2xl";
   const triggerBorderClass = isProfile
     ? "border-input"
     : "border-primary-foreground/20";
@@ -178,12 +180,12 @@ export const LocationSelect = ({
     <div className={`space-y-4 ${className}`}>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label className={labelClass}>Country *</Label>
+          <Label className={labelClass}>{t("common.countryRequired")}</Label>
           <Select value={selectedCountry} onValueChange={handleCountryChange} disabled={loadingCountries}>
             <SelectTrigger className={`${triggerClass} ${triggerBorderClass} ${
               !selectedCountry && !isProfile ? "border-primary/50" : ""
             } ${!selectedCountry && isProfile ? "text-muted-foreground" : ""}`}>
-              <SelectValue placeholder={loadingCountries ? "Loading..." : "Select Country"} />
+              <SelectValue placeholder={loadingCountries ? t("common.loading") : t("common.selectCountry")} />
             </SelectTrigger>
             <SelectContent>
               {countries.map((country) => (
@@ -205,7 +207,7 @@ export const LocationSelect = ({
             <SelectTrigger className={`${triggerClass} ${triggerBorderClass} ${
               !selectedState && !isProfile ? "border-primary/50" : ""
             } ${!selectedState && isProfile ? "text-muted-foreground" : ""}`}>
-              <SelectValue placeholder={loadingStates ? "Loading..." : selectedCountry ? "Select State" : "Select Country First"} />
+              <SelectValue placeholder={loadingStates ? t("common.loading") : selectedCountry ? t("common.selectState") : t("common.selectCountryFirst")} />
             </SelectTrigger>
             <SelectContent>
               {states.map((state) => (
@@ -218,7 +220,7 @@ export const LocationSelect = ({
         </div>
 
         <div className="space-y-2">
-          <Label className={labelClass}>City *</Label>
+          <Label className={labelClass}>{t("common.cityRequired")}</Label>
           <Select 
             value={selectedCity} 
             onValueChange={handleCityChange} 
@@ -227,7 +229,7 @@ export const LocationSelect = ({
             <SelectTrigger className={`${triggerClass} ${triggerBorderClass} ${
               !selectedCity && !isProfile ? "border-primary/50" : ""
             } ${!selectedCity && isProfile ? "text-muted-foreground" : ""}`}>
-              <SelectValue placeholder={loadingCities ? "Loading..." : selectedState ? "Select City" : "Select State First"} />
+              <SelectValue placeholder={loadingCities ? t("common.loading") : selectedState ? t("common.selectCity") : t("common.selectStateFirst")} />
             </SelectTrigger>
             <SelectContent>
               {cities.map((city, index) => (

@@ -127,11 +127,51 @@
 
   html {
     scroll-behavior: smooth;
+    /* Safe area for notched / gesture devices */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "ss01", "ss02", "cv01";
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Mobile-first: minimum touch target (44px) for interactive elements */
+  @media (pointer: coarse) {
+    button:not(.no-touch-target),
+    a[role="button"],
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Input text: black in light mode, white in dark mode for clear visibility */
+  input, textarea {
+    color: hsl(240 10% 6%);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-muted-foreground;
+  }
+  .dark input,
+  .dark textarea {
+    color: hsl(0 0% 98%);
+  }
+  /* Fix browser autofill making text invisible */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(240 10% 6%);
+  }
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(0 0% 98%);
   }
 }
 
