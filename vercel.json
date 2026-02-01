@@ -1,4 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
@@ -21,7 +22,7 @@
       ]
     },
     {
-      "source": "/(.*\\.(jpg|jpeg|png|webp|svg|gif|ico|avif))",
+      "source": "/(.*)\\.(jpg|jpeg|png|webp|svg|gif|ico|avif)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -30,7 +31,7 @@
       ]
     },
     {
-      "source": "/(.*\\.(js|css))",
+      "source": "/(.*)\\.(js|css)",
       "headers": [
         {
           "key": "Cache-Control",
