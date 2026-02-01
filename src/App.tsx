@@ -85,7 +85,7 @@ const App = () => (
         >
           <ThemeSync />
           <CookieConsent />
-          <Analytics />
+          <Analytics mode="production" />
           <Suspense fallback={null}>
             <FeedbackButton />
           </Suspense>

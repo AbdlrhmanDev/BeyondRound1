@@ -7,7 +7,23 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/((?!assets/|favicon\\.svg|opengraph-image\\.png|robots\\.txt).*)",
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/favicon.svg",
+      "destination": "/favicon.svg"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/robots.txt"
+    },
+    {
+      "source": "/opengraph-image.png",
+      "destination": "/opengraph-image.png"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
