@@ -51,13 +51,25 @@
     {
       "source": "/de",
       "has": [{ "type": "host", "value": "whitelist.beyondrounds.app" }],
-      "destination": "https://whitelist.beyondrounds.app/de/waitlist",
+      "destination": "https://whitelist.beyondrounds.app/de",
       "permanent": false
     },
     {
       "source": "/en",
       "has": [{ "type": "host", "value": "whitelist.beyondrounds.app" }],
-      "destination": "https://whitelist.beyondrounds.app/en/waitlist",
+      "destination": "https://whitelist.beyondrounds.app/en",
+      "permanent": false
+    },
+    {
+      "source": "/en/",
+      "has": [{ "type": "host", "value": "whitelist.beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/en",
+      "permanent": false
+    },
+    {
+      "source": "/de/",
+      "has": [{ "type": "host", "value": "whitelist.beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/de",
       "permanent": false
     },
     {
@@ -76,6 +88,24 @@
       "source": "/join",
       "has": [{ "type": "host", "value": "beyondrounds.app" }],
       "destination": "https://whitelist.beyondrounds.app",
+      "permanent": true
+    },
+    {
+      "source": "/waitlist",
+      "has": [{ "type": "host", "value": "beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/en/waitlist",
+      "permanent": true
+    },
+    {
+      "source": "/en/waitlist",
+      "has": [{ "type": "host", "value": "beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/en/waitlist",
+      "permanent": true
+    },
+    {
+      "source": "/de/waitlist",
+      "has": [{ "type": "host", "value": "beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/de/waitlist",
       "permanent": true
     },
     {
