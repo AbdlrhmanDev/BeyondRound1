@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { getCountries, getStates, getCities, type Country, type State, type City } from "@/services/locationService";
 
@@ -44,12 +43,6 @@ export const LocationSelect = ({
   const labelClass = isProfile
     ? "text-sm font-medium text-foreground"
     : "text-base font-medium text-primary-foreground";
-  const triggerClass = isProfile
-    ? "h-12 rounded-xl bg-background border-border text-foreground placeholder:text-muted-foreground focus:ring-ring"
-    : "h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 rounded-2xl";
-  const triggerBorderClass = isProfile
-    ? "border-input"
-    : "border-primary-foreground/20";
   const [countries, setCountries] = useState<Country[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -181,70 +174,44 @@ export const LocationSelect = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label className={labelClass}>{t("common.countryRequired")}</Label>
-          <Select value={selectedCountry} onValueChange={handleCountryChange} disabled={loadingCountries}>
-            <SelectTrigger className={`${triggerClass} ${triggerBorderClass} ${
-              !selectedCountry && !isProfile ? "border-primary/50" : ""
-            } ${!selectedCountry && isProfile ? "text-muted-foreground" : ""}`}>
-              <SelectValue placeholder={loadingCountries ? t("common.loading") : t("common.selectCountry")} />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.length === 0 && !loadingCountries ? (
-                <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                  Could not load countries. Add VITE_COUNTRY_STATE_CITY_API_KEY to .env (local) or Vercel env vars, then redeploy. Get free key: countrystatecity.in
-                </div>
-              ) : (
-                countries.map((country) => (
-                  <SelectItem key={country.iso2} value={country.iso2}>
-                    {country.name}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={selectedCountry}
+            onValueChange={handleCountryChange}
+            options={countries.map((c) => ({ value: c.iso2, label: c.name }))}
+            placeholder={loadingCountries ? t("common.loading") : t("common.selectCountry")}
+            searchPlaceholder={t("common.searchCountry")}
+            emptyMessage={countries.length === 0 && !loadingCountries ? "Could not load countries. Add VITE_COUNTRY_STATE_CITY_API_KEY to .env (local) or Vercel env vars." : t("common.noResults")}
+            disabled={loadingCountries}
+            variant={isProfile ? "profile" : "default"}
+          />
         </div>
 
         <div className="space-y-2">
           <Label className={labelClass}>State *</Label>
-          <Select 
-            value={selectedState} 
-            onValueChange={handleStateChange} 
+          <SearchableSelect
+            value={selectedState}
+            onValueChange={handleStateChange}
+            options={states.map((s) => ({ value: s.iso2, label: s.name }))}
+            placeholder={loadingStates ? t("common.loading") : selectedCountry ? t("common.selectState") : t("common.selectCountryFirst")}
+            searchPlaceholder={t("common.searchState")}
+            emptyMessage={t("common.noResults")}
             disabled={!selectedCountry || loadingStates}
-          >
-            <SelectTrigger className={`${triggerClass} ${triggerBorderClass} ${
-              !selectedState && !isProfile ? "border-primary/50" : ""
-            } ${!selectedState && isProfile ? "text-muted-foreground" : ""}`}>
-              <SelectValue placeholder={loadingStates ? t("common.loading") : selectedCountry ? t("common.selectState") : t("common.selectCountryFirst")} />
-            </SelectTrigger>
-            <SelectContent>
-              {states.map((state) => (
-                <SelectItem key={state.iso2} value={state.iso2}>
-                  {state.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            variant={isProfile ? "profile" : "default"}
+          />
         </div>
 
         <div className="space-y-2">
           <Label className={labelClass}>{t("common.cityRequired")}</Label>
-          <Select 
-            value={selectedCity} 
-            onValueChange={handleCityChange} 
+          <SearchableSelect
+            value={selectedCity}
+            onValueChange={handleCityChange}
+            options={cities.map((c, i) => ({ value: c.name, label: c.name }))}
+            placeholder={loadingCities ? t("common.loading") : selectedState ? t("common.selectCity") : t("common.selectStateFirst")}
+            searchPlaceholder={t("common.searchCity")}
+            emptyMessage={t("common.noResults")}
             disabled={!selectedState || loadingCities}
-          >
-            <SelectTrigger className={`${triggerClass} ${triggerBorderClass} ${
-              !selectedCity && !isProfile ? "border-primary/50" : ""
-            } ${!selectedCity && isProfile ? "text-muted-foreground" : ""}`}>
-              <SelectValue placeholder={loadingCities ? t("common.loading") : selectedState ? t("common.selectCity") : t("common.selectStateFirst")} />
-            </SelectTrigger>
-            <SelectContent>
-              {cities.map((city, index) => (
-                <SelectItem key={`${city.name}-${index}`} value={city.name}>
-                  {city.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            variant={isProfile ? "profile" : "default"}
+          />
         </div>
       </div>
 
@@ -252,23 +219,15 @@ export const LocationSelect = ({
       {showNationality && (
         <div className="space-y-2">
           <Label className={labelClass}>Nationality *</Label>
-          <Select 
-            value={nationality} 
+          <SearchableSelect
+            value={nationality}
             onValueChange={handleNationalityChange}
-          >
-            <SelectTrigger className={`${triggerClass} ${triggerBorderClass} ${
-              !nationality && !isProfile ? "border-primary/50" : ""
-            } ${!nationality && isProfile ? "text-muted-foreground" : ""}`}>
-              <SelectValue placeholder="Select Nationality" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map((country) => (
-                <SelectItem key={`nationality-${country.iso2}`} value={country.name}>
-                  {country.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={countries.map((c) => ({ value: c.name, label: c.name }))}
+            placeholder="Select Nationality"
+            searchPlaceholder={t("common.searchNationality")}
+            emptyMessage={t("common.noResults")}
+            variant={isProfile ? "profile" : "default"}
+          />
         </div>
       )}
     </div>

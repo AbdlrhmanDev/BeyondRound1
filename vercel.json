@@ -139,7 +139,7 @@
       "destination": "/opengraph-image.png"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/|_next/|assets/).*)",
       "destination": "/index.html"
     }
   ],

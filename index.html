@@ -61,7 +61,11 @@
 
     <!-- Performance optimizations - Resource hints for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <!-- Non-blocking font load: critical for mobile - prevents page from staying blank -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" /></noscript>
     <!-- Preconnect to Supabase (will be set dynamically if needed) -->
     <link rel="dns-prefetch" href="https://*.supabase.co" />
     <!-- Preconnect to Stripe -->
@@ -91,20 +95,29 @@
     <meta name="twitter:image:alt" content="BeyondRounds - Where Doctors Become Friends" />
   </head>
 
-  <body>
-    <div id="root"></div>
+  <body style="background-color:#fff;min-height:100vh">
+    <div id="root">
+      <!-- Shown until React hydrates - prevents blank white screen on slow mobile -->
+      <div style="display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:12px" id="initial-load">
+        <div style="width:40px;height:40px;border:2px solid #f59e0b;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+        <span style="font-size:14px;color:#6b7280">Loading...</span>
+      </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Defer non-critical scripts -->
     <script>
-      // Preload critical resources after page load
+      // Prefetch only when idle and connection is fast (saves mobile data/battery)
       if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => {
-          // Prefetch likely next pages
-          const link = document.createElement('link');
-          link.rel = 'prefetch';
-          link.href = '/onboarding';
-          document.head.appendChild(link);
-        });
+        requestIdleCallback(function() {
+          var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+          if (!conn || conn.effectiveType !== 'slow-2g' && conn.effectiveType !== '2g') {
+            var link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = '/onboarding';
+            document.head.appendChild(link);
+          }
+        }, { timeout: 3000 });
       }
     </script>
   </body>

@@ -92,6 +92,17 @@ const questions: OnboardingQuestion[] = [
       { id: "no_preference", label: "No preference", icon: "🤷" },
     ],
   },
+  {
+    id: "group_language_preference",
+    title: "Preferred group language?",
+    subtitle: "What language would you like the group to communicate in?",
+    isEssential: true,
+    options: [
+      { id: "arabic", label: "Arabic", icon: "🇸🇦" },
+      { id: "english", label: "English", icon: "🇬🇧" },
+      { id: "both", label: "Both Arabic & English", icon: "🌍" },
+    ],
+  },
   // SPORTS & FITNESS
   {
     id: "sports",
@@ -448,6 +459,10 @@ const Onboarding = () => {
           if (prefs.specialty_preference) {
             existingAnswers.specialty_preference = [prefs.specialty_preference];
             completedQuestionIds.add("specialty_preference");
+          }
+          if (prefs.group_language_preference) {
+            existingAnswers.group_language_preference = [prefs.group_language_preference];
+            completedQuestionIds.add("group_language_preference");
           }
           if (prefs.sports && prefs.sports.length > 0) {
             existingAnswers.sports = prefs.sports;
@@ -811,6 +826,7 @@ const Onboarding = () => {
       const prefsSuccess = await saveOnboardingPreferences(newUser.id, {
         specialty: answers.specialty?.[0] || null,
         specialty_preference: answers.specialty_preference?.[0] || "no_preference", // Default
+        group_language_preference: answers.group_language_preference?.[0] || "both", // Default both
         career_stage: answers.stage?.[0] || null,
         sports: answers.sports || [], // Default empty array
         activity_level: answers.activity_level?.[0] || null, // Default null
@@ -884,6 +900,7 @@ const Onboarding = () => {
       const success = await saveOnboardingPreferences(user.id, {
         specialty: answers.specialty?.[0] || null,
         specialty_preference: answers.specialty_preference?.[0] || "no_preference", // Default
+        group_language_preference: answers.group_language_preference?.[0] || "both", // Default both
         career_stage: answers.stage?.[0] || null,
         sports: answers.sports || [], // Default empty array
         activity_level: answers.activity_level?.[0] || null, // Default null

@@ -1,14 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-/* Preload critical fonts */
-@font-face {
-  font-family: 'DM Sans';
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Space Grotesk';
-  font-display: swap;
-}
-
+/* Fonts loaded async via index.html - no blocking @import for faster mobile load */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -318,6 +308,13 @@
     background: linear-gradient(90deg, transparent 0%, hsl(0 0% 100% / 0.4) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
+  }
+
+  /* Respect reduced motion on mobile for better performance */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up, .animate-fade-in, .animate-float, .animate-pulse-soft, .animate-shimmer {
+      animation: none;
+    }
   }
 
   /* Animation delays */

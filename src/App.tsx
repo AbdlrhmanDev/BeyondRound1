@@ -46,10 +46,11 @@ const AdminMatches = lazy(() => import("./pages/admin/AdminMatches"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 
-// Lightweight loading fallback – minimal DOM/CSS for faster paint
+// Lightweight loading fallback – visible immediately, minimal DOM for faster paint on mobile
 const PageLoader = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" aria-hidden />
+  <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
+    <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" aria-hidden />
+    <p className="text-sm text-muted-foreground animate-pulse">Loading...</p>
   </div>
 );
 

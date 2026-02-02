@@ -152,6 +152,7 @@ const Dashboard = () => {
             const prefsSuccess = await saveOnboardingPreferences(userId, {
               specialty: answers?.specialty?.[0] || null,
               specialty_preference: answers?.specialty_preference?.[0] || null,
+              group_language_preference: answers?.group_language_preference?.[0] || null,
               career_stage: answers?.stage?.[0] || null,
               sports: answers?.sports || [],
               activity_level: answers?.activity_level?.[0] || null,
@@ -465,6 +466,7 @@ const Dashboard = () => {
       const prefsSuccess = await saveOnboardingPreferences(user.id, {
         specialty: answers?.specialty?.[0] || null,
         specialty_preference: answers?.specialty_preference?.[0] || null,
+        group_language_preference: answers?.group_language_preference?.[0] || null,
         career_stage: answers?.stage?.[0] || null,
         sports: answers?.sports || [],
         activity_level: answers?.activity_level?.[0] || null,

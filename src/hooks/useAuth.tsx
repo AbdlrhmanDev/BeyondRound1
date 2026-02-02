@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     // THEN check for existing session (only once on mount)
-    const sessionTimeoutMs = 3000; // Stop loading after 3s so UI appears; listener will update when session resolves
+    const sessionTimeoutMs = 2000; // Stop loading after 2s so UI appears faster on mobile; listener will update when session resolves
     const sessionTimeoutId = window.setTimeout(() => {
       if (isMounted) {
         setLoading(false);

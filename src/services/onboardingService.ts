@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface OnboardingPreferences {
   user_id: string;
   specialty: string | null;
+  group_language_preference?: string | null;
   career_stage: string | null;
   interests: string[] | null;
   other_interests: string[] | null;
@@ -154,6 +155,8 @@ export const saveOnboardingPreferences = async (
         user_id: userId,
         ...preferences,
         completed_at: preferences.completed_at || new Date().toISOString(),
+      }, {
+        onConflict: 'user_id',
       });
 
     if (error) {
@@ -232,6 +235,8 @@ export const saveOnboardingData = async (
         user_id: userId,
         ...preferences,
         completed_at: preferences.completed_at || new Date().toISOString(),
+      }, {
+        onConflict: 'user_id',
       });
 
     return {
