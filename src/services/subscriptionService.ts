@@ -1,9 +1,11 @@
 /**
  * Subscription Service - Handles subscription and billing operations
  * Following Single Responsibility Principle
+ * When VITE_SERVY_URL is set, Stripe calls go through servy.beyondrounds.app
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { getServyUrl, useServyProxy } from '@/lib/apiConfig';
 
 export interface Subscription {
   id: string;
@@ -161,19 +163,39 @@ export const createCheckoutSession = async (
       return null;
     }
 
-    const { data, error } = await supabase.functions.invoke(
-      'stripe-checkout',
-      {
-        body: {
-          priceId,
-          successUrl: `${window.location.origin}/settings?success=true`,
-          cancelUrl: `${window.location.origin}/settings?canceled=true`,
-        },
+    const body = {
+      priceId,
+      successUrl: `${window.location.origin}/settings?success=true`,
+      cancelUrl: `${window.location.origin}/settings?canceled=true`,
+    };
+
+    let data: { sessionId?: string; url?: string } | null = null;
+    let error: Error | null = null;
+
+    if (useServyProxy()) {
+      const servyUrl = getServyUrl().replace(/\/$/, '');
+      const res = await fetch(`${servyUrl}/api/stripe-checkout`, {
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        error = new Error(json.error || 'Checkout failed');
+      } else {
+        data = json;
       }
-    );
+    } else {
+      const result = await supabase.functions.invoke('stripe-checkout', {
+        body,
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) {
       console.error('Error creating checkout session:', error);
@@ -185,7 +207,7 @@ export const createCheckoutSession = async (
       return null;
     }
 
-    return { sessionId: data.sessionId as string };
+    return { sessionId: data.sessionId };
   } catch (error) {
     console.error('Error creating checkout session:', error);
     return null;
@@ -211,14 +233,27 @@ export const cancelSubscription = async (
       return false;
     }
 
-    const { error } = await supabase.functions.invoke(
-      'stripe-cancel-subscription',
-      {
+    if (useServyProxy()) {
+      const servyUrl = getServyUrl().replace(/\/$/, '');
+      const res = await fetch(`${servyUrl}/api/stripe-cancel`, {
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
+        body: '{}',
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        console.error('Error canceling subscription:', json.error || res.statusText);
+        return false;
       }
-    );
+      return true;
+    }
+
+    const { error } = await supabase.functions.invoke('stripe-cancel-subscription', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
     if (error) {
       console.error('Error canceling subscription:', error);

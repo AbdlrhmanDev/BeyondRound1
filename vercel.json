@@ -5,6 +5,38 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/login",
+      "has": [{ "type": "host", "value": "beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/auth",
+      "permanent": true
+    },
+    {
+      "source": "/auth",
+      "has": [{ "type": "host", "value": "beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/auth",
+      "permanent": true
+    },
+    {
+      "source": "/join",
+      "has": [{ "type": "host", "value": "beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app",
+      "permanent": true
+    },
+    {
+      "source": "/app",
+      "has": [{ "type": "host", "value": "beyondrounds.app" }],
+      "destination": "https://app.beyondrounds.app",
+      "permanent": true
+    },
+    {
+      "source": "/app/:path*",
+      "has": [{ "type": "host", "value": "beyondrounds.app" }],
+      "destination": "https://app.beyondrounds.app/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/assets/:path*",
