@@ -1,6 +1,7 @@
 /**
  * Location Service - Handles Country-State-City API operations
- * Following Single Responsibility Principle
+ * Uses server-side proxy (/api/countries, etc.) to avoid CORS and keep API key secure
+ * Falls back to direct API on localhost for dev
  */
 
 export interface Country {
@@ -17,99 +18,83 @@ export interface City {
   name: string;
 }
 
-// API Key for CountryStateCity API - Get your free API key from https://countrystatecity.in/
-// Add it to your .env file as VITE_COUNTRY_STATE_CITY_API_KEY (no spaces around =)
-const API_KEY = (import.meta.env.VITE_COUNTRY_STATE_CITY_API_KEY || '').trim();
+const API_KEY = (import.meta.env.VITE_COUNTRY_STATE_CITY_API_KEY || "").trim();
 
-/**
- * Fetches all countries
- */
+/** Use proxy on production (same-origin), direct API on localhost */
+const useProxy = typeof window !== "undefined" && window.location.hostname !== "localhost";
+
+async function fetchCountries(): Promise<Country[]> {
+  if (useProxy) {
+    const res = await fetch("/api/countries");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  }
+  const headers: Record<string, string> = {};
+  if (API_KEY) headers["X-CSCAPI-KEY"] = API_KEY;
+  const res = await fetch("https://api.countrystatecity.in/v1/countries", { headers });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchStates(countryIso2: string): Promise<State[]> {
+  if (!countryIso2?.trim()) return [];
+  if (useProxy) {
+    const res = await fetch(`/api/states?country=${encodeURIComponent(countryIso2)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  }
+  const headers: Record<string, string> = {};
+  if (API_KEY) headers["X-CSCAPI-KEY"] = API_KEY;
+  const res = await fetch(`https://api.countrystatecity.in/v1/countries/${countryIso2}/states`, { headers });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchCities(countryIso2: string, stateIso2: string): Promise<City[]> {
+  if (!countryIso2?.trim() || !stateIso2?.trim()) return [];
+  if (useProxy) {
+    const res = await fetch(
+      `/api/cities?country=${encodeURIComponent(countryIso2)}&state=${encodeURIComponent(stateIso2)}`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  }
+  const headers: Record<string, string> = {};
+  if (API_KEY) headers["X-CSCAPI-KEY"] = API_KEY;
+  const res = await fetch(
+    `https://api.countrystatecity.in/v1/countries/${countryIso2}/states/${stateIso2}/cities`,
+    { headers }
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
 export const getCountries = async (): Promise<Country[]> => {
   try {
-    const headers: Record<string, string> = {};
-    if (API_KEY) {
-      headers['X-CSCAPI-KEY'] = API_KEY;
-    }
-
-    const response = await fetch('https://api.countrystatecity.in/v1/countries', {
-      headers
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.error("API key required. Get a free API key from https://countrystatecity.in/");
-      } else {
-        console.error("Error fetching countries:", response.statusText);
-      }
-      return [];
-    }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Error fetching countries:", error);
+    return await fetchCountries();
+  } catch {
     return [];
   }
 };
 
-/**
- * Fetches states for a given country
- */
 export const getStates = async (countryIso2: string): Promise<State[]> => {
   try {
-    if (!countryIso2?.trim()) {
-      return [];
-    }
-
-    const headers: Record<string, string> = {};
-    if (API_KEY) {
-      headers['X-CSCAPI-KEY'] = API_KEY;
-    }
-
-    const response = await fetch(`https://api.countrystatecity.in/v1/countries/${countryIso2}/states`, {
-      headers
-    });
-
-    if (!response.ok) {
-      console.error("Error fetching states:", response.statusText);
-      return [];
-    }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Error fetching states:", error);
+    return await fetchStates(countryIso2);
+  } catch {
     return [];
   }
 };
 
-/**
- * Fetches cities for a given country and state
- */
 export const getCities = async (countryIso2: string, stateIso2: string): Promise<City[]> => {
   try {
-    if (!countryIso2?.trim() || !stateIso2?.trim()) {
-      return [];
-    }
-
-    const headers: Record<string, string> = {};
-    if (API_KEY) {
-      headers['X-CSCAPI-KEY'] = API_KEY;
-    }
-
-    const response = await fetch(`https://api.countrystatecity.in/v1/countries/${countryIso2}/states/${stateIso2}/cities`, {
-      headers
-    });
-
-    if (!response.ok) {
-      console.error("Error fetching cities:", response.statusText);
-      return [];
-    }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Error fetching cities:", error);
+    return await fetchCities(countryIso2, stateIso2);
+  } catch {
     return [];
   }
 };
