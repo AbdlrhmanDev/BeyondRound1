@@ -18,8 +18,8 @@ export interface City {
 }
 
 // API Key for CountryStateCity API - Get your free API key from https://countrystatecity.in/
-// Add it to your .env file as VITE_COUNTRY_STATE_CITY_API_KEY
-const API_KEY = import.meta.env.VITE_COUNTRY_STATE_CITY_API_KEY || '';
+// Add it to your .env file as VITE_COUNTRY_STATE_CITY_API_KEY (no spaces around =)
+const API_KEY = (import.meta.env.VITE_COUNTRY_STATE_CITY_API_KEY || '').trim();
 
 /**
  * Fetches all countries

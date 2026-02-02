@@ -188,11 +188,17 @@ export const LocationSelect = ({
               <SelectValue placeholder={loadingCountries ? t("common.loading") : t("common.selectCountry")} />
             </SelectTrigger>
             <SelectContent>
-              {countries.map((country) => (
-                <SelectItem key={country.iso2} value={country.iso2}>
-                  {country.name}
-                </SelectItem>
-              ))}
+              {countries.length === 0 && !loadingCountries ? (
+                <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                  Could not load countries. Check VITE_COUNTRY_STATE_CITY_API_KEY in .env
+                </div>
+              ) : (
+                countries.map((country) => (
+                  <SelectItem key={country.iso2} value={country.iso2}>
+                    {country.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>

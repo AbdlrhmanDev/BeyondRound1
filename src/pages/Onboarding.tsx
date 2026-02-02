@@ -925,8 +925,34 @@ const Onboarding = () => {
     }
   };
 
+  const getPersonalInfoMissingFields = (): string[] => {
+    const missing: string[] = [];
+    if (!personalInfo.name.trim()) missing.push("Full Name");
+    if (!personalInfo.country.trim()) missing.push("Country");
+    if (!personalInfo.state.trim()) missing.push("State");
+    if (!personalInfo.city.trim()) missing.push("City");
+    if (!personalInfo.gender.trim()) missing.push("Gender");
+    if (!personalInfo.birthYear.trim()) missing.push("Birth Year");
+    if (!personalInfo.genderPreference.trim()) missing.push("Gender preference for groups");
+    if (!personalInfo.nationality.trim()) missing.push("Nationality");
+    if (!licenseFile) missing.push("Medical License (upload required)");
+    return missing;
+  };
+
   const handleNext = () => {
     if (!question) return;
+    
+    // For personal-info: show helpful message when validation fails
+    if (question.inputType === "personal-info" && !canProceed()) {
+      const missing = getPersonalInfoMissingFields();
+      toast({
+        title: "Please complete all required fields",
+        description: `Missing: ${missing.join(", ")}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
     
     // Check for milestone celebration
     const nextProgress = ((currentStep + 2) / filteredQuestions.length) * 100;
@@ -1492,7 +1518,7 @@ const Onboarding = () => {
               )}
               <Button 
                 onClick={handleNext}
-                disabled={!canProceed() || isLoading}
+                disabled={question.inputType === "personal-info" ? isLoading : (!canProceed() || isLoading)}
                 className={`h-14 font-semibold group disabled:opacity-50 shadow-glow-sm hover:shadow-glow transition-all ${question.skipable ? 'flex-1' : 'w-full'}`}
               >
                 {isLoading ? (
