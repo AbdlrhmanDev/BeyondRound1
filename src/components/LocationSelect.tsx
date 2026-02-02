@@ -43,10 +43,10 @@ export const LocationSelect = ({
   const isProfile = variant === "profile";
   const labelClass = isProfile
     ? "text-sm font-medium text-foreground"
-    : "text-base font-medium text-primary-foreground/70";
+    : "text-base font-medium text-primary-foreground";
   const triggerClass = isProfile
     ? "h-12 rounded-xl bg-background border-border text-foreground placeholder:text-muted-foreground focus:ring-ring"
-    : "h-14 bg-background/10 border-primary-foreground/20 text-foreground rounded-2xl";
+    : "h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 rounded-2xl";
   const triggerBorderClass = isProfile
     ? "border-input"
     : "border-primary-foreground/20";
@@ -190,7 +190,7 @@ export const LocationSelect = ({
             <SelectContent>
               {countries.length === 0 && !loadingCountries ? (
                 <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                  Could not load countries. Check VITE_COUNTRY_STATE_CITY_API_KEY in .env
+                  Could not load countries. Add VITE_COUNTRY_STATE_CITY_API_KEY to .env (local) or Vercel env vars, then redeploy. Get free key: countrystatecity.in
                 </div>
               ) : (
                 countries.map((country) => (

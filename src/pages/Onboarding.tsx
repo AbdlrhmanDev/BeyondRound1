@@ -1135,7 +1135,7 @@ const Onboarding = () => {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   {/* Profile Photo */}
                   <div>
-                    <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Profile Photo</label>
+                    <label className="text-base font-medium text-primary-foreground mb-2 block">Profile Photo</label>
                     <input
                       ref={avatarInputRef}
                       type="file"
@@ -1168,7 +1168,7 @@ const Onboarding = () => {
 
                   {/* Medical License */}
                   <div>
-                    <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Medical License *</label>
+                    <label className="text-base font-medium text-primary-foreground mb-2 block">Medical License *</label>
                     <input
                       ref={licenseInputRef}
                       type="file"
@@ -1207,12 +1207,12 @@ const Onboarding = () => {
                 </div>
 
                 <div>
-                  <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Full Name *</label>
+                  <label className="text-base font-medium text-primary-foreground mb-2 block">Full Name *</label>
                   <Input
                     value={personalInfo.name}
                     onChange={(e) => handlePersonalInfoChange("name", e.target.value)}
                     placeholder="Dr. Jane Smith"
-                    className={`h-14 bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl ${
+                    className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 rounded-2xl ${
                       !personalInfo.name.trim() ? 'border-primary/50' : ''
                     }`}
                   />
@@ -1232,7 +1232,7 @@ const Onboarding = () => {
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Gender *</label>
+                    <label className="text-base font-medium text-primary-foreground mb-2 block">Gender *</label>
                     <Select value={personalInfo.gender} onValueChange={(value) => handlePersonalInfoChange("gender", value)}>
                       <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
                         !personalInfo.gender ? 'border-primary/50' : ''
@@ -1248,7 +1248,7 @@ const Onboarding = () => {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Birth Year *</label>
+                    <label className="text-base font-medium text-primary-foreground mb-2 block">Birth Year *</label>
                     <Select value={personalInfo.birthYear} onValueChange={(value) => handlePersonalInfoChange("birthYear", value)}>
                       <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
                         !personalInfo.birthYear ? 'border-primary/50' : ''
@@ -1264,7 +1264,7 @@ const Onboarding = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="text-base font-medium text-primary-foreground/70 mb-2 block">Gender preference for groups *</label>
+                  <label className="text-base font-medium text-primary-foreground mb-2 block">Gender preference for groups *</label>
                   <Select value={personalInfo.genderPreference} onValueChange={(value) => handlePersonalInfoChange("genderPreference", value)}>
                       <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
                         !personalInfo.genderPreference ? 'border-primary/50' : ''
@@ -1304,7 +1304,7 @@ const Onboarding = () => {
                       placeholder="doctor@hospital.com"
                       value={signupData.email}
                       onChange={handleSignupChange}
-                      className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
+                      className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
                     />
                   </div>
                   {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
@@ -1338,7 +1338,7 @@ const Onboarding = () => {
                             placeholder="Enter your password"
                             value={signupData.password}
                             onChange={handleSignupChange}
-                            className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground focus:ring-primary/20 transition-all ${
+                            className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:ring-primary/20 transition-all ${
                               isValid 
                                 ? 'border-accent/85 focus:border-accent/85' 
                                 : signupData.password.length > 0 
@@ -1428,7 +1428,7 @@ const Onboarding = () => {
                       placeholder="Confirm your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground focus:ring-primary/20 transition-all ${
+                      className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:ring-primary/20 transition-all ${
                         confirmPassword && signupData.password === confirmPassword
                           ? 'border-accent/85 focus:border-accent/85' 
                           : confirmPassword && signupData.password !== confirmPassword && signupData.password.length > 0
