@@ -12,7 +12,18 @@ This guide configures the Vite + React app for a multi-subdomain deployment on V
 | `admin.beyondrounds.app` | Admin dashboard |
 | `app.beyondrounds.app` | User dashboard (matching, groups, billing) |
 
-## 1. Marketing Site Redirects
+## 1. Subdomain Landing Pages
+
+When users visit a subdomain root (`/`, `/de`, `/en`), they are redirected to the dedicated page:
+
+| Subdomain | Root redirects to |
+|-----------|-------------------|
+| `app.beyondrounds.app` | `/de/dashboard` or `/en/dashboard` |
+| `admin.beyondrounds.app` | `/de/admin` or `/en/admin` |
+| `whitelist.beyondrounds.app` | `/de/waitlist` or `/en/waitlist` |
+| `servy.beyondrounds.app` | API only (no frontend) |
+
+## 2. Marketing Site Redirects
 
 When deployed to `beyondrounds.app`, these redirects apply (via `vercel.json`):
 
@@ -24,7 +35,7 @@ When deployed to `beyondrounds.app`, these redirects apply (via `vercel.json`):
 
 **Note:** The `has: [{ "type": "host", "value": "beyondrounds.app" }]` condition ensures redirects only run on the marketing domain.
 
-## 2. Authentication Cookies (Cross-Subdomain)
+## 3. Authentication Cookies (Cross-Subdomain)
 
 For shared sessions across subdomains, set:
 
@@ -43,7 +54,7 @@ Cookies use:
 - `https://app.beyondrounds.app/auth/callback`
 - `https://admin.beyondrounds.app/auth/callback`
 
-## 3. Servy API (CORS + Origin Validation)
+## 4. Servy API (CORS + Origin Validation)
 
 The servy project only accepts requests from:
 
@@ -58,14 +69,14 @@ The servy project only accepts requests from:
 3. Add domain `servy.beyondrounds.app`
 4. Add environment variables (see below)
 
-## 4. Stripe Isolation
+## 5. Stripe Isolation
 
 - **Frontend never talks to Stripe directly** – all calls go through servy
 - **Checkout:** `POST https://servy.beyondrounds.app/api/stripe-checkout`
 - **Cancel:** `POST https://servy.beyondrounds.app/api/stripe-cancel`
 - **Webhook:** Configure in Stripe Dashboard → `https://servy.beyondrounds.app/api/stripe-webhook`
 
-## 5. Example Flow: Login → Dashboard → Stripe Checkout
+## 6. Example Flow: Login → Dashboard → Stripe Checkout
 
 1. User visits `beyondrounds.app` (marketing)
 2. Clicks "Login" → redirects to `whitelist.beyondrounds.app/auth`
@@ -76,7 +87,7 @@ The servy project only accepts requests from:
 7. User redirected to Stripe Checkout
 8. After payment, Stripe webhook hits `servy.beyondrounds.app/api/stripe-webhook` → forwarded to Supabase
 
-## 6. Environment Variables
+## 7. Environment Variables
 
 ### Marketing / Whitelist / App / Admin (Vite frontend)
 
@@ -111,7 +122,7 @@ Supabase Edge Functions (stripe-checkout, stripe-webhook, stripe-cancel-subscrip
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET` (for stripe-webhook)
 
-## 7. Vercel Projects Summary
+## 8. Vercel Projects Summary
 
 | Project | Domain | Root Dir | Key Env |
 |---------|--------|----------|---------|
@@ -121,13 +132,13 @@ Supabase Edge Functions (stripe-checkout, stripe-webhook, stripe-cancel-subscrip
 | beyondrounds-admin | admin.beyondrounds.app | . | VITE_*, VITE_SERVY_URL |
 | beyondrounds-app | app.beyondrounds.app | . | VITE_*, VITE_SERVY_URL, VITE_USE_COOKIE_STORAGE=true |
 
-## 8. Local Development
+## 9. Local Development
 
 - Without `VITE_SERVY_URL`: Stripe calls go directly to Supabase functions
 - Without `VITE_USE_COOKIE_STORAGE`: Uses `localStorage` (default)
 - To test servy locally: run `vercel dev` in the `servy` folder and add `http://localhost:5173` to allowed origins (edit `servy/api/stripe-checkout.ts` and `stripe-cancel.ts` temporarily)
 
-## 9. Security Checklist
+## 10. Security Checklist
 
 - [ ] All domains use HTTPS
 - [ ] `VITE_USE_COOKIE_STORAGE` only on production subdomains

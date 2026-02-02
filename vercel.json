@@ -7,6 +7,60 @@
   "framework": "vite",
   "redirects": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app.beyondrounds.app" }],
+      "destination": "https://app.beyondrounds.app/de/dashboard",
+      "permanent": false
+    },
+    {
+      "source": "/de",
+      "has": [{ "type": "host", "value": "app.beyondrounds.app" }],
+      "destination": "https://app.beyondrounds.app/de/dashboard",
+      "permanent": false
+    },
+    {
+      "source": "/en",
+      "has": [{ "type": "host", "value": "app.beyondrounds.app" }],
+      "destination": "https://app.beyondrounds.app/en/dashboard",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "admin.beyondrounds.app" }],
+      "destination": "https://admin.beyondrounds.app/de/admin",
+      "permanent": false
+    },
+    {
+      "source": "/de",
+      "has": [{ "type": "host", "value": "admin.beyondrounds.app" }],
+      "destination": "https://admin.beyondrounds.app/de/admin",
+      "permanent": false
+    },
+    {
+      "source": "/en",
+      "has": [{ "type": "host", "value": "admin.beyondrounds.app" }],
+      "destination": "https://admin.beyondrounds.app/en/admin",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "whitelist.beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/de/waitlist",
+      "permanent": false
+    },
+    {
+      "source": "/de",
+      "has": [{ "type": "host", "value": "whitelist.beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/de/waitlist",
+      "permanent": false
+    },
+    {
+      "source": "/en",
+      "has": [{ "type": "host", "value": "whitelist.beyondrounds.app" }],
+      "destination": "https://whitelist.beyondrounds.app/en/waitlist",
+      "permanent": false
+    },
+    {
       "source": "/login",
       "has": [{ "type": "host", "value": "beyondrounds.app" }],
       "destination": "https://whitelist.beyondrounds.app/auth",
