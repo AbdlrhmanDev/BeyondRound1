@@ -45,6 +45,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#0a0a0f' },
@@ -63,7 +64,6 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="preload" href="/hero-doctors-friendship-mobile.webp" as="image" />
       </head>
       <body className={`${dmSans.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}

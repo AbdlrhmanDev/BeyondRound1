@@ -448,7 +448,7 @@ const Chat = () => {
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === tempMessageId
-                  ? { ...msg, media_urls: finalMediaUrls }
+                  ? { ...msg, media_urls: mediaUrls }
                   : msg
               )
             );
@@ -676,8 +676,6 @@ const Chat = () => {
                     src={preview}
                     alt={`Preview ${index + 1}`}
                     className="h-24 w-24 object-cover rounded-lg border-2 border-border shadow-sm"
-                    width={96}
-                    height={96}
                   />
                   {/* Upload progress */}
                   {uploadingImages && uploadProgress[index] !== undefined && (

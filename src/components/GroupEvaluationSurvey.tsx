@@ -282,6 +282,8 @@ const GroupEvaluationSurvey = ({ groupId, matchWeek, open, onOpenChange }: Group
                         src={url}
                         alt={t("meetingEvaluation.meetingPhoto", { index: index + 1 })}
                         className="w-full h-24 object-cover rounded-xl"
+                        width={96}
+                        height={96}
                         loading="lazy"
                         decoding="async"
                       />
@@ -307,6 +309,8 @@ const GroupEvaluationSurvey = ({ groupId, matchWeek, open, onOpenChange }: Group
                         src={URL.createObjectURL(photo)}
                         alt={t("meetingEvaluation.previewPhoto", { index: index + 1 })}
                         className="w-full h-24 object-cover rounded-xl"
+                        width={96}
+                        height={96}
                         loading="lazy"
                         decoding="async"
                       />

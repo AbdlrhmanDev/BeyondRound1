@@ -8,9 +8,15 @@
 - **Wrong:** `http://localhost:3000` (redirects), `http://localhost:3000/` (redirects)
 - **Always test:** `http://localhost:3000/de` directly
 
-## Critical: Test in Incognito
+## Document Request Latency (TTFB ~1400ms)
 
-**Chrome extensions can add 1–2 seconds to TBT.** Run Lighthouse in Incognito for accurate scores.
+**"Server responded slowly"** – TTFB is usually high when:
+
+1. **Testing on `npm run dev`** – Dev server is slow. Use `npm run build && npm run start` for realistic metrics.
+2. **First request (cold start)** – On Vercel, the first request after deploy/idle can be slow. Subsequent requests are fast (Edge cache).
+3. **Wrong region** – Deploy on Vercel in a region close to your users.
+
+**Applied:** Middleware uses `runtime = 'edge'` for faster cold starts. Marketing pages use `force-static` for CDN caching.
 
 ## Steps to Test
 

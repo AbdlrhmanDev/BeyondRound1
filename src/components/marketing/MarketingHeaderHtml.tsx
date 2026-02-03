@@ -97,13 +97,13 @@ export function MarketingHeaderHtml({ dict, locale, pathWithoutLocale = '' }: Ma
                     ✕
                   </span>
                 </summary>
-                <div className="md:hidden absolute left-3 right-3 mt-2 bg-primary-foreground/5 dark:bg-card/90 backdrop-blur-2xl border border-primary-foreground/10 rounded-xl shadow-lg p-4 animate-fade-in">
+                <div className="md:hidden fixed left-3 right-3 mt-2 bg-primary-foreground/95 dark:bg-card/95 backdrop-blur-2xl border border-primary-foreground/10 rounded-xl shadow-xl p-4 animate-fade-in z-50" style={{ top: 'calc(env(safe-area-inset-top) + 5rem)' }}>
                   <nav className="flex flex-col gap-0.5">
                     {navLinks.map((link) => (
                       <Link
                         key={link.href}
                         href={`/${locale}${link.href}`}
-                        className="min-h-[44px] flex items-center px-4 py-3 text-primary-foreground/60 hover:text-primary-foreground rounded-lg font-medium"
+                        className="min-h-[44px] flex items-center px-4 py-3 text-primary-foreground/90 hover:text-primary-foreground rounded-lg font-medium"
                       >
                         {t(link.labelKey)}
                       </Link>

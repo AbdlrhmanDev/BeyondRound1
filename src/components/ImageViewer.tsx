@@ -148,6 +148,8 @@ export const ImageViewer = ({ images, currentIndex: initialIndex, isOpen, onClos
               src={currentImage.url}
               alt={`Image ${currentIndex + 1}`}
               className="max-w-full max-h-full object-contain transition-transform duration-200"
+              width={800}
+              height={600}
               style={{ transform: `scale(${zoom})` }}
               draggable={false}
             />

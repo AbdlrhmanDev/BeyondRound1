@@ -978,8 +978,6 @@ const GroupChat = () => {
                                         src={imageUrl}
                                         alt={`Attachment ${idx + 1}`}
                                         className="w-full h-auto max-h-72 object-cover"
-                                        width={288}
-                                        height={288}
                                         loading="lazy"
                                         onError={(e) => {
                                           console.error('Failed to load image:', imageUrl);
@@ -1048,8 +1046,6 @@ const GroupChat = () => {
                       src={preview}
                       alt={`Preview ${index + 1}`}
                       className="h-24 w-24 object-cover rounded-xl border-2 border-border/50 shadow-md"
-                      width={96}
-                      height={96}
                     />
                     {/* Upload progress */}
                     {uploadingImages && uploadProgress[index] !== undefined && (

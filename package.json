@@ -9,7 +9,7 @@
     "last 2 Edge versions"
   ],
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "dev:turbo": "next dev --turbo",
     "dev:3001": "next dev -p 3001",
     "clean": "node scripts/clean-next.js",

@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, ArrowLeft, Sparkles, Check, Mail, Lock, Eye, EyeOff, Camera, Upload, FileCheck, Zap, Star, Trophy, Languages, Globe } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles, Check, Mail, Lock, Eye, EyeOff, Camera, Upload, FileCheck, Zap, Star, Trophy } from "lucide-react";
 import LocalizedLink from "@/components/LocalizedLink";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,7 +17,6 @@ import { getOnboardingPreferences, saveOnboardingPreferences, markOnboardingComp
 import { uploadAvatar, uploadLicense } from "@/services/storageService";
 import { createNotification } from "@/services/notificationService";
 import { LocationSelect } from "@/components/LocationSelect";
-import { LanguageLinks } from "@/components/marketing/LanguageLinks";
 
 interface ExtendedError extends Error {
   status?: number;
@@ -370,7 +368,6 @@ const signupSchema = z.object({
 });
 
 const Onboarding = () => {
-  const { t } = useTranslation();
   const { user } = useAuth();
   // Filter to show only essential questions (6 questions)
   const essentialQuestions = questions.filter(q => q.isEssential === true);
@@ -574,11 +571,11 @@ const Onboarding = () => {
   
   // Encouragement messages based on progress
   const getEncouragementMessage = () => {
-    if (progress >= 100) return { text: t("onboarding.encouragementAlmostThere"), icon: Trophy };
-    if (progress >= 75) return { text: t("onboarding.encouragementDoingGreat"), icon: Star };
-    if (progress >= 50) return { text: t("onboarding.encouragementHalfway"), icon: Zap };
-    if (progress >= 25) return { text: t("onboarding.encouragementGreatStart"), icon: Sparkles };
-    return { text: t("onboarding.encouragementStart"), icon: Sparkles };
+    if (progress >= 100) return { text: "Almost there! 🎉", icon: Trophy };
+    if (progress >= 75) return { text: "You're doing great! Just a few more questions.", icon: Star };
+    if (progress >= 50) return { text: "Halfway there! Keep going! 💪", icon: Zap };
+    if (progress >= 25) return { text: "Great start! You're building your perfect network.", icon: Sparkles };
+    return { text: "Let's find your perfect matches!", icon: Sparkles };
   };
 
   const encouragement = getEncouragementMessage();
@@ -589,7 +586,7 @@ const Onboarding = () => {
       <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-primary-foreground/50">{t("onboarding.loading")}</p>
+          <p className="text-primary-foreground/50">Loading your progress...</p>
         </div>
       </div>
     );
@@ -599,15 +596,13 @@ const Onboarding = () => {
     return (
       <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="font-display text-2xl font-bold text-primary-foreground mb-2">{t("onboarding.allDone")}</h2>
-          <p className="text-primary-foreground/50 mb-4">{t("onboarding.allDoneDesc")}</p>
-          <Button onClick={() => navigate("/dashboard")}>{t("onboarding.goToDashboard")}</Button>
+          <h2 className="font-display text-2xl font-bold text-primary-foreground mb-2">All Done!</h2>
+          <p className="text-primary-foreground/50 mb-4">You've completed all onboarding steps.</p>
+          <Button onClick={() => navigate("/dashboard")}>Go to Dashboard</Button>
         </div>
       </div>
     );
   }
-
-  const getOptionLabel = (qId: string, optId: string) => t(`onboarding.${qId}.${optId}`, optId);
 
   const handleSelect = (optionId: string) => {
     if (!question) return;
@@ -642,7 +637,7 @@ const Onboarding = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast({ title: t("onboarding.personal_info.fileTooLarge"), description: t("onboarding.personal_info.imageUnder5MB"), variant: "destructive" });
+        toast({ title: "File too large", description: "Please select an image under 5MB", variant: "destructive" });
         return;
       }
       setAvatarFile(file);
@@ -654,7 +649,7 @@ const Onboarding = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast({ title: t("onboarding.personal_info.fileTooLarge"), description: t("onboarding.personal_info.fileUnder10MB"), variant: "destructive" });
+        toast({ title: "File too large", description: "Please select a file under 10MB", variant: "destructive" });
         return;
       }
       setLicenseFile(file);
@@ -673,7 +668,7 @@ const Onboarding = () => {
       
       // Check password confirmation
       if (signupData.password !== confirmPassword) {
-        fieldErrors.password = t("onboarding.signup.passwordsDontMatch");
+        fieldErrors.password = "Passwords do not match";
         setErrors(fieldErrors);
         return false;
       }
@@ -710,16 +705,16 @@ const Onboarding = () => {
         const extendedError = error as ExtendedError;
         if (error.message.includes("already registered") || error.message.includes("already exists")) {
           toast({
-            title: t("onboarding.toasts.accountExists"),
-            description: t("onboarding.toasts.accountExistsDesc"),
+            title: "Account exists",
+            description: "This email is already registered. Please sign in instead.",
             variant: "destructive",
           });
         } else if (error.message.includes("confirmation email") || extendedError.code === 'email_send_failed') {
           // User was created but email failed
           if (data?.user || extendedError.userCreated) {
             toast({
-              title: t("onboarding.toasts.accountCreated"),
-              description: t("onboarding.toasts.accountCreatedDesc"),
+              title: "Account created",
+              description: "Your account was created but we couldn't send a confirmation email. Please check your email settings in Supabase Dashboard or try signing in directly.",
               variant: "default",
             });
             // Try to sign in automatically if user was created
@@ -728,8 +723,8 @@ const Onboarding = () => {
             }, 2000);
           } else {
             toast({
-              title: t("onboarding.toasts.emailError"),
-              description: t("onboarding.toasts.emailErrorDesc"),
+              title: "Email error",
+              description: "There was an issue sending the confirmation email. Please check your email configuration or contact support.",
               variant: "destructive",
             });
           }
@@ -737,16 +732,16 @@ const Onboarding = () => {
           // Check console for detailed diagnostics
           const isTriggerIssue = !data?.user && error.message.includes('confirmation email');
           toast({
-            title: t("onboarding.toasts.serverError"),
+            title: "Server error",
             description: isTriggerIssue 
-              ? t("onboarding.toasts.triggerErrorDesc")
-              : t("onboarding.toasts.serverErrorDesc"),
+              ? "Database trigger failed. Please run the verification script in Supabase SQL Editor (see TROUBLESHOOTING_SIGNUP_ERROR.md) or contact support."
+              : "There was a server error creating your account. Check the browser console for details or contact support.",
             variant: "destructive",
           });
         } else {
           toast({
-            title: t("onboarding.toasts.signUpFailed"),
-            description: error.message || t("onboarding.toasts.signUpFailedDesc"),
+            title: "Sign up failed",
+            description: error.message || "An unexpected error occurred. Please try again.",
             variant: "destructive",
           });
         }
@@ -769,8 +764,8 @@ const Onboarding = () => {
         localStorage.setItem('pending_onboarding_data', JSON.stringify(onboardingData));
         
         toast({
-          title: t("onboarding.toasts.checkEmail"),
-          description: t("onboarding.toasts.checkEmailDesc"),
+          title: "Check your email",
+          description: "Please confirm your email, then complete your profile when you sign in.",
           variant: "default",
         });
         
@@ -870,22 +865,22 @@ const Onboarding = () => {
       // Show errors if any
       if (saveErrors.length > 0) {
         toast({
-          title: t("onboarding.toasts.someDataNotSaved"),
+          title: "Some data couldn't be saved",
           description: saveErrors.join(', '),
           variant: "destructive",
         });
       }
 
       toast({
-        title: t("onboarding.toasts.welcome"),
-        description: t("onboarding.toasts.welcomeDesc"),
+        title: "Welcome to BeyondRounds!",
+        description: "Your account has been created successfully.",
       });
       
       navigate('/dashboard');
     } catch (error) {
       toast({
-        title: t("onboarding.toasts.error"),
-        description: t("onboarding.toasts.errorDesc"),
+        title: "Error",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -931,15 +926,15 @@ const Onboarding = () => {
       }
 
       toast({
-        title: t("onboarding.toasts.profileUpdated"),
-        description: t("onboarding.toasts.profileUpdatedDesc"),
+        title: "Profile Updated!",
+        description: "Your preferences have been saved successfully.",
       });
       
       navigate('/dashboard');
     } catch (error) {
       toast({
-        title: t("onboarding.toasts.saveFailed"),
-        description: t("onboarding.toasts.saveFailedDesc"),
+        title: "Error",
+        description: "Could not save preferences. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -949,15 +944,15 @@ const Onboarding = () => {
 
   const getPersonalInfoMissingFields = (): string[] => {
     const missing: string[] = [];
-    if (!personalInfo.name.trim()) missing.push(t("onboarding.personal_info.fullNameMissing"));
-    if (!personalInfo.country.trim()) missing.push(t("onboarding.personal_info.countryMissing"));
-    if (!personalInfo.state.trim()) missing.push(t("onboarding.personal_info.stateMissing"));
-    if (!personalInfo.city.trim()) missing.push(t("onboarding.personal_info.cityMissing"));
-    if (!personalInfo.gender.trim()) missing.push(t("onboarding.personal_info.genderMissing"));
-    if (!personalInfo.birthYear.trim()) missing.push(t("onboarding.personal_info.birthYearMissing"));
-    if (!personalInfo.genderPreference.trim()) missing.push(t("onboarding.personal_info.genderPrefMissing"));
-    if (!personalInfo.nationality.trim()) missing.push(t("onboarding.personal_info.nationalityMissing"));
-    if (!licenseFile) missing.push(t("onboarding.personal_info.licenseMissing"));
+    if (!personalInfo.name.trim()) missing.push("Full Name");
+    if (!personalInfo.country.trim()) missing.push("Country");
+    if (!personalInfo.state.trim()) missing.push("State");
+    if (!personalInfo.city.trim()) missing.push("City");
+    if (!personalInfo.gender.trim()) missing.push("Gender");
+    if (!personalInfo.birthYear.trim()) missing.push("Birth Year");
+    if (!personalInfo.genderPreference.trim()) missing.push("Gender preference for groups");
+    if (!personalInfo.nationality.trim()) missing.push("Nationality");
+    if (!licenseFile) missing.push("Medical License (upload required)");
     return missing;
   };
 
@@ -968,8 +963,8 @@ const Onboarding = () => {
     if (question.inputType === "personal-info" && !canProceed()) {
       const missing = getPersonalInfoMissingFields();
       toast({
-        title: t("onboarding.personal_info.missingFields"),
-        description: t("onboarding.personal_info.missing", { fields: missing.join(", ") }),
+        title: "Please complete all required fields",
+        description: `Missing: ${missing.join(", ")}`,
         variant: "destructive",
         duration: 5000,
       });
@@ -1067,27 +1062,27 @@ const Onboarding = () => {
       />
 
       {/* Header */}
-      <header className="absolute top-0 left-0 right-0 z-20 p-4 sm:p-6 flex items-center justify-between">
+      <header className="absolute top-0 left-0 right-0 z-20 p-6 flex items-center justify-between">
         <button 
           onClick={handleBack} 
-          aria-label={t("onboarding.back")}
+          aria-label="Go back to previous step"
           className="flex items-center gap-2 text-primary-foreground/60 hover:text-primary-foreground transition-colors group"
         >
           <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm font-medium">{t("onboarding.back")}</span>
+          <span className="text-sm font-medium">Back</span>
         </button>
         <div className="flex items-center gap-2">
           <Sparkles size={18} className="text-primary" />
           <span className="font-display font-bold text-primary-foreground">BeyondRounds</span>
         </div>
-        <LanguageLinks variant="overlay" className="shrink-0" />
+        <div className="w-16" />
       </header>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-3 sm:px-4 py-16 sm:py-20 overflow-y-auto">
-        <div className="w-full max-w-xl sm:max-w-2xl lg:max-w-3xl">
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-20">
+        <div className="w-full max-w-xl">
           {/* Enhanced Progress */}
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-8">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -1102,7 +1097,7 @@ const Onboarding = () => {
                 <div className="text-sm font-semibold text-primary-foreground">{Math.round(progress)}%</div>
                 {remainingSteps > 0 && (
                   <div className="text-xs text-primary-foreground/50">
-                    {t("onboarding.minLeft", { count: estimatedMinutes })}
+                    ~{estimatedMinutes} min left
                   </div>
                 )}
               </div>
@@ -1111,7 +1106,7 @@ const Onboarding = () => {
             {/* Progress bar with milestones */}
             <div className="relative h-2 bg-primary-foreground/10 rounded-full overflow-hidden mb-2">
               <div 
-                className="h-full bg-gradient-to-r from-primary to-amber-500 rounded-full transition-all duration-700 ease-out relative"
+                className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full transition-all duration-700 ease-out relative"
                 style={{ width: `${progress}%` }}
               >
                 {/* Shimmer effect */}
@@ -1124,7 +1119,7 @@ const Onboarding = () => {
                   key={milestone}
                   className={`absolute top-0 w-0.5 h-full transition-all duration-300 ${
                     progress >= milestone 
-                      ? 'bg-primary' 
+                      ? 'bg-emerald-500' 
                       : 'bg-primary-foreground/20'
                   }`}
                   style={{ left: `${milestone}%` }}
@@ -1134,21 +1129,21 @@ const Onboarding = () => {
             
             {/* Step counter */}
             <div className="flex justify-between items-center text-xs text-primary-foreground/50">
-              <span>{t("onboarding.stepOf", { current: currentStep + 1, total: totalSteps })}</span>
+              <span>Step {currentStep + 1} of {totalSteps}</span>
               {remainingSteps > 0 && (
                 <span className="flex items-center gap-1">
-                  <span>{t("onboarding.moreToGo", { count: remainingSteps })}</span>
+                  <span>{remainingSteps} more to go</span>
                 </span>
               )}
             </div>
           </div>
 
-          {/* Question Card - unified theme: dark glass card, orange gradient selected options */}
-          <div className="backdrop-blur-2xl border rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 animate-fade-up bg-white/10 border-white/20">
-            <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-primary-foreground mb-1 sm:mb-2">
-              {t(`onboarding.${question.id}.title`)}
+          {/* Question Card */}
+          <div className={`backdrop-blur-2xl border rounded-3xl p-8 animate-fade-up ${question.id === 'group_language_preference' ? 'bg-white/10 border-white/20' : 'bg-background/5 border-primary-foreground/10'}`}>
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-primary-foreground mb-2">
+              {question.title}
             </h2>
-            <p className="text-primary-foreground/50 text-sm sm:text-base mb-6 sm:mb-8">{t(`onboarding.${question.id}.subtitle`)}</p>
+            <p className="text-primary-foreground/50 mb-8">{question.subtitle}</p>
 
             {/* Personal Info Form */}
             {question.inputType === "personal-info" && (
@@ -1157,7 +1152,7 @@ const Onboarding = () => {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   {/* Profile Photo */}
                   <div>
-                    <label className="text-base font-medium text-primary-foreground mb-2 block">{t("onboarding.personal_info.profilePhoto")}</label>
+                    <label className="text-base font-medium text-primary-foreground mb-2 block">Profile Photo</label>
                     <input
                       ref={avatarInputRef}
                       type="file"
@@ -1176,15 +1171,13 @@ const Onboarding = () => {
                           src={avatarPreview} 
                           alt="Avatar preview" 
                           className="w-full h-full object-cover"
-                          width={200}
-                          height={200}
                           loading="lazy"
                           decoding="async"
                         />
                       ) : (
                         <>
                           <Camera className="h-8 w-8 text-primary-foreground/40 mb-2" />
-                          <span className="text-xs text-primary-foreground/50">{t("onboarding.personal_info.addPhoto")}</span>
+                          <span className="text-xs text-primary-foreground/50">Add Photo</span>
                         </>
                       )}
                     </button>
@@ -1192,7 +1185,7 @@ const Onboarding = () => {
 
                   {/* Medical License */}
                   <div>
-                    <label className="text-base font-medium text-primary-foreground mb-2 block">{t("onboarding.personal_info.medicalLicense")}</label>
+                    <label className="text-base font-medium text-primary-foreground mb-2 block">Medical License *</label>
                     <input
                       ref={licenseInputRef}
                       type="file"
@@ -1211,21 +1204,19 @@ const Onboarding = () => {
                           src={licensePreview} 
                           alt="License preview" 
                           className="w-full h-full object-cover"
-                          width={200}
-                          height={200}
                           loading="lazy"
                           decoding="async"
                         />
                       ) : licenseFile ? (
                         <>
                           <FileCheck className="h-8 w-8 text-accent mb-2" />
-                          <span className="text-xs text-accent font-medium">{t("onboarding.personal_info.licenseAdded")}</span>
+                          <span className="text-xs text-accent font-medium">License Added</span>
                           <span className="text-xs text-primary-foreground/40 mt-1 px-2 truncate max-w-full">{licenseFile.name}</span>
                         </>
                       ) : (
                         <>
                           <Upload className="h-8 w-8 text-primary-foreground/40 mb-2" />
-                          <span className="text-xs text-primary-foreground/50">{t("onboarding.personal_info.uploadLicense")}</span>
+                          <span className="text-xs text-primary-foreground/50">Upload License</span>
                         </>
                       )}
                     </button>
@@ -1233,11 +1224,11 @@ const Onboarding = () => {
                 </div>
 
                 <div>
-                  <label className="text-base font-medium text-primary-foreground mb-2 block">{t("onboarding.personal_info.fullName")}</label>
+                  <label className="text-base font-medium text-primary-foreground mb-2 block">Full Name *</label>
                   <Input
                     value={personalInfo.name}
                     onChange={(e) => handlePersonalInfoChange("name", e.target.value)}
-                    placeholder={t("onboarding.personal_info.fullNamePlaceholder")}
+                    placeholder="Dr. Jane Smith"
                     className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 rounded-2xl ${
                       !personalInfo.name.trim() ? 'border-primary/50' : ''
                     }`}
@@ -1258,28 +1249,28 @@ const Onboarding = () => {
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-base font-medium text-primary-foreground mb-2 block">{t("onboarding.personal_info.gender")}</label>
+                    <label className="text-base font-medium text-primary-foreground mb-2 block">Gender *</label>
                     <Select value={personalInfo.gender} onValueChange={(value) => handlePersonalInfoChange("gender", value)}>
                       <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
                         !personalInfo.gender ? 'border-primary/50' : ''
                       }`}>
-                        <SelectValue placeholder={t("onboarding.personal_info.select")} />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="male">{t("onboarding.personal_info.male")}</SelectItem>
-                        <SelectItem value="female">{t("onboarding.personal_info.female")}</SelectItem>
-                        <SelectItem value="non-binary">{t("onboarding.personal_info.nonBinary")}</SelectItem>
-                        <SelectItem value="prefer-not-to-say">{t("onboarding.personal_info.preferNotToSay")}</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="non-binary">Non-binary</SelectItem>
+                        <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label className="text-base font-medium text-primary-foreground mb-2 block">{t("onboarding.personal_info.birthYear")}</label>
+                    <label className="text-base font-medium text-primary-foreground mb-2 block">Birth Year *</label>
                     <Select value={personalInfo.birthYear} onValueChange={(value) => handlePersonalInfoChange("birthYear", value)}>
                       <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
                         !personalInfo.birthYear ? 'border-primary/50' : ''
                       }`}>
-                        <SelectValue placeholder={t("onboarding.personal_info.select")} />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
                         {years.map((year) => (
@@ -1290,18 +1281,18 @@ const Onboarding = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="text-base font-medium text-primary-foreground mb-2 block">{t("onboarding.personal_info.genderPreference")}</label>
+                  <label className="text-base font-medium text-primary-foreground mb-2 block">Gender preference for groups *</label>
                   <Select value={personalInfo.genderPreference} onValueChange={(value) => handlePersonalInfoChange("genderPreference", value)}>
                       <SelectTrigger className={`h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground rounded-2xl ${
                         !personalInfo.genderPreference ? 'border-primary/50' : ''
                       }`}>
-                      <SelectValue placeholder={t("onboarding.personal_info.selectPreference")} />
+                      <SelectValue placeholder="Select preference" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="no_preference">{t("onboarding.personal_info.noPreference")}</SelectItem>
-                      <SelectItem value="mixed">{t("onboarding.personal_info.mixedGroups")}</SelectItem>
-                      <SelectItem value="same_only">{t("onboarding.personal_info.sameOnly")}</SelectItem>
-                      <SelectItem value="same_preferred">{t("onboarding.personal_info.samePreferred")}</SelectItem>
+                      <SelectItem value="no_preference">No preference</SelectItem>
+                      <SelectItem value="mixed">Mixed groups preferred</SelectItem>
+                      <SelectItem value="same_only">Same gender only</SelectItem>
+                      <SelectItem value="same_preferred">Same gender preferred, mixed okay</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1313,13 +1304,13 @@ const Onboarding = () => {
               <div className="space-y-5 mb-8">
                 <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 mb-6">
                   <p className="text-primary-foreground/80 text-sm text-center">
-                    {t("onboarding.signup.welcomePrefix")}<span className="font-semibold">{personalInfo.name || t("onboarding.signup.doctor")}</span>{t("onboarding.signup.welcomeSuffix")}
+                    Welcome, <span className="font-semibold">{personalInfo.name || "Doctor"}</span>! Create your account to save your preferences and start matching.
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-primary-foreground/80 text-base font-medium">
-                    {t("onboarding.signup.emailAddress")}
+                    Email Address
                   </Label>
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
@@ -1327,7 +1318,7 @@ const Onboarding = () => {
                       id="email"
                       name="email"
                       type="email"
-                      placeholder={t("onboarding.signup.emailPlaceholder")}
+                      placeholder="doctor@hospital.com"
                       value={signupData.email}
                       onChange={handleSignupChange}
                       className={`pl-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
@@ -1338,7 +1329,7 @@ const Onboarding = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-primary-foreground/80 text-base font-medium">
-                    {t("onboarding.signup.password")}
+                    Password
                   </Label>
                   <div className="relative group">
                     {(() => {
@@ -1405,25 +1396,25 @@ const Onboarding = () => {
                               hasLowercase ? 'text-accent' : 'text-primary/70'
                             }`}>
                               <span>{hasLowercase ? '✓' : '○'}</span>
-                              <span>{t("onboarding.signup.lowercaseReq")}</span>
+                              <span>At least one lowercase letter</span>
                             </div>
                             <div className={`flex items-center gap-2 text-xs ${
                               minLength ? 'text-accent' : 'text-primary/70'
                             }`}>
                               <span>{minLength ? '✓' : '○'}</span>
-                              <span>{t("onboarding.signup.minLengthReq")}</span>
+                              <span>Minimum 8 characters</span>
                             </div>
                             <div className={`flex items-center gap-2 text-xs ${
                               hasUppercase ? 'text-accent' : 'text-primary/70'
                             }`}>
                               <span>{hasUppercase ? '✓' : '○'}</span>
-                              <span>{t("onboarding.signup.uppercaseReq")}</span>
+                              <span>At least one uppercase letter</span>
                             </div>
                             <div className={`flex items-center gap-2 text-xs ${
                               hasNumber ? 'text-accent' : 'text-primary/70'
                             }`}>
                               <span>{hasNumber ? '✓' : '○'}</span>
-                              <span>{t("onboarding.signup.numberReq")}</span>
+                              <span>At least one number</span>
                             </div>
                           </>
                         );
@@ -1435,7 +1426,7 @@ const Onboarding = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword" className="text-primary-foreground/80 text-base font-medium">
-                    {t("onboarding.signup.confirmPassword")}
+                    Confirm Password
                   </Label>
                   <div className="relative group">
                     <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
@@ -1451,7 +1442,7 @@ const Onboarding = () => {
                       id="confirmPassword"
                       name="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
-                      placeholder={t("onboarding.signup.confirmPasswordPlaceholder")}
+                      placeholder="Confirm your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className={`pl-12 pr-12 h-14 rounded-2xl bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:ring-primary/20 transition-all ${
@@ -1482,79 +1473,53 @@ const Onboarding = () => {
                   </div>
                   {confirmPassword && signupData.password !== confirmPassword && (
                     <p className={`text-xs ${signupData.password.length > 0 ? 'text-primary/80' : 'text-destructive'}`}>
-                      {signupData.password.length > 0 ? t("onboarding.signup.passwordsNoMatchYet") : t("onboarding.signup.passwordsNoMatch")}
+                      {signupData.password.length > 0 ? 'Passwords do not match yet' : 'Passwords do not match'}
                     </p>
                   )}
                   {confirmPassword && signupData.password === confirmPassword && (
-                    <p className="text-accent text-xs">{t("onboarding.signup.passwordsMatch")}</p>
+                    <p className="text-accent text-xs">✓ Passwords match</p>
                   )}
                 </div>
 
                 <p className="text-primary-foreground/40 text-xs text-center pt-2">
-                  {t("onboarding.signup.byCreating")}{" "}
-                  <LocalizedLink to="/terms" className="text-primary hover:underline">{t("onboarding.signup.terms")}</LocalizedLink>
-                  {" "}{t("onboarding.signup.and")}{" "}
-                  <LocalizedLink to="/privacy" className="text-primary hover:underline">{t("onboarding.signup.privacyPolicy")}</LocalizedLink>
+                  By creating an account, you agree to our{" "}
+                  <LocalizedLink to="/terms" className="text-primary hover:underline">Terms</LocalizedLink>
+                  {" "}and{" "}
+                  <LocalizedLink to="/privacy" className="text-primary hover:underline">Privacy Policy</LocalizedLink>
                 </p>
               </div>
             )}
 
             {/* Options Grid */}
             {question.options && (
-              <div className={`grid gap-2 sm:gap-3 mb-6 sm:mb-8 ${
-                question.id === 'group_language_preference' 
-                  ? 'grid-cols-2' 
-                  : question.options.length > 10 
-                    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' 
-                    : question.options.length > 6 
-                      ? 'grid-cols-2 sm:grid-cols-3' 
-                      : 'grid-cols-2'
-              }`}>
+              <div className={`grid gap-3 mb-8 ${question.options.length > 10 ? 'grid-cols-3 sm:grid-cols-4' : question.options.length > 6 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}>
                 {question.options.map((option) => {
                   const isSelected = currentAnswers.includes(option.id);
                   const isLanguageQuestion = question.id === 'group_language_preference';
-                  const useHighlightStyle = true; /* same theme for all option steps: orange gradient selected, white text, light checkmark */
-                  const isSpecialtyOrLarge = question.options && question.options.length > 10;
-                  const LanguageIcon = isLanguageQuestion
-                    ? option.id === 'both'
-                      ? Globe
-                      : Languages
-                    : null;
-                  const isBothOption = isLanguageQuestion && option.id === 'both';
                   return (
                     <button
                       key={option.id}
                       onClick={() => handleSelect(option.id)}
-                      aria-label={`Select ${getOptionLabel(question.id, option.id)}`}
+                      aria-label={`Select ${option.label}`}
                       aria-pressed={isSelected}
-                      className={`relative rounded-xl border-2 text-left transition-all duration-300 ${
-                        isBothOption ? 'col-span-2 justify-center' : ''
-                      } ${
-                        isSpecialtyOrLarge
-                          ? 'p-3 sm:p-4 flex flex-col items-center justify-center gap-1.5 sm:gap-2 min-h-[72px] sm:min-h-[80px]'
-                          : 'p-3 sm:p-4 flex items-center gap-2 sm:gap-3'
-                      } ${
-                        useHighlightStyle
+                      className={`relative p-3 rounded-xl border-2 text-left transition-all duration-300 ${
+                        isLanguageQuestion
                           ? isSelected
-                            ? 'border-primary bg-gradient-gold shadow-[0_0_24px_-4px_rgba(251,146,60,0.45)] scale-[1.02]'
-                            : 'border-white/30 bg-white/10 hover:border-primary/50 hover:bg-primary/10 hover:scale-[1.01]'
+                            ? 'border-emerald-500 bg-emerald-500/20 shadow-[0_0_20px_-4px_rgba(16,185,129,0.4)] scale-[1.02]'
+                            : 'border-white/30 bg-white/10 hover:border-emerald-400/50 hover:bg-emerald-500/10 hover:scale-[1.01]'
                           : isSelected
                             ? 'border-primary bg-primary/10 shadow-glow-sm scale-[1.02]'
                             : 'border-primary-foreground/10 bg-background/5 hover:border-primary-foreground/30 hover:bg-background/10 hover:scale-[1.01]'
                       }`}
                     >
                       {isSelected && (
-                        <div className={`absolute top-1 sm:top-1.5 right-1 sm:right-1.5 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center animate-fade-in ${useHighlightStyle ? 'bg-white/25' : 'bg-gradient-gold'}`}>
+                        <div className={`absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center animate-fade-in ${question.id === 'group_language_preference' ? 'bg-emerald-500' : 'bg-gradient-gold'}`}>
                           <Check size={10} className="text-white" />
                         </div>
                       )}
-                      {LanguageIcon ? (
-                        <LanguageIcon className={`w-6 h-6 sm:w-7 sm:h-7 shrink-0 ${isLanguageQuestion && isSelected ? 'text-white' : isSelected ? 'text-primary' : 'text-white/90'}`} strokeWidth={2} />
-                      ) : (
-                        <span className={`shrink-0 ${isSpecialtyOrLarge ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{option.icon}</span>
-                      )}
-                      <span className={`font-semibold text-center leading-tight ${isSpecialtyOrLarge ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} ${useHighlightStyle ? (isSelected ? 'text-white' : 'text-white') : isSelected ? 'text-primary-foreground' : 'text-primary-foreground/70'}`}>
-                        {getOptionLabel(question.id, option.id)}
+                      <span className="text-lg block mb-0.5 transition-transform duration-200">{option.icon}</span>
+                      <span className={`font-medium text-xs ${question.id === 'group_language_preference' ? 'text-white font-semibold' : isSelected ? 'text-primary-foreground' : 'text-primary-foreground/70'}`}>
+                        {option.label}
                       </span>
                     </button>
                   );
@@ -1563,26 +1528,26 @@ const Onboarding = () => {
             )}
 
             {/* Buttons */}
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex gap-3">
               {question.skipable && (
                 <Button 
                   onClick={handleSkip}
                   variant="outline"
-                  className="flex-1 h-12 sm:h-14 rounded-xl sm:rounded-2xl border-primary-foreground/20 text-primary-foreground/70 hover:bg-primary-foreground/10 text-sm sm:text-base"
+                  className="flex-1 h-14 rounded-2xl border-primary-foreground/20 text-primary-foreground/70 hover:bg-primary-foreground/10"
                 >
-                  {t("onboarding.skip")}
+                  Skip
                 </Button>
               )}
               <Button 
                 onClick={handleNext}
                 disabled={question.inputType === "personal-info" ? isLoading : (!canProceed() || isLoading)}
-                className={`h-12 sm:h-14 rounded-xl sm:rounded-2xl font-semibold group disabled:opacity-50 bg-gradient-gold text-white border-0 shadow-[0_0_24px_-4px_rgba(251,146,60,0.45)] hover:opacity-95 hover:shadow-[0_0_28px_-4px_rgba(251,146,60,0.55)] transition-all text-sm sm:text-base ${question.skipable ? 'flex-1' : 'w-full'}`}
+                className={`h-14 font-semibold group disabled:opacity-50 shadow-glow-sm hover:shadow-glow transition-all ${question.skipable ? 'flex-1' : 'w-full'}`}
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                 ) : (
                   <>
-                    {question.inputType === "signup" ? t("onboarding.createAccount") : t("onboarding.continue")}
+                    {question.inputType === "signup" ? "Create Account" : "Continue"}
                     <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />
                   </>
                 )}
@@ -1593,22 +1558,22 @@ const Onboarding = () => {
             {question.inputType === "signup" && (
               <div className="mt-6 text-center">
                 <p className="text-primary-foreground/50 text-sm">
-                  {t("onboarding.signup.alreadyHaveAccount")}{" "}
-                  <LocalizedLink to="/auth" className="text-primary hover:underline font-medium">{t("onboarding.signup.signIn")}</LocalizedLink>
+                  Already have an account?{" "}
+                  <LocalizedLink to="/auth" className="text-primary hover:underline font-medium">Sign in</LocalizedLink>
                 </p>
               </div>
             )}
           </div>
 
           {/* Value reminder */}
-          <div className="mt-6 sm:mt-8 flex items-center justify-center gap-2 text-primary-foreground/40 text-xs sm:text-sm px-2">
+          <div className="mt-8 flex items-center justify-center gap-2 text-primary-foreground/40 text-sm">
             <Sparkles size={14} className="text-primary" />
             <span>
               {progress >= 75 
-                ? t("onboarding.valueAlmostDone")
+                ? "Almost done! Your perfect matches are waiting."
                 : progress >= 50
-                ? t("onboarding.valueBuildingNetwork")
-                : t("onboarding.valueHelpMatches")}
+                ? "You're building your ideal network of physicians."
+                : "Your answers help us find better matches"}
             </span>
           </div>
         </div>

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
+// Middleware runs on Edge by default in Next.js – no need to export runtime
+
 // Supported locales
 const locales = ['de', 'en'];
 const defaultLocale = 'de';
@@ -44,12 +46,14 @@ function getLocaleFromCookie(request: NextRequest): string | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for static files and API routes
+  // Skip middleware for static files, API, and public assets (reduces TTFB)
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.includes('.') ||
-    pathname.startsWith('/favicon')
+    pathname === '/favicon.ico' ||
+    pathname === '/manifest.json' ||
+    pathname === '/robots.txt'
   ) {
     return NextResponse.next();
   }

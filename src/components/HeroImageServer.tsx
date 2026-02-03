@@ -17,8 +17,8 @@ export default function HeroImageServer({ fill }: HeroImageServerProps) {
     >
       <img
         src="/hero-doctors-friendship-mobile.webp"
-        srcSet="/hero-doctors-friendship-mobile.webp 500w, /hero-doctors-friendship.webp 1000w"
-        sizes="(max-width: 768px) 100vw, 500px"
+        srcSet="/hero-doctors-friendship-mobile.webp 480w, /hero-doctors-friendship-card.webp 640w, /hero-doctors-friendship-800.webp 800w, /hero-doctors-friendship.webp 1024w"
+        sizes="(max-width: 768px) 100vw, 520px"
         alt="Doctors enjoying genuine friendship at a coffee meetup"
         width={500}
         height={625}
