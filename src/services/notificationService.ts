@@ -52,7 +52,7 @@ export const createNotification = async (
         title: notification.title.trim(),
         message: notification.message.trim(),
         link: notification.link || null,
-        metadata: notification.metadata || null,
+        metadata: (notification.metadata ?? null) as import('@/integrations/supabase/types').Json,
       });
 
     if (error) {

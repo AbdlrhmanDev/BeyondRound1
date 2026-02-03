@@ -4,19 +4,19 @@
  */
 
 export function preloadDashboard() {
-  import("@/pages/Dashboard");
+  import("@/views/Dashboard");
 }
 
 export function preloadMatches() {
-  import("@/pages/Matches");
+  import("@/views/Matches");
 }
 
 export function preloadProfile() {
-  import("@/pages/Profile");
+  import("@/views/Profile");
 }
 
 export function preloadSettings() {
-  import("@/pages/Settings");
+  import("@/views/Settings");
 }
 
 const preloadMap: Record<string, () => void> = {

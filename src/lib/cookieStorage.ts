@@ -5,7 +5,7 @@
  * Note: HttpOnly cannot be set from client JS. For HttpOnly cookies, use a
  * server-side auth proxy (e.g. on whitelist) that sets cookies via Set-Cookie.
  *
- * Only used when VITE_USE_COOKIE_STORAGE=true and on production subdomains
+ * Only used when NEXT_PUBLIC_USE_COOKIE_STORAGE=true and on production subdomains
  */
 
 import { COOKIE_DOMAIN, isProductionSubdomain } from "./domains";
@@ -98,6 +98,6 @@ export function createCookieStorage(): Storage {
 
 /** Whether to use cookie storage (cross-subdomain) vs localStorage */
 export function shouldUseCookieStorage(): boolean {
-  const envFlag = import.meta.env.VITE_USE_COOKIE_STORAGE === "true";
+  const envFlag = process.env.NEXT_PUBLIC_USE_COOKIE_STORAGE === "true";
   return envFlag && isProductionSubdomain();
 }

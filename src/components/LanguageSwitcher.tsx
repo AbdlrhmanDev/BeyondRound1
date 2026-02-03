@@ -1,28 +1,50 @@
+'use client';
+
 import { useLocale } from "@/contexts/LocaleContext";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/locale";
 
-const LanguageSwitcher = ({ className }: { className?: string }) => {
+interface LanguageSwitcherProps {
+  className?: string;
+  /** Use 'overlay' when on dark translucent header */
+  variant?: 'default' | 'overlay';
+}
+
+const LanguageSwitcher = ({ className, variant = 'default' }: LanguageSwitcherProps) => {
   const { locale, setLocaleAndNavigate } = useLocale();
+  const isOverlay = variant === 'overlay';
 
   return (
-    <div className={cn("flex items-center gap-0.5 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 p-0.5", className)}>
+    <div
+      role="tablist"
+      aria-label="Language"
+      className={cn(
+        "inline-flex items-center rounded-lg border p-0.5",
+        isOverlay ? "border-white/20 bg-white/5" : "border-border bg-muted/50",
+        className
+      )}
+    >
       {(["de", "en"] as const).map((l) => (
-        <Button
+        <button
           key={l}
-          variant={locale === l ? "secondary" : "ghost"}
-          size="sm"
+          type="button"
+          role="tab"
+          aria-selected={locale === l}
+          aria-label={l === "de" ? "Deutsch" : "English"}
           className={cn(
-            "min-w-[2.25rem] font-medium text-primary-foreground/80 hover:text-primary-foreground",
-            locale === l && "bg-primary-foreground/10 text-primary-foreground"
+            "min-h-[32px] min-w-[2.25rem] px-2.5 rounded-md text-sm font-medium transition-colors",
+            isOverlay
+              ? locale === l
+                ? "bg-white/15 text-white shadow-sm border border-white/20"
+                : "text-white/80 hover:text-white hover:bg-white/10"
+              : locale === l
+                ? "bg-background text-foreground shadow-sm border border-border"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
           )}
           onClick={() => setLocaleAndNavigate(l as Locale)}
-          aria-label={l === "de" ? "Deutsch" : "English"}
-          aria-current={locale === l ? "true" : undefined}
         >
           {l.toUpperCase()}
-        </Button>
+        </button>
       ))}
     </div>
   );

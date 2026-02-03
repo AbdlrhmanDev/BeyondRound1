@@ -1,5 +1,7 @@
+'use client';
+
 import { useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { getStoredLocale, DEFAULT_LOCALE, pathWithLocale, pathWithoutLocale } from "@/lib/locale";
 
 /**
@@ -7,17 +9,18 @@ import { getStoredLocale, DEFAULT_LOCALE, pathWithLocale, pathWithoutLocale } fr
  * / → /de or /en, /dashboard → /de/dashboard or /en/dashboard
  */
 const RedirectToLocale = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const locale = getStoredLocale() ?? DEFAULT_LOCALE;
-    const path = pathWithoutLocale(location.pathname);
-    const search = location.search ?? "";
-    const hash = location.hash ?? "";
+    const path = pathWithoutLocale(pathname || '/');
+    const search = searchParams?.toString() ? `?${searchParams.toString()}` : "";
+    const hash = typeof window !== 'undefined' ? window.location.hash : "";
     const target = pathWithLocale(path === "/" ? "" : path, locale) + search + hash;
-    navigate(target, { replace: true });
-  }, [navigate, location.pathname, location.search, location.hash]);
+    router.replace(target);
+  }, [router, pathname, searchParams]);
 
   return null;
 };

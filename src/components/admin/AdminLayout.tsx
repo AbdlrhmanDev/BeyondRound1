@@ -1,5 +1,7 @@
+'use client';
+
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Redirect } from "@/components/Redirect";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useLocale } from "@/contexts/LocaleContext";
@@ -24,11 +26,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   }
 
   if (!user) {
-    return <Navigate to={pathWithLocale("/auth")} replace />;
+    return <Redirect to={pathWithLocale("/auth")} replace />;
   }
 
   if (!isAdmin) {
-    return <Navigate to={pathWithLocale("/dashboard")} replace />;
+    return <Redirect to={pathWithLocale("/dashboard")} replace />;
   }
 
   return (

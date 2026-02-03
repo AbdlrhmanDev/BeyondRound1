@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +18,7 @@ const PLANS = [
     name: "One-Time Trial",
     price: "€9.99",
     period: "one-time",
-    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_ONE_TIME || import.meta.env.VITE_STRIPE_PRICE_ID_BASIC || "price_one_time",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ONE_TIME || process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC || "price_one_time",
     description: "Try BeyondRounds once — no commitment",
     features: [
       "Weekly curated group matches",
@@ -31,7 +33,7 @@ const PLANS = [
     name: "Monthly",
     price: "€14.99",
     period: "/month",
-    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY || import.meta.env.VITE_STRIPE_PRICE_ID_PREMIUM || "price_monthly",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_MONTHLY || process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM || "price_monthly",
     description: "Most popular choice",
     features: [
       "Everything in One-Time Trial",
@@ -47,7 +49,7 @@ const PLANS = [
     name: "Premium",
     price: "€29.99",
     period: "/month",
-    priceId: import.meta.env.VITE_STRIPE_PRICE_ID_PREMIUM || import.meta.env.VITE_STRIPE_PRICE_ID_PRO || "price_premium",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM || process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO || "price_premium",
     description: "Maximum control & personalization",
     features: [
       "Everything in Monthly",

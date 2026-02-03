@@ -1,5 +1,7 @@
+'use client';
+
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import LocalizedLink from "@/components/LocalizedLink";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import type { PlanFeatureFlags } from "@/constants/planFeatures";
 import { Button } from "@/components/ui/button";
@@ -45,11 +47,11 @@ export function FeatureGate({ feature, children, fallback, hideWhenLocked }: Fea
         <Lock className="h-4 w-4 shrink-0" />
         <span className="text-sm font-medium">This feature is available on a higher plan.</span>
       </div>
-      <Link to="/pricing">
+      <LocalizedLink to="/pricing">
         <Button variant="outline" size="sm" className="shrink-0">
           View plans
         </Button>
-      </Link>
+      </LocalizedLink>
     </div>
   );
 }

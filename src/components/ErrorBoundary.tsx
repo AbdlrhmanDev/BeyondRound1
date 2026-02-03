@@ -1,3 +1,5 @@
+'use client';
+
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,9 +35,10 @@ class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      const errorMessage = this.state.error?.message || i18n.t("common.somethingWentWrong");
+      const t = typeof i18n?.t === "function" ? i18n.t : (k: string) => k;
+      const errorMessage = this.state.error?.message || t("common.somethingWentWrong");
       const isConfigError = errorMessage.includes("Missing Supabase") || 
-                           errorMessage.includes("VITE_SUPABASE") ||
+                           errorMessage.includes("NEXT_PUBLIC_SUPABASE") ||
                            errorMessage.includes("environment");
 
       return (
@@ -44,12 +47,12 @@ class ErrorBoundary extends Component<Props, State> {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-destructive" />
-                <CardTitle>{i18n.t("common.applicationError")}</CardTitle>
+                <CardTitle>{t("common.applicationError")}</CardTitle>
               </div>
               <CardDescription>
                 {isConfigError 
-                  ? i18n.t("common.configurationError")
-                  : i18n.t("common.somethingWentWrongShort")}
+                  ? t("common.configurationError")
+                  : t("common.somethingWentWrongShort")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -62,18 +65,18 @@ class ErrorBoundary extends Component<Props, State> {
               {isConfigError && (
                 <div className="rounded-md bg-muted p-3 space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    {i18n.t("common.configErrorHint")}
+                    {t("common.configErrorHint")}
                   </p>
                   <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                    <li><code className="text-xs bg-background px-1 py-0.5 rounded">VITE_SUPABASE_URL</code></li>
-                    <li><code className="text-xs bg-background px-1 py-0.5 rounded">VITE_SUPABASE_PUBLISHABLE_KEY</code></li>
+                    <li><code className="text-xs bg-background px-1 py-0.5 rounded">NEXT_PUBLIC_SUPABASE_URL</code></li>
+                    <li><code className="text-xs bg-background px-1 py-0.5 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code></li>
                   </ul>
                   <div className="pt-2 border-t border-border">
                     <p className="text-xs text-muted-foreground mb-2">
-                      {i18n.t("common.configErrorLocal")}
+                      {t("common.configErrorLocal")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {i18n.t("common.configErrorVercel")}
+                      {t("common.configErrorVercel")}
                     </p>
                   </div>
                 </div>
@@ -81,7 +84,7 @@ class ErrorBoundary extends Component<Props, State> {
 
               <div className="flex gap-2">
                 <Button onClick={this.handleReload} className="flex-1">
-                  {i18n.t("common.reloadPage")}
+                  {t("common.reloadPage")}
                 </Button>
               </div>
             </CardContent>

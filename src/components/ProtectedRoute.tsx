@@ -1,5 +1,7 @@
+'use client';
+
 import { ReactNode, useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Redirect } from "@/components/Redirect";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useLocale } from "@/contexts/LocaleContext";
@@ -59,17 +61,17 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
 
   // Redirect to auth if not logged in or if banned
   if (!user || isBanned) {
-    return <Navigate to={pathWithLocale("/auth")} replace />;
+    return <Redirect to={pathWithLocale("/auth")} replace />;
   }
 
   // If admin tries to access regular dashboard, redirect to admin dashboard
   if (isAdmin && !requireAdmin) {
-    return <Navigate to={pathWithLocale("/admin")} replace />;
+    return <Redirect to={pathWithLocale("/admin")} replace />;
   }
 
   // If non-admin tries to access admin route, redirect to regular dashboard
   if (requireAdmin && !isAdmin) {
-    return <Navigate to={pathWithLocale("/dashboard")} replace />;
+    return <Redirect to={pathWithLocale("/dashboard")} replace />;
   }
 
   return <>{children}</>;

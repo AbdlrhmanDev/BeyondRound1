@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -180,14 +182,14 @@ export const LocationSelect = ({
             options={countries.map((c) => ({ value: c.iso2, label: c.name }))}
             placeholder={loadingCountries ? t("common.loading") : t("common.selectCountry")}
             searchPlaceholder={t("common.searchCountry")}
-            emptyMessage={countries.length === 0 && !loadingCountries ? "Could not load countries. Add VITE_COUNTRY_STATE_CITY_API_KEY to .env (local) or Vercel env vars." : t("common.noResults")}
+            emptyMessage={countries.length === 0 && !loadingCountries ? "Could not load countries. Add NEXT_PUBLIC_COUNTRY_STATE_CITY_API_KEY to .env.local or Vercel env vars." : t("common.noResults")}
             disabled={loadingCountries}
             variant={isProfile ? "profile" : "default"}
           />
         </div>
 
         <div className="space-y-2">
-          <Label className={labelClass}>State *</Label>
+          <Label className={labelClass}>{t("common.stateRequired")}</Label>
           <SearchableSelect
             value={selectedState}
             onValueChange={handleStateChange}
@@ -218,12 +220,12 @@ export const LocationSelect = ({
 
       {showNationality && (
         <div className="space-y-2">
-          <Label className={labelClass}>Nationality *</Label>
+          <Label className={labelClass}>{t("common.nationalityRequired")}</Label>
           <SearchableSelect
             value={nationality}
             onValueChange={handleNationalityChange}
             options={countries.map((c) => ({ value: c.name, label: c.name }))}
-            placeholder="Select Nationality"
+            placeholder={t("common.selectNationality")}
             searchPlaceholder={t("common.searchNationality")}
             emptyMessage={t("common.noResults")}
             variant={isProfile ? "profile" : "default"}

@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -55,7 +57,7 @@ const UserBanDialog = ({ user, open, onClose, onBan }: UserBanDialogProps) => {
 
     const { error } = await supabase
       .from("profiles")
-      .update(newValues)
+      .update(newValues as Record<string, unknown>)
       .eq("id", user.id);
 
     if (error) {

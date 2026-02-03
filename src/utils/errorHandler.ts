@@ -14,12 +14,12 @@ export interface AppError {
  * Logs errors with context (only in development)
  */
 export const logError = (error: unknown, context?: string): void => {
-  if (import.meta.env.DEV) {
+  if (process.env.NODE_ENV === 'development') {
     const contextMsg = context ? `[${context}]` : '';
     console.error(`${contextMsg}`, error);
   }
   // In production, you can send to error tracking service (Sentry, etc.)
-  // if (import.meta.env.PROD) {
+  // if (process.env.NODE_ENV === 'production') {
   //   errorTrackingService.captureException(error, { context });
   // }
 };

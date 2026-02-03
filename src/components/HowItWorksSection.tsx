@@ -1,3 +1,5 @@
+'use client';
+
 import { UserCheck, Sparkles, Coffee, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 

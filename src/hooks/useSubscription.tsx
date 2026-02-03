@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { loadStripe } from '@stripe/stripe-js';
 import {
   getSubscription,
   getPaymentMethods,
@@ -13,9 +12,16 @@ import {
   Invoice,
 } from '@/services/subscriptionService';
 
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
-);
+// Lazy load Stripe only when checkout is needed (saves ~50KB on initial load)
+let stripePromise: Promise<import('@stripe/stripe-js').Stripe | null> | null = null;
+const getStripe = () => {
+  if (!stripePromise) {
+    stripePromise = import('@stripe/stripe-js').then((m) =>
+      m.loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
+    );
+  }
+  return stripePromise;
+};
 
 // Types are now imported from subscriptionService
 
@@ -140,7 +146,7 @@ export const useSubscription = () => {
         throw new Error('Failed to create checkout session');
       }
 
-      const stripe = await stripePromise;
+      const stripe = await getStripe();
       if (!stripe) {
         throw new Error('Stripe failed to load');
       }

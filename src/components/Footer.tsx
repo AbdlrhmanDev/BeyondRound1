@@ -1,6 +1,9 @@
+'use client';
+
 import { Mail, MapPin, Sparkles, ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LocalizedLink from "@/components/LocalizedLink";
+import { EMAILS } from "@/constants/emails";
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -21,7 +24,7 @@ const Footer = () => {
       { labelKey: "common.privacyPolicy", href: "/privacy" },
     ],
     support: [
-      { labelKey: "common.contactUs", href: "mailto:support@beyondrounds.com" },
+      { labelKey: "common.contactUs", href: `mailto:${EMAILS.contact}` },
       { labelKey: "common.faq", href: "/faq" },
     ],
   };
@@ -50,13 +53,13 @@ const Footer = () => {
             </p>
             <div className="space-y-3">
               <a
-                href="mailto:support@beyondrounds.com"
+                href={`mailto:${EMAILS.contact}`}
                 className="flex items-center gap-3 text-primary-foreground/50 hover:text-primary-foreground transition-colors group"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary-foreground/5 border border-primary-foreground/10 flex items-center justify-center group-hover:border-primary-foreground/20 transition-colors">
                   <Mail size={18} />
                 </div>
-                <span>support@beyondrounds.com</span>
+                <span>{EMAILS.contact}</span>
               </a>
               <div className="flex items-center gap-3 text-primary-foreground/50">
                 <div className="w-10 h-10 rounded-xl bg-primary-foreground/5 border border-primary-foreground/10 flex items-center justify-center">

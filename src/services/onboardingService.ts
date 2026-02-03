@@ -8,20 +8,30 @@ import { supabase } from '@/integrations/supabase/client';
 export interface OnboardingPreferences {
   user_id: string;
   specialty: string | null;
+  specialty_preference?: string | null;
   group_language_preference?: string | null;
   career_stage: string | null;
+  activity_level?: string | null;
   interests: string[] | null;
   other_interests: string[] | null;
   sports: string[] | null;
   music_preferences: string[] | null;
   movie_preferences: string[] | null;
+  meeting_activities?: string[] | null;
   friendship_type: string[] | null;
   meeting_frequency: string | null;
+  social_energy?: string | null;
+  conversation_style?: string | null;
+  goals?: string[] | null;
+  dietary_preferences?: string[] | null;
+  life_stage?: string | null;
+  ideal_weekend?: string[] | null;
   social_style?: string[] | null;
   culture_interests?: string[] | null;
   lifestyle?: string[] | null;
   availability_slots?: string[] | null;
   completed_at: string | null;
+  open_to_business?: boolean | null;
 }
 
 export interface PersonalInfo {

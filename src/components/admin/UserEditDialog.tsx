@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -86,7 +88,7 @@ const UserEditDialog = ({ user, open, onClose, onSave }: UserEditDialogProps) =>
 
     const { error } = await supabase
       .from("profiles")
-      .update(newValues)
+      .update(newValues as Record<string, unknown>)
       .eq("id", user.id);
 
     if (error) {

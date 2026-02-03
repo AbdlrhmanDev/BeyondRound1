@@ -1,0 +1,348 @@
+/* Fonts loaded via next/font - no blocking @import for faster mobile load */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* BeyondRounds Modern Design System */
+
+@layer base {
+  :root {
+    /* Clean neutral backgrounds */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 6%;
+
+    /* Card surfaces with subtle warmth */
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 6%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 6%;
+
+    /* Primary - Vibrant amber/orange */
+    --primary: 28 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Cool slate */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 14% 30%;
+
+    /* Muted */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    /* Accent - Muted medical green for calm validation */
+    --accent: 165 35% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders and inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 28 100% 50%;
+
+    --radius: 1rem;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 10% 6%;
+    --sidebar-primary: 28 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 240 10% 6%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 28 100% 50%;
+
+    /* Custom BeyondRounds tokens */
+    --gold: 28 100% 50%;
+    --gold-light: 35 100% 60%;
+    --navy: 220 40% 13%;
+    --navy-light: 220 25% 25%;
+    --cream: 40 40% 97%;
+    --cream-dark: 40 25% 93%;
+    --teal: 172 66% 50%;
+    --sage: 145 30% 90%;
+    /* Medical muted green for validation */
+    --success: 165 35% 50%;
+    --success-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 28 100% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 15%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 240 5% 15%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 165 35% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 28 100% 55%;
+
+    --sidebar-background: 240 10% 5%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 28 100% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 5% 18%;
+    --sidebar-ring: 28 100% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Safe area for notched / gesture devices */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01";
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Mobile-first: minimum touch target (44px) for interactive elements */
+  @media (pointer: coarse) {
+    button:not(.no-touch-target),
+    a[role="button"],
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Input text: black in light mode, white in dark mode for clear visibility */
+  input, textarea {
+    color: hsl(240 10% 6%);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-muted-foreground;
+  }
+  .dark input,
+  .dark textarea {
+    color: hsl(0 0% 98%);
+  }
+  /* Fix browser autofill making text invisible */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(240 10% 6%);
+  }
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(0 0% 98%);
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
+
+  .font-sans {
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+
+  /* Modern gradient text */
+  .text-gradient-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(28, 100%, 50%) 0%, hsl(35, 100%, 60%) 50%, hsl(28, 100%, 55%) 100%);
+  }
+
+  .text-gradient-dark {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(240, 10%, 6%) 0%, hsl(220, 25%, 25%) 100%);
+  }
+
+  /* Glass morphism */
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl border border-border/50;
+  }
+
+  .glass-dark {
+    @apply bg-foreground/90 backdrop-blur-xl;
+  }
+
+  .dark .glass-dark {
+    @apply bg-background/90;
+  }
+
+  /* Modern card styles */
+  .card-modern {
+    @apply bg-card rounded-2xl border border-border/50 shadow-lg shadow-foreground/5 transition-all duration-300;
+  }
+
+  .card-modern:hover {
+    @apply shadow-xl shadow-foreground/10 -translate-y-1 border-border;
+  }
+
+  .dark .card-modern {
+    @apply shadow-black/20;
+  }
+
+  .dark .card-modern:hover {
+    @apply shadow-black/30;
+  }
+
+  .card-elevated {
+    @apply bg-card rounded-3xl border-0 shadow-2xl shadow-foreground/10;
+  }
+
+  .dark .card-elevated {
+    @apply shadow-black/25;
+  }
+
+  .card-glass {
+    @apply glass rounded-2xl;
+  }
+
+  /* Gradient backgrounds */
+  .bg-gradient-hero {
+    background: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(40, 40%, 97%) 100%);
+  }
+
+  .bg-gradient-gold {
+    background: linear-gradient(135deg, hsl(28, 100%, 50%) 0%, hsl(35, 100%, 60%) 100%);
+  }
+
+  .bg-gradient-dark {
+    background: linear-gradient(180deg, hsl(240, 10%, 6%) 0%, hsl(220, 40%, 13%) 100%);
+  }
+
+  .bg-gradient-mesh {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(28, 100%, 50%, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 100% 50%, hsl(172, 66%, 50%, 0.1) 0%, transparent 40%),
+      linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(40, 40%, 97%) 100%);
+  }
+
+  /* Modern shadows */
+  .shadow-glow {
+    box-shadow: 0 0 60px -12px hsl(28 100% 50% / 0.25);
+  }
+
+  .shadow-glow-sm {
+    box-shadow: 0 0 30px -8px hsl(28 100% 50% / 0.2);
+  }
+
+  /* Animations */
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.98); }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out forwards;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 3s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 0%, hsl(0 0% 100% / 0.4) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* Respect reduced motion on mobile for better performance */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up, .animate-fade-in, .animate-float, .animate-pulse-soft, .animate-shimmer {
+      animation: none;
+    }
+  }
+
+  /* content-visibility: defer below-fold rendering (reduces TBT, main-thread) */
+  .defer-render {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 400px;
+  }
+
+  /* Animation delays */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
+
+  /* Interactive elements */
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-1 shadow-xl;
+  }
+
+  /* Number display */
+  .number-display {
+    @apply font-display font-bold tracking-tight;
+    font-variant-numeric: tabular-nums;
+  }
+}

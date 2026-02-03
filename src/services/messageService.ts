@@ -31,6 +31,19 @@ export interface MessageInsert {
   media_type?: string;
 }
 
+/** Map DB row (media_urls may be string[]) to Message (media_urls as object array) */
+function rowToMessage(row: Record<string, unknown>): Message {
+  const raw = row.media_urls;
+  const media_urls = Array.isArray(raw)
+    ? raw.map((v) =>
+        typeof v === 'object' && v !== null && 'url' in v
+          ? { url: (v as { url: string }).url, type: (v as { type?: string }).type ?? 'image', size: (v as { size?: number }).size }
+          : { url: String(v), type: 'image' as string }
+      )
+    : undefined;
+  return { ...row, media_urls } as Message;
+}
+
 /**
  * Gets messages for a conversation
  */
@@ -68,14 +81,17 @@ export const getMessages = async (
       return [];
     }
 
-    return data.filter((item): item is Message =>
-      typeof item === 'object' &&
-      item !== null &&
-      'id' in item &&
-      'sender_id' in item &&
-      'content' in item &&
-      'created_at' in item
-    );
+    return (data || [])
+      .filter(
+        (item): boolean =>
+          typeof item === 'object' &&
+          item !== null &&
+          'id' in item &&
+          'sender_id' in item &&
+          'content' in item &&
+          'created_at' in item
+      )
+      .map((item) => rowToMessage(item as Record<string, unknown>));
   } catch (error) {
     console.error("Error fetching messages:", error);
     return [];
@@ -121,19 +137,22 @@ export const getGroupMessages = async (
 
     // Map group_messages to Message interface (convert conversation_id to group_conversation_id)
     return data
-      .filter((item): item is any =>
-        typeof item === 'object' &&
-        item !== null &&
-        'id' in item &&
-        'sender_id' in item &&
-        'content' in item &&
-        'created_at' in item
+      .filter(
+        (item): boolean =>
+          typeof item === 'object' &&
+          item !== null &&
+          'id' in item &&
+          'sender_id' in item &&
+          'content' in item &&
+          'created_at' in item
       )
-      .map((item) => ({
-        ...item,
-        group_conversation_id: item.conversation_id,
-        conversation_id: undefined,
-      })) as Message[];
+      .map((item) =>
+        rowToMessage({
+          ...(item as Record<string, unknown>),
+          group_conversation_id: (item as Record<string, unknown>).conversation_id,
+          conversation_id: undefined,
+        })
+      );
   } catch (error) {
     console.error("Error fetching group messages:", error);
     return [];
@@ -163,7 +182,7 @@ export const sendMessage = async (message: MessageInsert): Promise<Message | nul
 
     const { data, error } = await supabase
       .from("messages")
-      .insert(message)
+      .insert(message as never)
       .select()
       .single();
 
@@ -178,7 +197,7 @@ export const sendMessage = async (message: MessageInsert): Promise<Message | nul
       return null;
     }
 
-    return data as Message;
+    return rowToMessage(data as Record<string, unknown>);
   } catch (error) {
     console.error("Error sending message:", error);
     return null;
@@ -234,9 +253,7 @@ export const updateMessageMedia = async (
 
     const { error } = await supabase
       .from("messages")
-      .update({
-        media_urls: mediaUrls,
-      })
+      .update({ media_urls: mediaUrls } as never)
       .eq("id", messageId);
 
     if (error) {
@@ -390,7 +407,7 @@ export const sendGroupMessage = async (message: {
       ...data,
       group_conversation_id: data.conversation_id,
       conversation_id: undefined,
-    } as Message;
+    } as unknown as Message;
   } catch (error) {
     console.error("Error sending group message:", error);
     return null;
@@ -419,7 +436,7 @@ export const updateGroupMessageMedia = async (
     const { error } = await supabase
       .from("messages")
       .update({
-        media_urls: mediaUrls,
+        media_urls: mediaUrls.map((m) => m.url),
       })
       .eq("id", messageId);
 

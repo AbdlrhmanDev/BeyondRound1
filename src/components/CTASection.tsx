@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Users, Shield, Calendar, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -48,9 +50,9 @@ const CTASection = () => {
           {/* Trust Stats */}
           <div className="grid sm:grid-cols-3 gap-8 pt-12 border-t border-primary-foreground/10">
             {[
-              { icon: Users, value: "5,000+", label: "Verified Doctors" },
-              { icon: Calendar, value: "12,000+", label: "Meetups Organized" },
-              { icon: Shield, value: "30", label: "Day Guarantee" },
+              { icon: Users, value: "5,000+", labelKey: "home.verifiedDoctors" },
+              { icon: Calendar, value: "12,000+", labelKey: "home.meetupsOrganized" },
+              { icon: Shield, value: "30", labelKey: "home.dayGuarantee" },
             ].map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/20 mb-4">

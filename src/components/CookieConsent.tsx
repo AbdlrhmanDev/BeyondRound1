@@ -1,5 +1,8 @@
+'use client';
+
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import LocalizedLink from "@/components/LocalizedLink";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Cookie } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -10,8 +13,8 @@ const STORAGE_KEY = "cookie_consent_accepted";
 export function CookieConsent() {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
-  const location = useLocation();
-  const locale = getLocaleFromPath(location.pathname);
+  const pathname = usePathname();
+  const locale = getLocaleFromPath(pathname || '');
   const privacyPath = pathWithLocale("/privacy", locale);
 
   useEffect(() => {
@@ -52,12 +55,12 @@ export function CookieConsent() {
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {t("cookieConsent.agree")}{" "}
-                <Link
+                <LocalizedLink
                   to={privacyPath}
                   className="underline hover:text-primary transition-colors"
                 >
                   {t("cookieConsent.privacyPolicy")}
-                </Link>
+                </LocalizedLink>
               </p>
             </div>
           </div>

@@ -434,6 +434,7 @@ export type Database = {
           edited_at: string | null
           id: string
           is_deleted: boolean | null
+          media_urls: string[] | null
           read_at: string | null
           sender_id: string
         }
@@ -445,6 +446,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           is_deleted?: boolean | null
+          media_urls?: string[] | null
           read_at?: string | null
           sender_id: string
         }
@@ -456,6 +458,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           is_deleted?: boolean | null
+          media_urls?: string[] | null
           read_at?: string | null
           sender_id?: string
         }
@@ -575,6 +578,8 @@ export type Database = {
           banned_at: string | null
           birth_year: number | null
           city: string | null
+          country: string | null
+          state: string | null
           created_at: string
           deleted_at: string | null
           full_name: string | null
@@ -598,6 +603,8 @@ export type Database = {
           banned_at?: string | null
           birth_year?: number | null
           city?: string | null
+          country?: string | null
+          state?: string | null
           created_at?: string
           deleted_at?: string | null
           full_name?: string | null
@@ -621,6 +628,8 @@ export type Database = {
           banned_at?: string | null
           birth_year?: number | null
           city?: string | null
+          country?: string | null
+          state?: string | null
           created_at?: string
           deleted_at?: string | null
           full_name?: string | null
@@ -885,6 +894,345 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      contact_submissions: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          subject: string
+          message: string
+          user_id: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          subject: string
+          message: string
+          user_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          subject?: string
+          message?: string
+          user_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      group_evaluations: {
+        Row: {
+          id: string
+          user_id: string
+          group_id: string
+          met_in_person: boolean
+          meeting_rating: number | null
+          real_connection: boolean | null
+          feedback_text: string | null
+          photos_urls: string[] | null
+          submitted_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          group_id: string
+          met_in_person?: boolean
+          meeting_rating?: number | null
+          real_connection?: boolean | null
+          feedback_text?: string | null
+          photos_urls?: string[] | null
+          submitted_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          group_id?: string
+          met_in_person?: boolean
+          meeting_rating?: number | null
+          real_connection?: boolean | null
+          feedback_text?: string | null
+          photos_urls?: string[] | null
+          submitted_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          link: string | null
+          read: boolean
+          read_at: string | null
+          created_at: string
+          metadata: Json
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          link?: string | null
+          read?: boolean
+          read_at?: string | null
+          created_at?: string
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          link?: string | null
+          read?: boolean
+          read_at?: string | null
+          created_at?: string
+          metadata?: Json
+        }
+        Relationships: []
+      }
+      survey_submissions: {
+        Row: {
+          id: string
+          email: string
+          answers: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          answers?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          answers?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          id: string
+          user_id: string
+          email_notifications: boolean
+          push_notifications: boolean
+          match_notifications: boolean
+          event_notifications: boolean
+          profile_visible: boolean
+          dark_mode: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email_notifications?: boolean
+          push_notifications?: boolean
+          match_notifications?: boolean
+          event_notifications?: boolean
+          profile_visible?: boolean
+          dark_mode?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          email_notifications?: boolean
+          push_notifications?: boolean
+          match_notifications?: boolean
+          event_notifications?: boolean
+          profile_visible?: boolean
+          dark_mode?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      waitlist: {
+        Row: {
+          id: string
+          email: string
+          city: string | null
+          medical_specialty: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          city?: string | null
+          medical_specialty?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          city?: string | null
+          medical_specialty?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          stripe_price_id: string | null
+          status: string
+          plan_name: string | null
+          current_period_start: string | null
+          current_period_end: string | null
+          cancel_at_period_end: boolean
+          canceled_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          stripe_price_id?: string | null
+          status?: string
+          plan_name?: string | null
+          current_period_start?: string | null
+          current_period_end?: string | null
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          stripe_price_id?: string | null
+          status?: string
+          plan_name?: string | null
+          current_period_start?: string | null
+          current_period_end?: string | null
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          id: string
+          user_id: string
+          stripe_payment_method_id: string
+          type: string
+          card_brand: string | null
+          card_last4: string | null
+          card_exp_month: number | null
+          card_exp_year: number | null
+          is_default: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          stripe_payment_method_id: string
+          type: string
+          card_brand?: string | null
+          card_last4?: string | null
+          card_exp_month?: number | null
+          card_exp_year?: number | null
+          is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          stripe_payment_method_id?: string
+          type?: string
+          card_brand?: string | null
+          card_last4?: string | null
+          card_exp_month?: number | null
+          card_exp_year?: number | null
+          is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          id: string
+          user_id: string
+          stripe_invoice_id: string
+          amount: number
+          currency: string
+          status: string
+          invoice_pdf: string | null
+          hosted_invoice_url: string | null
+          period_start: string | null
+          period_end: string | null
+          paid_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          stripe_invoice_id: string
+          amount: number
+          currency: string
+          status: string
+          invoice_pdf?: string | null
+          hosted_invoice_url?: string | null
+          period_start?: string | null
+          period_end?: string | null
+          paid_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          stripe_invoice_id?: string
+          amount?: number
+          currency?: string
+          status?: string
+          invoice_pdf?: string | null
+          hosted_invoice_url?: string | null
+          period_start?: string | null
+          period_end?: string | null
+          paid_at?: string | null
+          created_at?: string
         }
         Relationships: []
       }

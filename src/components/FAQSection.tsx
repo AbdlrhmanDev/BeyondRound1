@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Accordion,
   AccordionContent,
@@ -6,6 +8,7 @@ import {
 } from "@/components/ui/accordion";
 import { HelpCircle, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { EMAILS } from "@/constants/emails";
 
 const faqKeys: [string, string][] = [
   ["faq.q1", "faq.a1"],
@@ -37,7 +40,7 @@ const FAQSection = () => {
               {t("faq.subtitleHome")}
             </p>
             <a
-              href="mailto:support@beyondrounds.com"
+              href={`mailto:${EMAILS.support}`}
               className="inline-flex items-center gap-2 text-primary font-semibold hover:gap-3 transition-all group"
             >
               {t("faq.contactSupportTeam")}

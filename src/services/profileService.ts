@@ -9,10 +9,12 @@ export interface Profile {
   user_id: string;
   full_name: string | null;
   avatar_url: string | null;
+  license_url?: string | null;
   country: string | null;
   state: string | null;
   city: string | null;
   neighborhood: string | null;
+  languages?: string[] | null;
   gender: string | null;
   birth_year: number | null;
   gender_preference: string | null;
@@ -52,7 +54,7 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
       return null;
     }
 
-    return data as Profile | null;
+    return data as unknown as Profile | null;
   } catch (error) {
     console.error("Error fetching profile:", error);
     return null;
@@ -112,14 +114,32 @@ export const updateProfile = async (
       .update(updates)
       .eq("user_id", userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Error updating profile:", error);
       return null;
     }
 
-    return data as Profile;
+    // If no rows updated (profile may not exist), try upsert to create it
+    if (!data) {
+      const { data: upsertData, error: upsertError } = await supabase
+        .from("profiles")
+        .upsert(
+          { user_id: userId, ...updates },
+          { onConflict: "user_id", ignoreDuplicates: false }
+        )
+        .select()
+        .maybeSingle();
+
+      if (upsertError) {
+        console.error("Error upserting profile:", upsertError);
+        return null;
+      }
+      return upsertData as unknown as Profile | null;
+    }
+
+    return data as unknown as Profile;
   } catch (error) {
     console.error("Error updating profile:", error);
     return null;

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for file in *.tsx)",
+      "Bash(do if ! grep -q \"^''use client''\" \"$file\")",
+      "Bash(then echo \"''use client'';\")",
+      "Bash(do if [ -f \"$file\" ])",
+      "Bash(! grep -q \"^''use client''\" \"$file\")",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(do if ! head -1 \"$file\")",
+      "Bash(then echo \"$file\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(powershell -Command \"Remove-Item -Path .next -Recurse -Force\")",
+      "Bash(grep:*)",
+      "Bash(xargs -I {} sh -c 'if ! head -1 \"\"{}\"\" | grep -q \"\"use client\"\"; then echo \"\"{}\"\"; fi')"
+    ]
+  }
+}

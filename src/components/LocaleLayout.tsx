@@ -1,19 +1,26 @@
-import { useEffect } from "react";
-import { Outlet, useParams, useNavigate, useLocation } from "react-router-dom";
+'use client';
+
+import { useEffect, type ReactNode } from "react";
+import { usePathname, useRouter, useParams } from "next/navigation";
 import { LocaleProvider } from "@/contexts/LocaleContext";
 import { isLocale, DEFAULT_LOCALE, setStoredLocale, pathWithLocale, pathWithoutLocale } from "@/lib/locale";
 import { useTranslation } from "react-i18next";
 
+interface LocaleLayoutProps {
+  children: ReactNode;
+}
+
 /**
- * Wraps all locale-prefixed routes. Validates :locale, sets <html lang>, persists choice, provides LocaleContext.
- * Invalid locale (e.g. /dashboard) redirects to /de/dashboard.
+ * Wraps all locale-prefixed routes. Validates locale, sets <html lang>, persists choice, provides LocaleContext.
+ * Invalid locale redirects to /de/{path}.
  */
-const LocaleLayout = () => {
-  const { locale: localeParam } = useParams<{ locale: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
+const LocaleLayout = ({ children }: LocaleLayoutProps) => {
+  const params = useParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { i18n } = useTranslation();
 
+  const localeParam = params?.locale as string | undefined;
   const locale = localeParam && isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
 
   useEffect(() => {
@@ -23,7 +30,7 @@ const LocaleLayout = () => {
   // SEO: hreflang alternates for de/en
   useEffect(() => {
     const base = typeof window !== "undefined" ? window.location.origin : "";
-    const path = pathWithoutLocale(location.pathname);
+    const path = pathWithoutLocale(pathname || '/');
     const pathSegment = path === "/" ? "" : path;
     const existing = document.querySelectorAll('link[rel="alternate"][hreflang]');
     existing.forEach((el) => el.remove());
@@ -42,7 +49,7 @@ const LocaleLayout = () => {
     return () => {
       document.querySelectorAll('link[rel="alternate"][hreflang]').forEach((el) => el.remove());
     };
-  }, [locale, location.pathname]);
+  }, [locale, pathname]);
 
   useEffect(() => {
     setStoredLocale(locale);
@@ -51,10 +58,10 @@ const LocaleLayout = () => {
 
   useEffect(() => {
     if (localeParam && !isLocale(localeParam)) {
-      const rest = pathWithoutLocale(location.pathname);
-      navigate(pathWithLocale(rest === "/" ? "" : rest, DEFAULT_LOCALE), { replace: true });
+      const rest = pathWithoutLocale(pathname || '/');
+      router.replace(pathWithLocale(rest === "/" ? "" : rest, DEFAULT_LOCALE));
     }
-  }, [localeParam, location.pathname, navigate]);
+  }, [localeParam, pathname, router]);
 
   if (localeParam && !isLocale(localeParam)) {
     return null;
@@ -62,7 +69,7 @@ const LocaleLayout = () => {
 
   return (
     <LocaleProvider>
-      <Outlet />
+      {children}
     </LocaleProvider>
   );
 };

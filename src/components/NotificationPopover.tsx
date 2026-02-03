@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
@@ -52,7 +54,7 @@ const NotificationPopover = () => {
         return;
       }
       
-      setNotifications(data || []);
+      setNotifications((data || []) as Notification[]);
       
       // If no notifications exist, create welcome notification for existing users
       if ((!data || data.length === 0) && user.id) {
@@ -87,7 +89,7 @@ const NotificationPopover = () => {
               .single();
             
             if (newNotification) {
-              setNotifications([newNotification]);
+              setNotifications([newNotification as Notification]);
             }
           }
         }
@@ -255,14 +257,14 @@ const NotificationPopover = () => {
       const locale = i18n.language === "de" ? de : undefined;
       return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale });
     } catch {
-      return t("notifications.recently");
+      return String(t("notifications.recently"));
     }
   };
 
   // Map known English text (from old DB rows) to translation keys so they show in current locale
   const getDisplayTitle = (notification: Notification): string => {
     const title = notification.title ?? "";
-    if (title.startsWith("notifications.")) return t(title, notification.metadata || {});
+    if (title.startsWith("notifications.")) return String(t(title, notification.metadata || {}));
     const known: Record<string, string> = {
       "New Group Message": "notifications.group_message.title",
       "New Message": "notifications.message.title",
@@ -272,12 +274,12 @@ const NotificationPopover = () => {
       "Welcome to BeyondRounds!": "notifications.welcome.title",
     };
     const key = known[title];
-    return key ? t(key, notification.metadata || {}) : title;
+    return key ? String(t(key, notification.metadata || {})) : title;
   };
 
   const getDisplayMessage = (notification: Notification): string => {
     const message = notification.message ?? "";
-    if (message.startsWith("notifications.")) return t(message, notification.metadata || {});
+    if (message.startsWith("notifications.")) return String(t(message, notification.metadata || {}));
     const meta = { ...(notification.metadata || {}) } as Record<string, string>;
     const type = notification.type;
     // Extract from_user_name from old English message patterns when metadata lacks it
@@ -314,7 +316,7 @@ const NotificationPopover = () => {
       welcome: "notifications.welcome.message",
     };
     const key = keyByType[type];
-    if (key) return t(key, { ...meta, from_user_name: fromUserName || "Someone" });
+    if (key) return String(t(key, { ...meta, from_user_name: fromUserName || "Someone" }));
     return message;
   };
 

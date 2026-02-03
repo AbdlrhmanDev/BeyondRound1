@@ -1,6 +1,6 @@
 /**
  * Location Service - Handles Country-State-City API operations
- * Uses server-side proxy (/api/countries, etc.) to avoid CORS and keep API key secure
+ * Uses Next.js API routes (/api/location/countries, etc.) to avoid CORS and keep API key secure
  * Falls back to direct API on localhost for dev
  */
 
@@ -18,14 +18,14 @@ export interface City {
   name: string;
 }
 
-const API_KEY = (import.meta.env.VITE_COUNTRY_STATE_CITY_API_KEY || "").trim();
+const API_KEY = (process.env.NEXT_PUBLIC_COUNTRY_STATE_CITY_API_KEY || "").trim();
 
 /** Use proxy on production (same-origin), direct API on localhost */
 const useProxy = typeof window !== "undefined" && window.location.hostname !== "localhost";
 
 async function fetchCountries(): Promise<Country[]> {
   if (useProxy) {
-    const res = await fetch("/api/countries");
+    const res = await fetch("/api/location/countries");
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -41,7 +41,7 @@ async function fetchCountries(): Promise<Country[]> {
 async function fetchStates(countryIso2: string): Promise<State[]> {
   if (!countryIso2?.trim()) return [];
   if (useProxy) {
-    const res = await fetch(`/api/states?country=${encodeURIComponent(countryIso2)}`);
+    const res = await fetch(`/api/location/states?country=${encodeURIComponent(countryIso2)}`);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -58,7 +58,7 @@ async function fetchCities(countryIso2: string, stateIso2: string): Promise<City
   if (!countryIso2?.trim() || !stateIso2?.trim()) return [];
   if (useProxy) {
     const res = await fetch(
-      `/api/cities?country=${encodeURIComponent(countryIso2)}&state=${encodeURIComponent(stateIso2)}`
+      `/api/location/cities?country=${encodeURIComponent(countryIso2)}&state=${encodeURIComponent(stateIso2)}`
     );
     if (!res.ok) return [];
     const data = await res.json();

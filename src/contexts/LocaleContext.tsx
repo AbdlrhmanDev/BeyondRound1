@@ -1,5 +1,7 @@
+'use client';
+
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { usePathname, useRouter } from "next/navigation";
 import type { Locale } from "@/lib/locale";
 import {
   pathWithLocale as pathWithLocaleUtil,
@@ -20,12 +22,16 @@ interface LocaleContextValue {
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const params = useParams<{ locale: string }>();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const value = useMemo(() => {
-    const localeFromPath = params.locale && isLocale(params.locale) ? (params.locale as Locale) : getLocaleFromPath(location.pathname);
+    // Extract locale from pathname
+    const segments = (pathname || '').split('/').filter(Boolean);
+    const localeParam = segments[0];
+    const localeFromPath = localeParam && isLocale(localeParam)
+      ? (localeParam as Locale)
+      : getLocaleFromPath(pathname || '');
     const locale = localeFromPath ?? DEFAULT_LOCALE;
 
     return {
@@ -34,12 +40,19 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       pathWithoutLocale,
       setLocaleAndNavigate: (newLocale: Locale) => {
         setStoredLocaleUtil(newLocale);
-        const currentPathWithoutLocale = pathWithoutLocale(location.pathname);
-        const newPath = pathWithLocaleUtil(currentPathWithoutLocale === "/" ? "" : currentPathWithoutLocale, newLocale);
-        navigate(newPath || `/${newLocale}`, { replace: true });
+        const currentPathWithoutLocale = pathWithoutLocale(pathname || '');
+        const newPath = pathWithLocaleUtil(
+          currentPathWithoutLocale === "/" ? "" : currentPathWithoutLocale,
+          newLocale
+        );
+
+        // Update cookie for middleware
+        document.cookie = `beyondrounds_locale=${newLocale};path=/;max-age=${365 * 24 * 60 * 60}`;
+
+        router.replace(newPath || `/${newLocale}`);
       },
     };
-  }, [params.locale, location.pathname, location.search, navigate]);
+  }, [pathname, router]);
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }

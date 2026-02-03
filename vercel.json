@@ -1,10 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "vite",
+  "framework": "next",
   "redirects": [
     {
       "source": "/",
@@ -123,10 +122,6 @@
   ],
   "rewrites": [
     {
-      "source": "/assets/:path*",
-      "destination": "/assets/:path*"
-    },
-    {
       "source": "/favicon.svg",
       "destination": "/favicon.svg"
     },
@@ -136,11 +131,7 @@
     },
     {
       "source": "/opengraph-image.png",
-      "destination": "/opengraph-image.png"
-    },
-    {
-      "source": "/((?!api/|_next/|assets/).*)",
-      "destination": "/index.html"
+      "destination": "/api/og"
     }
   ],
   "headers": [

@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Sparkles } from "lucide-react";
@@ -5,8 +7,12 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import LocalizedLink from "@/components/LocalizedLink";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { DOMAINS } from "@/lib/domains";
+import { useParams } from "next/navigation";
 
 const Header = () => {
+  const { locale } = useParams<{ locale: string }>();
+  const lng = locale === "en" ? "en" : "de";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, loading } = useAuth();
   const { t } = useTranslation();
@@ -46,15 +52,15 @@ const Header = () => {
                     {t(link.labelKey)}
                   </LocalizedLink>
                 ))}
-                <LanguageSwitcher className="ml-2" />
+                <LanguageSwitcher className="ml-2" variant="overlay" />
               </nav>
 
               {/* Desktop CTA */}
               <div className="hidden md:flex items-center gap-3">
                 {!loading && user ? (
-                  <LocalizedLink to="/dashboard">
+                  <a href={`${DOMAINS.app}/${lng}/dashboard`} className="[&>button]:cursor-pointer">
                     <Button>{t("common.dashboard")}</Button>
-                  </LocalizedLink>
+                  </a>
                 ) : (
                   <>
                     <LocalizedLink to="/auth">
@@ -71,7 +77,7 @@ const Header = () => {
 
               {/* Mobile: Language + Menu Button (touch targets ≥44px) */}
               <div className="md:hidden flex items-center gap-1">
-                <LanguageSwitcher />
+                <LanguageSwitcher variant="overlay" />
                 <button
                   className="min-h-[44px] min-w-[44px] flex items-center justify-center text-primary-foreground rounded-lg hover:bg-primary-foreground/10 active:bg-primary-foreground/15 transition-colors -mr-1"
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -103,9 +109,9 @@ const Header = () => {
               ))}
               <div className="flex flex-col gap-2 pt-3 mt-2 border-t border-white/10">
                 {!loading && user ? (
-                  <LocalizedLink to="/dashboard" onClick={() => setIsMenuOpen(false)} className="block">
+                  <a href={`${DOMAINS.app}/${lng}/dashboard`} onClick={() => setIsMenuOpen(false)} className="block">
                     <Button className="w-full min-h-[44px] justify-center">{t("common.dashboard")}</Button>
-                  </LocalizedLink>
+                  </a>
                 ) : (
                   <>
                     <LocalizedLink to="/auth" onClick={() => setIsMenuOpen(false)} className="block">

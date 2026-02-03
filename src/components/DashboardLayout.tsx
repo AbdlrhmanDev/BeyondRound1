@@ -1,5 +1,7 @@
+'use client';
+
 import { ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
@@ -30,9 +32,9 @@ const navPaths = [
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { t } = useTranslation();
   const navigate = useLocalizedNavigate();
-  const location = useLocation();
+  const pathname = usePathname();
   const { signOut } = useAuth();
-  const pathnameWithoutLocale = pathWithoutLocale(location.pathname);
+  const pathnameWithoutLocale = pathWithoutLocale(pathname || '/');
   const navItems = navPaths;
 
   const handleSignOut = async () => {

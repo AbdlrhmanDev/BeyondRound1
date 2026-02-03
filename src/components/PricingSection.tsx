@@ -1,7 +1,9 @@
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { Check, Star, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import LocalizedLink from "@/components/LocalizedLink";
 
 const plans = [
   {
@@ -131,7 +133,7 @@ const PricingSection = () => {
               </ul>
 
               {/* CTA */}
-              <Link to="/auth">
+              <LocalizedLink to="/auth">
                 <Button
                   className={cn(
                     "w-full font-semibold rounded-2xl h-12",
@@ -142,7 +144,7 @@ const PricingSection = () => {
                 >
                   {plan.cta}
                 </Button>
-              </Link>
+              </LocalizedLink>
             </div>
           ))}
         </div>

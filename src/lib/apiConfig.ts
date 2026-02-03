@@ -1,10 +1,10 @@
 /**
  * API base URL for servy (Stripe, etc.)
- * When VITE_SERVY_URL is set, all API calls go through servy.beyondrounds.app
- * Otherwise uses Supabase functions directly
+ * When NEXT_PUBLIC_SERVY_URL is set, Stripe calls go through servy.beyondrounds.app
+ * Otherwise uses local Next.js API routes (/api/stripe/checkout, /api/stripe/cancel)
  */
 
-const SERVY_URL = import.meta.env.VITE_SERVY_URL || "";
+const SERVY_URL = process.env.NEXT_PUBLIC_SERVY_URL || "";
 
 export const getServyUrl = (): string => SERVY_URL;
 
