@@ -852,7 +852,7 @@ const Dashboard = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => navigate("/profile")}
+                    onClick={() => navigate("/interests")}
                     className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
                   >
                     + {t("dashboard.add")}
@@ -898,7 +898,7 @@ const Dashboard = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate("/profile")}
+                      onClick={() => navigate("/interests")}
                       className="gap-2 border-primary/20 hover:bg-primary/5"
                     >
                       <Heart className="h-4 w-4 text-primary" />

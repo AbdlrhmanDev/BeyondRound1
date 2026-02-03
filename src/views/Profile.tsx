@@ -18,6 +18,7 @@ import { LocationSelect } from "@/components/LocationSelect";
 import { getProfile, updateProfile } from "@/services/profileService";
 import { getOnboardingPreferences, markOnboardingComplete } from "@/services/onboardingService";
 import { supabase } from "@/integrations/supabase/client";
+import { INTEREST_OPTIONS } from "@/constants/interests";
 import { uploadAvatar, uploadLicense } from "@/services/storageService";
 import { 
   Camera, 
@@ -55,6 +56,9 @@ interface OnboardingPreferences {
   completed_at: string | null;
   goals?: string[] | null;
   sports: string[] | null;
+  music_preferences?: string[] | null;
+  movie_preferences?: string[] | null;
+  other_interests?: string[] | null;
   social_style: string[] | null;
   culture_interests: string[] | null;
   lifestyle: string[] | null;
@@ -330,8 +334,23 @@ const Profile = () => {
       sun_morning: "Sun AM",
       sun_afternoon: "Sun PM",
       sun_evening: "Sun Eve",
+      weekday_eve: "Weekday Eve",
     };
     return slotMap[slot] || slot;
+  };
+
+  const getInterestLabel = (id: string): string => {
+    const opt = INTEREST_OPTIONS.find((o) => o.id === id);
+    if (opt) return opt.label;
+    const goalKey = `onboarding.goals.${id}`;
+    const translated = t(goalKey);
+    return translated !== goalKey ? translated : id.replace(/_/g, " ");
+  };
+
+  const getCareerStageLabel = (id: string): string => {
+    const key = `onboarding.stage.${id}`;
+    const translated = t(key);
+    return translated !== key ? translated : id.replace(/_/g, " ");
   };
 
   if (authLoading || loading) {
@@ -567,7 +586,7 @@ const Profile = () => {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">{t("profile.careerStage")}</p>
-                        <p className="text-sm font-medium text-foreground">{preferences.career_stage}</p>
+                        <p className="text-sm font-medium text-foreground">{getCareerStageLabel(preferences.career_stage)}</p>
                       </div>
                     </div>
                   )}
@@ -596,9 +615,9 @@ const Profile = () => {
                     {t("profile.completeOnboardingHint")}
                   </p>
                   <Button 
-                    onClick={() => navigate("/onboarding")}
+                    onClick={() => navigate("/interests")}
                   >
-                    {t("profile.completeOnboarding")}
+                    {t("dashboard.addInterests")}
                   </Button>
                 </div>
               )}
@@ -624,7 +643,7 @@ const Profile = () => {
                       variant="secondary" 
                       className="px-3 py-1.5 rounded-full text-xs font-medium"
                     >
-                      {sport}
+                      {getInterestLabel(sport)}
                     </Badge>
                   ))}
                 </div>
@@ -662,89 +681,115 @@ const Profile = () => {
           {/* Interests & Goals */}
           <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-350">
             <CardHeader className="px-6 pt-6 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <Heart className="h-5 w-5 text-accent" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                    <Heart className="h-5 w-5 text-green-600" />
+                  </div>
+                  <CardTitle className="text-lg font-display">{t("profile.interestsAndGoals")}</CardTitle>
                 </div>
-                <CardTitle className="text-lg font-display">{t("profile.interestsAndGoals")}</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={() => navigate("/interests")}
+                >
+                  {t("dashboard.addInterests")}
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="px-6 pb-6">
-              {(preferences?.social_style?.length || preferences?.culture_interests?.length || preferences?.lifestyle?.length || preferences?.goals?.length) ? (
-                <div className="space-y-4">
-                  {preferences?.social_style && preferences.social_style.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.socialStyle")}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {preferences.social_style.map((style) => (
-                          <Badge 
-                            key={style} 
-                            variant="secondary" 
-                            className="px-3 py-1.5 rounded-full text-xs font-medium"
-                          >
-                            {style}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              {(() => {
+                const hasSocialStyle = (preferences?.social_style?.length ?? 0) > 0;
+                const hasGoals = (preferences?.goals?.length ?? 0) > 0;
+                const hasMusic = (preferences?.music_preferences?.length ?? 0) > 0;
+                const hasMovies = (preferences?.movie_preferences?.length ?? 0) > 0;
+                const hasOther = (preferences?.other_interests?.length ?? 0) > 0;
+                const hasCulture = (preferences?.culture_interests?.length ?? 0) > 0;
+                const hasLifestyle = (preferences?.lifestyle?.length ?? 0) > 0;
+                const hasAny = hasSocialStyle || hasGoals || hasMusic || hasMovies || hasOther || hasCulture || hasLifestyle;
 
-                  {preferences?.culture_interests && preferences.culture_interests.length > 0 && (
-                    <div className="pt-4 border-t border-border/40">
-                      <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.culture")}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {preferences.culture_interests.map((interest) => (
-                          <Badge 
-                            key={interest} 
-                            variant="secondary" 
-                            className="px-3 py-1.5 rounded-full text-xs font-medium"
-                          >
-                            {interest}
-                          </Badge>
-                        ))}
-                      </div>
+                if (!hasAny) {
+                  return (
+                    <div className="text-center py-6">
+                      <p className="text-sm text-muted-foreground mb-4">{t("profile.addInterestsThroughOnboarding")}</p>
+                      <Button variant="outline" size="sm" onClick={() => navigate("/interests")} className="gap-2">
+                        <Heart className="h-4 w-4" />
+                        {t("dashboard.addInterests")}
+                      </Button>
                     </div>
-                  )}
+                  );
+                }
 
-                  {preferences?.lifestyle && preferences.lifestyle.length > 0 && (
-                    <div className="pt-4 border-t border-border/40">
-                      <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.lifestyle")}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {preferences.lifestyle.map((item) => (
-                          <Badge 
-                            key={item} 
-                            variant="secondary" 
-                            className="px-3 py-1.5 rounded-full text-xs font-medium"
-                          >
-                            {item}
-                          </Badge>
-                        ))}
+                return (
+                  <div className="space-y-4">
+                    {hasSocialStyle && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.socialStyle")}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {preferences!.social_style!.map((style) => (
+                            <Badge key={style} variant="secondary" className="px-3 py-1.5 rounded-full text-xs font-medium">
+                              {getInterestLabel(style)}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  
-                  {preferences?.goals && preferences.goals.length > 0 && (
-                    <div className="pt-4 border-t border-border/40">
-                      <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.lookingFor")}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {preferences.goals.map((goal) => (
-                          <Badge 
-                            key={goal} 
-                            variant="outline" 
-                            className="px-3 py-1.5 rounded-full text-xs font-medium border-primary/30 text-primary"
-                          >
-                            {goal}
-                          </Badge>
-                        ))}
+                    )}
+
+                    {hasGoals && (
+                      <div className={hasSocialStyle ? "pt-4 border-t border-border/40" : ""}>
+                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.lookingFor")}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {preferences!.goals!.map((goal) => (
+                            <Badge key={goal} variant="outline" className="px-3 py-1.5 rounded-full text-xs font-medium border-primary/30 text-primary">
+                              {getInterestLabel(goal)}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  {t("profile.addInterestsThroughOnboarding")}
-                </p>
-              )}
+                    )}
+
+                    {(hasMusic || hasMovies || hasOther) && (
+                      <div className="pt-4 border-t border-border/40">
+                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.interests")}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[...(preferences?.music_preferences || []), ...(preferences?.movie_preferences || []), ...(preferences?.other_interests || [])].map((id) => (
+                            <Badge key={id} variant="secondary" className="px-3 py-1.5 rounded-full text-xs font-medium">
+                              {getInterestLabel(id)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {hasCulture && (
+                      <div className="pt-4 border-t border-border/40">
+                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.culture")}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {preferences!.culture_interests!.map((interest) => (
+                            <Badge key={interest} variant="secondary" className="px-3 py-1.5 rounded-full text-xs font-medium">
+                              {getInterestLabel(interest)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {hasLifestyle && (
+                      <div className="pt-4 border-t border-border/40">
+                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.lifestyle")}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {preferences!.lifestyle!.map((item) => (
+                            <Badge key={item} variant="secondary" className="px-3 py-1.5 rounded-full text-xs font-medium">
+                              {getInterestLabel(item)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>

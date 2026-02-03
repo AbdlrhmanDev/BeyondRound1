@@ -9,7 +9,6 @@ const HowItWorksSection = lazy(() => import("@/components/HowItWorksSection"));
 const FAQSection = lazy(() => import("@/components/FAQSection"));
 const AboutSection = lazy(() => import("@/components/AboutSection"));
 const CTASection = lazy(() => import("@/components/CTASection"));
-const Footer = lazy(() => import("@/components/Footer"));
 
 const Index = () => {
   return (
@@ -24,9 +23,6 @@ const Index = () => {
           <CTASection />
         </Suspense>
       </main>
-      <Suspense fallback={null}>
-        <Footer />
-      </Suspense>
     </div>
   );
 };

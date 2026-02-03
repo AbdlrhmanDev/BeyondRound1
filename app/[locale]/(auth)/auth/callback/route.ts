@@ -10,8 +10,10 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = createClient();
     await supabase.auth.exchangeCodeForSession(code);
+    // First login after email verification: show score animation, then dashboard
+    return NextResponse.redirect(new URL(`/${locale}/welcome`, request.url));
   }
 
-  // Redirect to dashboard after successful auth
+  // No code (e.g. direct visit): go to dashboard
   return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
 }

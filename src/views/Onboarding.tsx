@@ -19,6 +19,7 @@ import { uploadAvatar, uploadLicense } from "@/services/storageService";
 import { createNotification } from "@/services/notificationService";
 import { LocationSelect } from "@/components/LocationSelect";
 import { LanguageLinks } from "@/components/marketing/LanguageLinks";
+import { CalculateScoreBadge } from "@/components/CalculateScoreBadge";
 
 interface ExtendedError extends Error {
   status?: number;
@@ -402,6 +403,7 @@ const Onboarding = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [licensePreview, setLicensePreview] = useState<string | null>(null);
+  const [showScoreCalculation, setShowScoreCalculation] = useState(false);
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const licenseInputRef = useRef<HTMLInputElement>(null);
@@ -876,12 +878,7 @@ const Onboarding = () => {
         });
       }
 
-      toast({
-        title: t("onboarding.toasts.welcome"),
-        description: t("onboarding.toasts.welcomeDesc"),
-      });
-      
-      navigate('/dashboard');
+      setShowScoreCalculation(true);
     } catch (error) {
       toast({
         title: t("onboarding.toasts.error"),
@@ -1046,6 +1043,20 @@ const Onboarding = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background">
+      {showScoreCalculation && (
+        <CalculateScoreBadge
+          label={t("onboarding.scoreBadge.calculating")}
+          completeLabel={t("onboarding.scoreBadge.complete")}
+          onComplete={() => {
+            setShowScoreCalculation(false);
+            toast({
+              title: t("onboarding.toasts.welcome"),
+              description: t("onboarding.toasts.welcomeDesc"),
+            });
+            navigate('/dashboard');
+          }}
+        />
+      )}
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div 

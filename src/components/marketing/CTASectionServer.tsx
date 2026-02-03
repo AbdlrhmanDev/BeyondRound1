@@ -46,7 +46,7 @@ export function CTASectionServer({ dict, locale }: CTASectionServerProps) {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
             <Link
-              href={`/${locale}/auth`}
+              href={`/${locale}/onboarding`}
               prefetch={false}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-400 text-primary-foreground font-semibold h-14 px-8 text-base shadow-[0_4px_20px_-4px_hsl(220_25%_15%/0.08)] hover:opacity-90 transition-opacity group"
             >

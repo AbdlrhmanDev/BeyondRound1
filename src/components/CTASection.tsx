@@ -32,7 +32,7 @@ const CTASection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-            <LocalizedLink to="/auth">
+            <LocalizedLink to="/onboarding">
               <Button className="group text-base h-14 px-8">
                 {t("home.cta")}
                 <ArrowRight className="group-hover:translate-x-1 transition-transform" />

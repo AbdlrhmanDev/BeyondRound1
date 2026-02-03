@@ -1,10 +1,13 @@
 'use client';
 
+import { useTranslation } from "react-i18next";
 import { EMAILS } from "@/constants/emails";
 import LocalizedLink from "@/components/LocalizedLink";
 import { FileText } from "lucide-react";
 
 const Terms = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-foreground dark:bg-background">
       <main className="pt-32">
@@ -19,195 +22,195 @@ const Terms = () => {
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-6">
                 <FileText size={14} className="text-primary" />
-                Legal
+                {t("termsPage.legal")}
               </span>
               <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-foreground tracking-tight mb-6">
-                Terms &{" "}
-                <span className="text-gradient-gold">Conditions</span>
+                {t("termsPage.title")}{" "}
+                <span className="text-gradient-gold">{t("termsPage.titleHighlight")}</span>
               </h1>
-              <p className="text-primary-foreground/60">Last Updated: January 2025</p>
+              <p className="text-primary-foreground/60">{t("termsPage.lastUpdated")}</p>
             </div>
 
             {/* Content */}
             <div className="max-w-3xl mx-auto">
               <div className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-3xl p-8 lg:p-12 space-y-10">
-                
+
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">1. Acceptance of Terms</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section1Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    By using BeyondRounds ("the Service"), you agree to these Terms & Conditions. If you don't agree, please don't use our service.
+                    {t("termsPage.section1Body")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">2. Eligibility</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section2Title")}</h2>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      You must be a licensed medical doctor, medical student, resident, or fellow.
+                      {t("termsPage.section2Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      You must be at least 18 years old.
+                      {t("termsPage.section2Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      You must provide accurate verification information.
+                      {t("termsPage.section2Item3")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      You agree to maintain professional conduct at all times.
+                      {t("termsPage.section2Item4")}
                     </li>
                   </ul>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">3. Account & Verification</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section3Title")}</h2>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      You must verify your medical credentials through license upload.
+                      {t("termsPage.section3Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      False information or impersonation results in immediate termination.
+                      {t("termsPage.section3Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      You're responsible for maintaining account security.
+                      {t("termsPage.section3Item3")}
                     </li>
                   </ul>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">4. Subscription & Billing</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section4Title")}</h2>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      All subscriptions are recurring until cancelled.
+                      {t("termsPage.section4Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Prices may change with 30 days notice.
+                      {t("termsPage.section4Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Refunds only available under our 30-Day Friendship Guarantee.
+                      {t("termsPage.section4Item3")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      No partial month refunds after the guarantee period.
+                      {t("termsPage.section4Item4")}
                     </li>
                   </ul>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">5. Code of Conduct</h2>
-                  <p className="text-primary-foreground/60 mb-3">Members must:</p>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section5Title")}</h2>
+                  <p className="text-primary-foreground/60 mb-3">{t("termsPage.section5Intro")}</p>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Treat all members with respect and professionalism.
+                      {t("termsPage.section5Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Attend scheduled meetups or provide reasonable notice.
+                      {t("termsPage.section5Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Maintain confidentiality about other members' personal information.
+                      {t("termsPage.section5Item3")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Report inappropriate behavior immediately.
+                      {t("termsPage.section5Item4")}
                     </li>
                   </ul>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">6. Prohibited Behavior</h2>
-                  <p className="text-primary-foreground/60 mb-3">The following will result in immediate termination:</p>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section6Title")}</h2>
+                  <p className="text-primary-foreground/60 mb-3">{t("termsPage.section6Intro")}</p>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-destructive mt-2.5 flex-shrink-0" />
-                      Harassment, discrimination, or hate speech.
+                      {t("termsPage.section6Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-destructive mt-2.5 flex-shrink-0" />
-                      Solicitation for professional services or business.
+                      {t("termsPage.section6Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-destructive mt-2.5 flex-shrink-0" />
-                      Sharing personal information without consent.
+                      {t("termsPage.section6Item3")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-destructive mt-2.5 flex-shrink-0" />
-                      Using the platform for dating or romantic purposes.
+                      {t("termsPage.section6Item4")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-destructive mt-2.5 flex-shrink-0" />
-                      Spam or commercial promotion.
+                      {t("termsPage.section6Item5")}
                     </li>
                   </ul>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">7. Intellectual Property</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section7Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    All content, features, and functionality are owned by BeyondRounds and protected by international copyright and trademark laws.
+                    {t("termsPage.section7Body")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">8. Privacy & Data</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section8Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    Your privacy is important to us. Please review our{" "}
-                    <LocalizedLink to="/privacy" className="text-primary hover:underline font-medium">Privacy Policy</LocalizedLink>{" "}
-                    for details on how we collect, use, and protect your information.
+                    {t("termsPage.section8Body")}{" "}
+                    <LocalizedLink to="/privacy" className="text-primary hover:underline font-medium">{t("termsPage.section8Link")}</LocalizedLink>{" "}
+                    {t("termsPage.section8Suffix")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">9. Limitation of Liability</h2>
-                  <p className="text-primary-foreground/60 mb-3">BeyondRounds is not responsible for:</p>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section9Title")}</h2>
+                  <p className="text-primary-foreground/60 mb-3">{t("termsPage.section9Intro")}</p>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Actions of other members during meetups.
+                      {t("termsPage.section9Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Personal safety during offline meetings.
+                      {t("termsPage.section9Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Disputes between members.
+                      {t("termsPage.section9Item3")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      Loss or damage resulting from service use.
+                      {t("termsPage.section9Item4")}
                     </li>
                   </ul>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">10. Termination</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section10Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    We may terminate accounts for violation of these terms. Upon termination, your right to use the service ceases immediately.
+                    {t("termsPage.section10Body")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">11. Changes to Terms</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section11Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    We may update these terms occasionally. Continued use after changes constitutes acceptance of new terms.
+                    {t("termsPage.section11Body")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">12. Contact</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("termsPage.section12Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    Questions about these terms? Contact us at{" "}
+                    {t("termsPage.section12Body")}{" "}
                     <a href={`mailto:${EMAILS.contact}`} className="text-primary hover:underline font-medium">
                       {EMAILS.contact}
                     </a>

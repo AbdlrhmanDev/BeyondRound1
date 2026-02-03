@@ -29,6 +29,10 @@ const Auth = () => {
   const { signIn, user, loading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdminCheck();
   const navigate = useLocalizedNavigate();
+
+  const handleJoinNow = () => {
+    navigate('/onboarding');
+  };
   
   const [formData, setFormData] = useState({
     email: "",
@@ -348,13 +352,14 @@ const Auth = () => {
                 </div>
 
                 {/* Join Now CTA */}
-                <LocalizedLink
-                  to="/onboarding"
-                  className="flex items-center justify-center gap-2 w-full min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl border border-primary-foreground/30 bg-transparent hover:bg-primary-foreground/10 font-semibold text-primary-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-foreground"
+                <button
+                  type="button"
+                  onClick={handleJoinNow}
+                  className="flex items-center justify-center gap-2 w-full min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl border border-primary-foreground/30 bg-transparent hover:bg-primary-foreground/10 font-semibold text-primary-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-foreground cursor-pointer"
                 >
                   {t("auth.joinNow")}
                   <ArrowRight className="ml-2" size={18} />
-                </LocalizedLink>
+                </button>
               </div>
             </div>
 

@@ -2,7 +2,6 @@
 
 import Header from "@/components/Header";
 import { EMAILS } from "@/constants/emails";
-import Footer from "@/components/Footer";
 import LocalizedLink from "@/components/LocalizedLink";
 import { FileText } from "lucide-react";
 
@@ -223,8 +222,6 @@ const Terms = () => {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 };

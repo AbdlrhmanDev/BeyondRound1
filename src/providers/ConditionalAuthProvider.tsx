@@ -13,7 +13,7 @@ const AuthProvider = dynamic(
   { ssr: false }
 );
 
-const APP_ROUTES = ['/dashboard', '/settings', '/profile', '/matches', '/chat', '/group-chat', '/places', '/onboarding', '/survey', '/admin', '/auth', '/forgot-password'];
+const APP_ROUTES = ['/dashboard', '/settings', '/profile', '/matches', '/chat', '/group-chat', '/places', '/onboarding', '/interests', '/survey', '/admin', '/auth', '/forgot-password', '/welcome'];
 
 function pathNeedsAuth(pathname: string | null): boolean {
   if (!pathname) return false;

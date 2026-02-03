@@ -455,20 +455,6 @@ const Waitlist = () => {
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="relative z-20 border-t border-primary-foreground/10 bg-primary-foreground/5 backdrop-blur-xl">
-        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <div className="flex items-center justify-center gap-2">
-            <div className="h-6 w-6 rounded bg-gradient-gold flex items-center justify-center shadow-glow-sm">
-              <Heart className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-display text-sm font-semibold text-primary-foreground/80">
-              BeyondRounds
-            </span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

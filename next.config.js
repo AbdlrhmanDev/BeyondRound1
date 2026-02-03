@@ -161,7 +161,7 @@ const nextConfig = {
       '@radix-ui/react-tooltip',
     ],
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'beyondrounds.app', 'app.beyondrounds.app'],
+      allowedOrigins: ['localhost:3000', 'beyondrounds.app', 'app.beyondrounds.app', 'whitelist.beyondrounds.app'],
     },
   },
 };

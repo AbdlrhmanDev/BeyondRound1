@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import LocalizedLink from "@/components/LocalizedLink";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 
 const Waitlist = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
@@ -105,8 +107,8 @@ const Waitlist = () => {
     
     if (!email.trim()) {
       toast({
-        title: "Email required",
-        description: "Please enter your email address.",
+        title: t("waitlistPage.toastEmailRequired"),
+        description: t("waitlistPage.toastEmailDesc"),
         variant: "destructive",
       });
       return;
@@ -134,16 +136,16 @@ const Waitlist = () => {
         });
       } else {
         toast({
-          title: "Error",
-          description: result.error || "Failed to join waitlist. Please try again.",
+          title: t("waitlistPage.toastErrorTitle"),
+          description: result.error || t("waitlistPage.toastErrorDesc"),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error submitting waitlist:", error);
       toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
+        title: t("waitlistPage.toastErrorTitle"),
+        description: t("waitlistPage.toastGenericDesc"),
         variant: "destructive",
       });
     } finally {
@@ -218,13 +220,13 @@ const Waitlist = () => {
         <section className="container mx-auto px-6 py-20 md:py-32">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-primary-foreground leading-tight animate-fade-up">
-              Meet Doctors Who{" "}
+              {t("waitlistPage.heroTitle")}{" "}
               <span className="text-gradient-gold">
-                Actually Get You
+                {t("waitlistPage.heroTitleHighlight")}
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-primary-foreground/60 mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-up delay-200">
-              Join curated small groups of physicians matched by specialty, interests, and location.
+              {t("waitlistPage.heroSubtitle")}
             </p>
             
             {/* Primary CTA */}
@@ -235,7 +237,7 @@ const Waitlist = () => {
                   variant="hero"
                   className="h-14 px-8 text-lg group"
                 >
-                  Join the Waitlist
+                  {t("waitlistPage.joinWaitlist")}
                   <Sparkles className="ml-2 h-4 w-4 group-hover:scale-110 transition-transform" />
                 </Button>
               </a>
@@ -244,12 +246,12 @@ const Waitlist = () => {
                 className="h-14 px-8 text-lg border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
                 asChild
               >
-                <LocalizedLink to="/survey">Take the 2-min quiz</LocalizedLink>
+                <LocalizedLink to="/survey">{t("waitlistPage.takeQuiz")}</LocalizedLink>
               </Button>
             </div>
             <p className="mb-16 text-sm text-primary-foreground/50 animate-fade-up delay-300">
               <LocalizedLink to="/for-doctors" className="underline hover:text-primary-foreground/70">
-                Why doctors need BeyondRounds
+                {t("waitlistPage.whyDoctors")}
               </LocalizedLink>
             </p>
 
@@ -262,7 +264,7 @@ const Waitlist = () => {
                     {animatedCount.toLocaleString()}+
                   </span>
                 </div>
-                <span className="text-sm text-primary-foreground/60">doctors already joined</span>
+                <span className="text-sm text-primary-foreground/60">{t("waitlistPage.doctorsJoined")}</span>
               </div>
             </div>
           </div>
@@ -272,16 +274,16 @@ const Waitlist = () => {
         <section className="container mx-auto px-4 sm:px-6 py-10 sm:py-16 md:py-24">
           <div className="max-w-6xl mx-auto">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-12 text-primary-foreground animate-fade-up">
-              Why <span className="text-gradient-gold">BeyondRounds</span>?
+              {t("waitlistPage.whyTitle")} <span className="text-gradient-gold">{t("waitlistPage.whyHighlight")}</span>{t("waitlistPage.whySuffix")}
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               <Card className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-200">
                 <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
                   <Shield className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">Verified Only</h3>
+                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">{t("waitlistPage.verifiedOnly")}</h3>
                 <p className="text-sm text-primary-foreground/60">
-                  All members are verified medical professionals. Your privacy and safety come first.
+                  {t("waitlistPage.verifiedOnlyDesc")}
                 </p>
               </Card>
 
@@ -289,9 +291,9 @@ const Waitlist = () => {
                 <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
                   <Zap className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">Smart Matching</h3>
+                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">{t("waitlistPage.smartMatching")}</h3>
                 <p className="text-sm text-primary-foreground/60">
-                  Advanced matching system connects you with physicians who share your interests and values.
+                  {t("waitlistPage.smartMatchingDesc")}
                 </p>
               </Card>
 
@@ -299,9 +301,9 @@ const Waitlist = () => {
                 <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
                   <Target className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">Curated Groups</h3>
+                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">{t("waitlistPage.curatedGroups")}</h3>
                 <p className="text-sm text-primary-foreground/60">
-                  Small, intimate groups designed for meaningful connections and professional growth.
+                  {t("waitlistPage.curatedGroupsDesc")}
                 </p>
               </Card>
             </div>
@@ -318,9 +320,9 @@ const Waitlist = () => {
                   <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
                     <UserPlus className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">1. Sign Up</h3>
+                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">{t("waitlistPage.step1Title")}</h3>
                   <p className="text-primary-foreground/60">
-                    Join our waitlist with your email and specialty
+                    {t("waitlistPage.step1Desc")}
                   </p>
                 </CardContent>
               </Card>
@@ -331,9 +333,9 @@ const Waitlist = () => {
                   <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
                     <Users className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">2. Get Matched</h3>
+                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">{t("waitlistPage.step2Title")}</h3>
                   <p className="text-primary-foreground/60">
-                    We'll connect you with like-minded physicians
+                    {t("waitlistPage.step2Desc")}
                   </p>
                 </CardContent>
               </Card>
@@ -344,9 +346,9 @@ const Waitlist = () => {
                   <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
                     <Heart className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">3. Meet Great People</h3>
+                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">{t("waitlistPage.step3Title")}</h3>
                   <p className="text-primary-foreground/60">
-                    Build meaningful connections with your peers
+                    {t("waitlistPage.step3Desc")}
                   </p>
                 </CardContent>
               </Card>
@@ -364,37 +366,37 @@ const Waitlist = () => {
                     <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-6">
                       <CheckCircle2 className="h-8 w-8 text-accent" />
                     </div>
-                    <h2 className="font-display text-2xl font-bold mb-3 text-primary-foreground">You're on the list!</h2>
+                    <h2 className="font-display text-2xl font-bold mb-3 text-primary-foreground">{t("waitlistPage.successTitle")}</h2>
                     <p className="text-primary-foreground/60 mb-6">
-                      We'll notify you as soon as we launch. Get ready to connect with amazing physicians.
+                      {t("waitlistPage.successDesc")}
                     </p>
                     <Button 
                       variant="outline"
                       onClick={() => setSubmitted(false)}
                       className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
                     >
-                      Add Another Email
+                      {t("waitlistPage.addAnotherEmail")}
                     </Button>
                   </div>
                 ) : (
                   <>
                     <h2 className="font-display text-3xl font-bold mb-2 text-center text-primary-foreground">
-                      Get <span className="text-gradient-gold">Early Access</span>
+                      {t("waitlistPage.formTitle")} <span className="text-gradient-gold">{t("waitlistPage.formTitleHighlight")}</span>
                     </h2>
                     <p className="text-primary-foreground/60 text-center mb-8">
-                      Be among the first to experience BeyondRounds
+                      {t("waitlistPage.formSubtitle")}
                     </p>
                     <form onSubmit={handleSubmit} className="space-y-6">
                       {/* Email */}
                       <div>
                         <label htmlFor="email" className="flex items-center gap-2 text-sm font-medium mb-2 text-primary-foreground">
                           <Mail className="h-4 w-4" />
-                          Email *
+                          {t("waitlistPage.emailLabel")}
                         </label>
                         <Input
                           id="email"
                           type="email"
-                          placeholder="your.email@example.com"
+                          placeholder={t("waitlistPage.emailPlaceholder")}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
@@ -406,12 +408,12 @@ const Waitlist = () => {
                       <div>
                         <label htmlFor="city" className="flex items-center gap-2 text-sm font-medium mb-2 text-primary-foreground">
                           <MapPin className="h-4 w-4" />
-                          City
+                          {t("waitlistPage.cityLabel")}
                         </label>
                         <Input
                           id="city"
                           type="text"
-                          placeholder="e.g., New York, San Francisco"
+                          placeholder={t("waitlistPage.cityPlaceholder")}
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
                           className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground"
@@ -422,16 +424,16 @@ const Waitlist = () => {
                       <div>
                         <label htmlFor="specialty" className="flex items-center gap-2 text-sm font-medium mb-2 text-primary-foreground">
                           <Stethoscope className="h-4 w-4" />
-                          Medical Specialty
+                          {t("waitlistPage.specialtyLabel")}
                         </label>
                         <Select value={specialty} onValueChange={setSpecialty}>
                           <SelectTrigger id="specialty" className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-primary-foreground">
-                            <SelectValue placeholder="Select your specialty" />
+                            <SelectValue placeholder={t("waitlistPage.specialtyPlaceholder")} />
                           </SelectTrigger>
                           <SelectContent>
                             {medicalSpecialties.map((spec) => (
                               <SelectItem key={spec} value={spec}>
-                                {spec}
+                                {t(`waitlistPage.specialties.${spec}`)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -445,7 +447,7 @@ const Waitlist = () => {
                         variant="hero"
                         className="w-full h-12 text-lg"
                       >
-                        {loading ? "Joining..." : "Get Early Access"}
+                        {loading ? t("waitlistPage.submitting") : t("waitlistPage.submitButton")}
                       </Button>
                     </form>
                   </>
@@ -455,20 +457,6 @@ const Waitlist = () => {
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="relative z-20 border-t border-primary-foreground/10 bg-primary-foreground/5 backdrop-blur-xl">
-        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <div className="flex items-center justify-center gap-2">
-            <div className="h-6 w-6 rounded bg-gradient-gold flex items-center justify-center shadow-glow-sm">
-              <Heart className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-display text-sm font-semibold text-primary-foreground/80">
-              BeyondRounds
-            </span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

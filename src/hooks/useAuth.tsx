@@ -153,8 +153,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: emailError, data };
       }
 
-      if (!data?.user && (error as AuthError)?.status === 500 && (error as AuthError)?.message?.includes('confirmation email')) {
-        const extErr: ExtendedError = new Error('Database configuration issue. Please contact support.');
+      if (!data?.user && (error as AuthError)?.status === 500) {
+        const msg = (error as AuthError)?.message || '';
+        const extErr: ExtendedError = new Error(
+          msg.includes('confirmation email')
+            ? 'Signup failed. Check SMTP (Hostinger) settings and run the database trigger fix — see TROUBLESHOOTING_SIGNUP_ERROR.md'
+            : msg || 'Signup failed. See TROUBLESHOOTING_SIGNUP_ERROR.md'
+        );
         return { error: extErr };
       }
 

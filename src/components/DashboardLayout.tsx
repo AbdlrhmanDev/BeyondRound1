@@ -75,13 +75,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     onMouseEnter={() => preloadRoute(item.path)}
                     onFocus={() => preloadRoute(item.path)}
                     className={`group gap-2 rounded-full px-3 sm:px-4 min-h-[44px] transition-all duration-200 ${
-                      isActive 
-                        ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
-                        : "text-muted-foreground hover:text-primary hover:bg-primary/15 hover:shadow-sm"
+                      isActive
+                        ? "bg-primary/15 text-primary border border-primary/25 shadow-sm hover:bg-primary/20 hover:border-primary/30"
+                        : "text-muted-foreground hover:text-primary hover:bg-primary/10 hover:shadow-sm"
                     }`}
                   >
-                    <item.icon className={`h-4 w-4 transition-transform duration-200 ${
-                      isActive ? "" : "group-hover:scale-110"
+                    <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                      isActive ? "text-primary" : "group-hover:scale-110"
                     }`} />
                     {t(item.labelKey)}
                   </Button>
@@ -119,24 +119,27 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
         {/* Mobile bottom nav: touch-friendly, labels fully visible */}
         <nav className="md:hidden flex items-center justify-around border-t border-border/40 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-2 sm:px-4 gap-1 min-h-[64px]" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <Button
-              key={item.path}
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(item.path)}
-              onMouseEnter={() => preloadRoute(item.path)}
-              onFocus={() => preloadRoute(item.path)}
-              className={`flex flex-col items-center justify-center gap-1 min-h-[56px] flex-1 max-w-[120px] py-2.5 px-2 rounded-xl transition-all duration-200 overflow-visible ${
-                pathnameWithoutLocale === item.path
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-primary hover:bg-primary/5 active:bg-primary/10"
-              }`}
-            >
-              <item.icon className="h-5 w-5 sm:h-6 sm:w-6 shrink-0 transition-transform duration-200" />
-              <span className="text-[11px] sm:text-xs leading-tight whitespace-nowrap overflow-visible">{t(item.labelKey)}</span>
-            </Button>
-          ))}
+          {navItems.map((item) => {
+            const isActive = pathnameWithoutLocale === item.path;
+            return (
+              <Button
+                key={item.path}
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(item.path)}
+                onMouseEnter={() => preloadRoute(item.path)}
+                onFocus={() => preloadRoute(item.path)}
+                className={`flex flex-col items-center justify-center gap-1 min-h-[56px] flex-1 max-w-[120px] py-2.5 px-2 rounded-xl transition-all duration-200 overflow-visible ${
+                  isActive
+                    ? "text-primary bg-primary/15 border border-primary/25 shadow-sm"
+                    : "text-muted-foreground hover:text-primary hover:bg-primary/5 active:bg-primary/10"
+                }`}
+              >
+                <item.icon className={`h-5 w-5 sm:h-6 sm:w-6 shrink-0 transition-transform duration-200 ${isActive ? "text-primary" : ""}`} />
+                <span className="text-[11px] sm:text-xs leading-tight whitespace-nowrap overflow-visible font-medium">{t(item.labelKey)}</span>
+              </Button>
+            );
+          })}
         </nav>
       </header>
 

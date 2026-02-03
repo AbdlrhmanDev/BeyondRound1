@@ -8,9 +8,9 @@ const locales = ['de', 'en'];
 const defaultLocale = 'de';
 
 // Protected routes that require authentication
-const protectedRoutes = ['/dashboard', '/settings', '/profile', '/matches', '/chat', '/group-chat', '/places', '/onboarding'];
+const protectedRoutes = ['/dashboard', '/settings', '/profile', '/matches', '/chat', '/group-chat', '/places', '/onboarding', '/interests'];
 const adminRoutes = ['/admin'];
-const authRoutes = ['/auth', '/forgot-password'];
+const authRoutes = ['/auth', '/forgot-password', '/welcome'];
 
 function getLocaleFromPath(pathname: string): string | null {
   const segments = pathname.split('/').filter(Boolean);

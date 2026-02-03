@@ -1,9 +1,12 @@
 'use client';
 
+import { useTranslation } from "react-i18next";
 import { EMAILS } from "@/constants/emails";
 import { Shield, Lock, Eye, Database } from "lucide-react";
 
 const Privacy = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-foreground dark:bg-background">
       <main className="pt-32">
@@ -18,22 +21,22 @@ const Privacy = () => {
             <div className="text-center max-w-3xl mx-auto mb-16">
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-6">
                 <Shield size={14} className="text-primary" />
-                Legal
+                {t("privacyPage.legal")}
               </span>
               <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-foreground tracking-tight mb-6">
-                Privacy{" "}
-                <span className="text-gradient-gold">Policy</span>
+                {t("privacyPage.title")}{" "}
+                <span className="text-gradient-gold">{t("privacyPage.titleHighlight")}</span>
               </h1>
-              <p className="text-primary-foreground/60">Last Updated: January 2025</p>
+              <p className="text-primary-foreground/60">{t("privacyPage.lastUpdated")}</p>
             </div>
 
             {/* Privacy Highlight */}
             <div className="max-w-3xl mx-auto mb-12">
               <div className="bg-gradient-gold rounded-3xl p-8 text-primary-foreground text-center">
                 <Lock className="w-12 h-12 mx-auto mb-4 opacity-80" />
-                <h2 className="font-display text-2xl font-bold mb-3">Your Privacy Matters</h2>
+                <h2 className="font-display text-2xl font-bold mb-3">{t("privacyPage.highlightTitle")}</h2>
                 <p className="opacity-90 leading-relaxed">
-                  At BeyondRounds, we're committed to protecting your privacy and handling your data responsibly. This policy explains what information we collect and how we use it.
+                  {t("privacyPage.highlightBody")}
                 </p>
               </div>
             </div>
@@ -47,68 +50,68 @@ const Privacy = () => {
                     <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
                       <Database className="w-5 h-5 text-primary" />
                     </div>
-                    <h2 className="font-display text-xl font-bold text-primary-foreground">Information We Collect</h2>
+                    <h2 className="font-display text-xl font-bold text-primary-foreground">{t("privacyPage.section1Title")}</h2>
                   </div>
                   
                   <div className="space-y-6 pl-13">
                     <div>
-                      <h3 className="font-semibold text-primary-foreground mb-3">Account Information</h3>
+                      <h3 className="font-semibold text-primary-foreground mb-3">{t("privacyPage.section1AccountTitle")}</h3>
                       <ul className="text-primary-foreground/60 space-y-2 leading-relaxed">
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Name and email address
+                          {t("privacyPage.section1Account1")}
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Medical license information (for verification)
+                          {t("privacyPage.section1Account2")}
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Profile photo
+                          {t("privacyPage.section1Account3")}
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Specialty and career stage
+                          {t("privacyPage.section1Account4")}
                         </li>
                       </ul>
                     </div>
                     
                     <div>
-                      <h3 className="font-semibold text-primary-foreground mb-3">Preferences & Interests</h3>
+                      <h3 className="font-semibold text-primary-foreground mb-3">{t("privacyPage.section1PrefsTitle")}</h3>
                       <ul className="text-primary-foreground/60 space-y-2 leading-relaxed">
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Hobbies and interests you share
+                          {t("privacyPage.section1Prefs1")}
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Availability preferences
+                          {t("privacyPage.section1Prefs2")}
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Location (city level)
+                          {t("privacyPage.section1Prefs3")}
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Matching preferences
+                          {t("privacyPage.section1Prefs4")}
                         </li>
                       </ul>
                     </div>
                     
                     <div>
-                      <h3 className="font-semibold text-primary-foreground mb-3">Usage Data</h3>
+                      <h3 className="font-semibold text-primary-foreground mb-3">{t("privacyPage.section1UsageTitle")}</h3>
                       <ul className="text-primary-foreground/60 space-y-2 leading-relaxed">
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          How you interact with the app
+                          {t("privacyPage.section1Usage1")}
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Group participation and feedback
+                          {t("privacyPage.section1Usage2")}
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                          Device and browser information
+                          {t("privacyPage.section1Usage3")}
                         </li>
                       </ul>
                     </div>
@@ -120,24 +123,24 @@ const Privacy = () => {
                     <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
                       <Eye className="w-5 h-5 text-primary" />
                     </div>
-                    <h2 className="font-display text-xl font-bold text-primary-foreground">How We Use Your Information</h2>
+                    <h2 className="font-display text-xl font-bold text-primary-foreground">{t("privacyPage.section2Title")}</h2>
                   </div>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      <span><strong className="text-primary-foreground">Matching:</strong> To connect you with compatible doctors in your area.</span>
+                      {t("privacyPage.section2Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      <span><strong className="text-primary-foreground">Communication:</strong> To send you group notifications and updates.</span>
+                      {t("privacyPage.section2Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      <span><strong className="text-primary-foreground">Improvement:</strong> To enhance our matching algorithm and user experience.</span>
+                      {t("privacyPage.section2Item3")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      <span><strong className="text-primary-foreground">Safety:</strong> To maintain a secure and verified community.</span>
+                      {t("privacyPage.section2Item4")}
                     </li>
                   </ul>
                 </section>
@@ -147,82 +150,82 @@ const Privacy = () => {
                     <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
                       <Shield className="w-5 h-5 text-primary" />
                     </div>
-                    <h2 className="font-display text-xl font-bold text-primary-foreground">What We Don't Do</h2>
+                    <h2 className="font-display text-xl font-bold text-primary-foreground">{t("privacyPage.section3Title")}</h2>
                   </div>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2.5 flex-shrink-0" />
-                      We never sell your personal information to third parties.
+                      {t("privacyPage.section3Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2.5 flex-shrink-0" />
-                      We don't share your medical license details with other members.
+                      {t("privacyPage.section3Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2.5 flex-shrink-0" />
-                      We don't use your data for targeted advertising.
+                      {t("privacyPage.section3Item3")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2.5 flex-shrink-0" />
-                      We don't share your exact location with other members.
+                      {t("privacyPage.section3Item4")}
                     </li>
                   </ul>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">Data Security</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("privacyPage.section4Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    We use industry-standard encryption and security measures to protect your data. All medical verification documents are securely stored and only accessed by authorized personnel for verification purposes.
+                    {t("privacyPage.section4Body")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">Your Rights</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("privacyPage.section5Title")}</h2>
                   <ul className="text-primary-foreground/60 space-y-3 leading-relaxed">
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      <span><strong className="text-primary-foreground">Access:</strong> Request a copy of your personal data.</span>
+                      {t("privacyPage.section5Item1")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      <span><strong className="text-primary-foreground">Correction:</strong> Update inaccurate information.</span>
+                      {t("privacyPage.section5Item2")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      <span><strong className="text-primary-foreground">Deletion:</strong> Request deletion of your account and data.</span>
+                      {t("privacyPage.section5Item3")}
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5 flex-shrink-0" />
-                      <span><strong className="text-primary-foreground">Export:</strong> Download your data in a portable format.</span>
+                      {t("privacyPage.section5Item4")}
                     </li>
                   </ul>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">Data Retention</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("privacyPage.section6Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    We retain your information for as long as your account is active. If you delete your account, we'll remove your personal data within 30 days, except where required by law.
+                    {t("privacyPage.section6Body")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">Cookies</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("privacyPage.section7Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    We use essential cookies to keep you logged in and remember your preferences. We use analytics cookies to understand how you use our service and improve it.
+                    {t("privacyPage.section7Body")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">Updates to This Policy</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("privacyPage.section8Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    We may update this policy periodically. We'll notify you of significant changes via email or in-app notification.
+                    {t("privacyPage.section8Body")}
                   </p>
                 </section>
 
                 <section>
-                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">Contact Us</h2>
+                  <h2 className="font-display text-xl font-bold text-primary-foreground mb-4">{t("privacyPage.section9Title")}</h2>
                   <p className="text-primary-foreground/60 leading-relaxed">
-                    Questions about privacy? Contact our Data Protection Officer at{" "}
+                    {t("privacyPage.section9Body")}{" "}
                     <a href={`mailto:${EMAILS.contact}`} className="text-primary hover:underline font-medium">
                       {EMAILS.contact}
                     </a>
