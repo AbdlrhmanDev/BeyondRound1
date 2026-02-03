@@ -112,62 +112,72 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
             </div>
           </div>
 
-          <div className="lg:col-span-5 relative order-1 lg:order-2">
-            <div className="relative">
+          <div className="lg:col-span-5 relative order-1 lg:order-2 pt-4 pl-4 pr-4 pb-8 sm:pt-6 sm:pl-6 sm:pr-6 sm:pb-10">
+            <div className="relative overflow-visible">
               <div
                 className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-[2.5rem] opacity-60 sm:blur-xl"
                 aria-hidden="true"
               />
-              <div className="relative rounded-[2rem] overflow-hidden shadow-2xl border border-primary-foreground/10 aspect-[4/5]">
-                <HeroImageServer />
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-foreground/20 to-transparent" aria-hidden="true" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
+              <div className="relative rounded-[2rem] shadow-2xl border border-primary-foreground/10 aspect-[4/5] overflow-visible">
+                {/* Image + gradient – clipped to rounded corners */}
+                <div className="absolute inset-0 overflow-hidden rounded-[2rem]">
+                  <HeroImageServer fill />
+                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-foreground/20 to-transparent" aria-hidden="true" />
+                </div>
+                {/* Next match panel */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
                   <div
                     className="bg-primary-foreground/10 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl p-4"
                     role="status"
                     aria-live="polite"
                     aria-label={`Next match: ${displayDate}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-primary-foreground font-display font-bold text-lg">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-primary-foreground font-display font-bold text-base sm:text-lg">
                           {t('home.nextMatchIn')}
                         </p>
-                        <p className="text-primary-foreground/70 text-sm">{displayDate}</p>
+                        <p className="text-primary-foreground/90 text-sm font-medium truncate" title={displayDate}>
+                          {displayDate}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                      <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-primary text-primary-foreground font-semibold text-sm shrink-0">
                         <div className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse" aria-hidden="true" />
                         {t('home.live')}
                       </div>
                     </div>
                   </div>
                 </div>
+                {/* Meaningful meetups badge – visible, not clipped */}
                 <div
-                  className="absolute -bottom-6 -left-8 bg-primary-foreground/10 backdrop-blur-xl border border-primary-foreground/10 p-4 rounded-2xl shadow-xl animate-float"
+                  className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6 bg-primary-foreground/10 backdrop-blur-xl border border-primary-foreground/10 p-3 sm:p-4 rounded-2xl shadow-xl animate-float"
                   aria-label="2 or more meaningful meetups"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow-sm">
-                      <span className="text-primary-foreground text-xl">👥</span>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow-sm shrink-0">
+                      <span className="text-primary-foreground text-lg sm:text-xl">👥</span>
                     </div>
-                    <div>
-                      <p className="font-display font-bold text-primary-foreground">
+                    <div className="min-w-0">
+                      <p className="font-display font-bold text-primary-foreground text-sm sm:text-base">
                         {t('home.meaningfulMeetups')}
                       </p>
-                      <p className="text-sm text-primary-foreground/70">{t('home.realConnections')}</p>
+                      <p className="text-xs sm:text-sm text-primary-foreground/70 truncate">
+                        {t('home.realConnections')}
+                      </p>
                     </div>
                   </div>
                 </div>
+                {/* Doctors count badge – visible, not clipped */}
                 <div
-                  className="absolute -top-4 -right-4 bg-primary-foreground/10 backdrop-blur-xl border border-primary-foreground/10 px-4 py-3 rounded-2xl shadow-lg animate-float delay-200"
+                  className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 bg-primary-foreground/10 backdrop-blur-xl border border-primary-foreground/10 px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-lg animate-float delay-200"
                   aria-label="Over 5,000 doctors on the platform"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                      <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
+                    <div className="relative shrink-0">
+                      <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-green-500" />
+                      <div className="absolute inset-0 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-green-500 animate-ping" />
                     </div>
-                    <span className="text-sm font-semibold text-primary-foreground">
+                    <span className="text-xs sm:text-sm font-semibold text-primary-foreground whitespace-nowrap">
                       {t('home.doctorsOnPlatform')}
                     </span>
                   </div>
