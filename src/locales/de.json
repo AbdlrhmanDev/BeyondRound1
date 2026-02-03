@@ -66,7 +66,9 @@
   "pwa": {
     "installTitle": "BeyondRounds installieren",
     "installHint": "Tippe auf Teilen",
-    "installThen": "und dann „Zum Home-Bildschirm“"
+    "installThen": "und dann „Zum Home-Bildschirm“",
+    "addToHomeScreen": "Zum Home-Bildschirm",
+    "installing": "Wird hinzugefügt…"
   },
   "home": {
     "badge": "Nur für verifizierte Ärzte",

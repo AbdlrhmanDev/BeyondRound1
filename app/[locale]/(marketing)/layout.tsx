@@ -3,7 +3,6 @@ import { getDictionary } from '@/lib/i18n/get-dictionary';
 import { I18nProvider } from '@/providers/I18nProvider';
 import { MarketingHeaderHtml } from '@/components/marketing/MarketingHeaderHtml';
 import { FooterSmall } from '@/components/marketing/FooterSmall';
-import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import type { Locale } from '@/lib/i18n/settings';
 
 interface MarketingLayoutProps {
@@ -25,7 +24,6 @@ export default async function MarketingLayout({
         <MarketingHeaderHtml dict={dict} locale={locale as Locale} pathWithoutLocale={pathWithoutLocale} />
         <main>{children}</main>
         <FooterSmall dict={dict} locale={locale as Locale} />
-        <PWAInstallPrompt />
       </div>
     </I18nProvider>
   );

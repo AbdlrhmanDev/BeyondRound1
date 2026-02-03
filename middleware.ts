@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { updateSession } from '@/lib/supabase/middleware';
+import { updateSession } from './src/lib/supabase/middleware';
 
 // Middleware runs on Edge by default in Next.js – no need to export runtime
 
@@ -53,6 +53,7 @@ export async function middleware(request: NextRequest) {
     pathname.includes('.') ||
     pathname === '/favicon.ico' ||
     pathname === '/manifest.json' ||
+    pathname === '/manifest.webmanifest' ||
     pathname === '/robots.txt'
   ) {
     return NextResponse.next();

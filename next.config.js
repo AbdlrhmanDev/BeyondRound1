@@ -90,6 +90,18 @@ const nextConfig = {
         headers: [{ key: 'Cache-Control', value: 'public, max-age=60, stale-while-revalidate=300' }],
       },
       {
+        source: '/:locale(de|en)/waitlist',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=60, stale-while-revalidate=300' }],
+      },
+      {
+        source: '/:locale(de|en)/terms',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=60, stale-while-revalidate=300' }],
+      },
+      {
+        source: '/:locale(de|en)/privacy',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=60, stale-while-revalidate=300' }],
+      },
+      {
         source: '/hero-doctors-friendship-mobile.webp',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },

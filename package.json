@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "dev": "next dev --turbo",
+    "dev:no-turbo": "next dev",
     "dev:turbo": "next dev --turbo",
     "dev:3001": "next dev -p 3001",
     "clean": "node scripts/clean-next.js",
