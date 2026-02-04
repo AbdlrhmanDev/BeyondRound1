@@ -39,6 +39,8 @@ export default async function HomePage({ params }: HomePageProps) {
     <div className="min-h-screen bg-foreground dark:bg-background">
       <HeroSectionServer dict={dict} locale={locale} />
       <HowItWorksSectionServer dict={dict} />
+      <CTASectionServer dict={dict} locale={locale} />
+      <AboutSectionServer dict={dict} />
       <FAQSectionServer
         items={faqItems}
         faqLabel={t('common.faq')}
@@ -48,8 +50,6 @@ export default async function HomePage({ params }: HomePageProps) {
         moreFaqLabel={t('faq.viewAll')}
         locale={locale}
       />
-      <AboutSectionServer dict={dict} />
-      <CTASectionServer dict={dict} locale={locale} />
     </div>
   );
 }

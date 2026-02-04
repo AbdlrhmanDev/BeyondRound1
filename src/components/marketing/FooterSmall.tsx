@@ -39,7 +39,7 @@ export function FooterSmall({ dict, locale }: FooterSmallProps) {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="defer-render bg-foreground dark:bg-background relative overflow-hidden border-t border-primary-foreground/10 dark:border-border">
+    <footer className="bg-foreground dark:bg-background relative overflow-hidden border-t border-primary-foreground/10 dark:border-border">
       <div className="absolute inset-0 pointer-events-none [contain:strict]">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 blur-[80px] sm:blur-[120px] lg:blur-[150px]" />
       </div>
@@ -56,7 +56,7 @@ export function FooterSmall({ dict, locale }: FooterSmallProps) {
               </span>
             </Link>
             <p className="text-primary-foreground/50 mb-6 sm:mb-8 max-w-sm text-sm sm:text-base lg:text-lg leading-relaxed">
-              {t('common.tagline')}. A premium social club exclusively for verified medical professionals.
+              {t('common.tagline')}. {t('common.footerSubtitle')}
             </p>
             <div className="space-y-3">
               <a
@@ -72,7 +72,7 @@ export function FooterSmall({ dict, locale }: FooterSmallProps) {
                 <div className="w-10 h-10 rounded-xl bg-primary-foreground/5 border border-primary-foreground/10 flex items-center justify-center">
                   <MapPin size={18} />
                 </div>
-                <span>Berlin, Germany</span>
+                <span>{t('common.footerLocation')}</span>
               </div>
             </div>
           </div>
