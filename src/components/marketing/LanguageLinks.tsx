@@ -12,9 +12,11 @@ interface LanguageLinksProps {
   className?: string;
   /** Use 'overlay' when on dark translucent header (marketing) */
   variant?: 'default' | 'overlay';
+  /** Called when any language link is clicked (e.g. to close mobile menu) */
+  onLinkClick?: () => void;
 }
 
-export function LanguageLinks({ className, variant = 'default' }: LanguageLinksProps) {
+export function LanguageLinks({ className, variant = 'default', onLinkClick }: LanguageLinksProps) {
   const pathname = usePathname();
   const pathWithoutLocale = pathname?.replace(/^\/(en|de)/, '') || '';
   const currentLocale = pathname?.startsWith('/en') ? 'en' : 'de';
@@ -45,6 +47,7 @@ export function LanguageLinks({ className, variant = 'default' }: LanguageLinksP
             role="tab"
             aria-selected={isActive}
             aria-label={locale === 'de' ? 'Deutsch' : 'English'}
+            onClick={onLinkClick}
             className={cn(
               'inline-flex min-h-[32px] min-w-[2.25rem] items-center justify-center rounded-md px-2.5 text-sm font-medium transition-colors',
               isOverlay

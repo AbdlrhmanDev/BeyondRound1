@@ -18,7 +18,7 @@ export function HowItWorksSectionServer({ dict }: HowItWorksSectionServerProps) 
   const t = getT(dict);
 
   return (
-    <section id="how-it-works" className="defer-render py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
+    <section id="how-it-works" className="py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-foreground/10 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-foreground/10 to-transparent" />

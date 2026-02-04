@@ -20,21 +20,6 @@ function getLocaleFromPath(pathname: string): string | null {
   return null;
 }
 
-function getLocaleFromHeaders(request: NextRequest): string {
-  // Check Accept-Language header
-  const acceptLanguage = request.headers.get('accept-language');
-  if (acceptLanguage) {
-    const preferredLocale = acceptLanguage
-      .split(',')
-      .map(lang => lang.split(';')[0].trim().substring(0, 2))
-      .find(lang => locales.includes(lang));
-    if (preferredLocale) {
-      return preferredLocale;
-    }
-  }
-  return defaultLocale;
-}
-
 function getLocaleFromCookie(request: NextRequest): string | null {
   const localeCookie = request.cookies.get('beyondrounds_locale');
   if (localeCookie && locales.includes(localeCookie.value)) {
@@ -64,7 +49,8 @@ export async function middleware(request: NextRequest) {
 
   // If no locale in path, redirect to localized path (no Supabase call needed)
   if (!pathLocale) {
-    const locale = getLocaleFromCookie(request) || getLocaleFromHeaders(request);
+    // Use saved preference (cookie) or default to German; user can switch to EN via menu
+    const locale = getLocaleFromCookie(request) || defaultLocale;
     const newUrl = new URL(`/${locale}${pathname === '/' ? '' : pathname}`, request.url);
     newUrl.search = request.nextUrl.search;
     return NextResponse.redirect(newUrl);

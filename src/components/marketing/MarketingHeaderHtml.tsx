@@ -1,9 +1,10 @@
 /**
- * Pure HTML/CSS header - NO JavaScript. Zero hydration on home.
- * Uses <details> for mobile menu (native, no React).
+ * Marketing header - server-rendered with client mobile menu.
+ * Mobile menu: backdrop, close on link/outside click, language switcher.
  */
 import Link from 'next/link';
 import { getT } from '@/lib/i18n/t';
+import { MarketingMobileMenu } from './MarketingMobileMenu';
 import type { Locale } from '@/lib/i18n/settings';
 
 const navLinks = [
@@ -87,46 +88,14 @@ export function MarketingHeaderHtml({ dict, locale, pathWithoutLocale = '' }: Ma
                 </Link>
               </div>
 
-              {/* Mobile: details/summary - zero JS, native. Light nav panel like design. */}
-              <details className="md:hidden group/menu relative">
-                <summary className="min-h-[44px] min-w-[44px] flex items-center justify-center text-primary-foreground rounded-lg hover:bg-primary-foreground/10 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                  <span className="group-open/menu:hidden" aria-hidden>
-                    ☰
-                  </span>
-                  <span className="group-open/menu:inline hidden" aria-hidden>
-                    ✕
-                  </span>
-                </summary>
-                <div className="md:hidden fixed left-3 right-3 mt-2 bg-black backdrop-blur-xl border border-white/10 rounded-xl shadow-xl p-4 animate-fade-in z-50" style={{ top: 'calc(env(safe-area-inset-top) + 5rem)' }}>
-                  <nav className="flex flex-col gap-0.5">
-                    {navLinks.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={`/${locale}${link.href}`}
-                        className="min-h-[44px] flex items-center px-4 py-3 text-gray-300 hover:text-white hover:bg-white/15 active:bg-white/10 rounded-xl font-medium transition-all duration-200"
-                      >
-                        {t(link.labelKey)}
-                      </Link>
-                    ))}
-                    <Link
-                      href={`/${locale}/auth`}
-                      prefetch={false}
-                      className="min-h-[44px] flex items-center px-4 py-3 text-gray-400 hover:text-white hover:bg-white/15 active:bg-white/10 rounded-xl font-medium transition-all duration-200"
-                    >
-                      {t('common.logIn')}
-                    </Link>
-                    <div className="pt-4 mt-2">
-                      <Link
-                        href={`/${locale}/onboarding`}
-                        prefetch={false}
-                        className="flex min-h-[48px] items-center justify-center rounded-2xl font-semibold bg-gradient-gold text-white shadow-lg shadow-orange-500/30 hover:opacity-95 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                      >
-                        {t('common.joinNow')}
-                      </Link>
-                    </div>
-                  </nav>
-                </div>
-              </details>
+              {/* Mobile: client menu with backdrop, close on click, language inside */}
+              <MarketingMobileMenu
+                locale={locale}
+                navLinks={navLinks.map((l) => ({ href: l.href, label: t(l.labelKey) }))}
+                logInLabel={t('common.logIn')}
+                joinNowLabel={t('common.joinNow')}
+                languageLabel={t('common.language')}
+              />
             </div>
           </div>
         </div>

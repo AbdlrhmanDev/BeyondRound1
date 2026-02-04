@@ -12,7 +12,7 @@ export function AboutSectionServer({ dict }: AboutSectionServerProps) {
   const t = getT(dict);
 
   return (
-    <section id="about" className="defer-render py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
+    <section id="about" className="py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 blur-[150px]" />
@@ -54,17 +54,6 @@ export function AboutSectionServer({ dict }: AboutSectionServerProps) {
               <p className="text-primary-foreground font-medium text-lg sm:text-xl">
                 {t("about.storyP5")}
               </p>
-            </div>
-
-            {/* Founder Signature */}
-            <div className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-primary-foreground/10 flex items-center gap-4 sm:gap-5">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-gold flex items-center justify-center text-primary-foreground font-display font-bold text-xl sm:text-2xl shadow-glow-sm shrink-0">
-                DR
-              </div>
-              <div>
-                <p className="font-display font-bold text-primary-foreground text-base sm:text-lg">{t("about.founder")}</p>
-                <p className="text-primary-foreground/50 text-sm sm:text-base">{t("about.founderTitle")}</p>
-              </div>
             </div>
           </div>
 

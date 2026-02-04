@@ -3,8 +3,10 @@
 /**
  * Marketing header - client for menu state + LanguageSwitcher.
  * Uses native buttons (no Radix), inline SVGs (no lucide) to reduce TBT on landing.
+ * Menu overlay rendered via Portal so click-outside works reliably.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { LanguageLinks } from './LanguageLinks';
 
@@ -48,6 +50,57 @@ export function MarketingHeaderClient({
   brandLabel,
 }: MarketingHeaderClientProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  const menuOverlay = isMenuOpen && mounted && typeof document !== 'undefined' && createPortal(
+    <>
+      <button
+        type="button"
+        className="md:hidden fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm cursor-pointer"
+        onClick={() => setIsMenuOpen(false)}
+        aria-label="Close menu"
+      />
+      <div className="md:hidden mx-3 mt-2 sm:mx-4">
+        <div className="md:hidden fixed left-3 right-3 mt-2 bg-black backdrop-blur-xl border border-white/10 rounded-xl shadow-xl p-4 animate-fade-in z-[9999]" style={{ top: 'calc(env(safe-area-inset-top) + 5rem)' }}>
+          <nav className="flex flex-col gap-0.5">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={`/${locale}${link.href}`}
+                className="min-h-[44px] flex items-center px-4 py-3 text-gray-300 hover:text-white hover:bg-white/15 active:bg-white/10 rounded-xl font-medium transition-all duration-200"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              href={`/${locale}/auth`}
+              className="min-h-[44px] flex items-center px-4 py-3 text-gray-400 hover:text-white hover:bg-white/15 active:bg-white/10 rounded-xl font-medium transition-all duration-200"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              {logInLabel}
+            </Link>
+            <div className="pt-4 mt-2 flex flex-col gap-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-sm text-gray-400">Language</span>
+                <LanguageLinks variant="overlay" onLinkClick={() => setIsMenuOpen(false)} />
+              </div>
+              <Link
+                href={`/${locale}/onboarding`}
+                onClick={() => setIsMenuOpen(false)}
+                className="flex w-full min-h-[48px] items-center justify-center rounded-2xl font-semibold bg-gradient-gold text-white shadow-lg shadow-orange-500/30 hover:opacity-95 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+              >
+                {joinNowLabel}
+              </Link>
+            </div>
+          </nav>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)]">
@@ -96,7 +149,6 @@ export function MarketingHeaderClient({
               </div>
 
               <div className="md:hidden flex items-center gap-1">
-                <LanguageLinks variant="overlay" />
                 <button
                   className="min-h-[44px] min-w-[44px] flex items-center justify-center text-primary-foreground rounded-lg hover:bg-primary-foreground/10 active:bg-primary-foreground/15 transition-colors -mr-1"
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -111,40 +163,7 @@ export function MarketingHeaderClient({
         </div>
       </div>
 
-      {isMenuOpen && (
-        <div className="md:hidden mx-3 mt-2 sm:mx-4">
-          <div className="md:hidden fixed left-3 right-3 mt-2 bg-black backdrop-blur-xl border border-white/10 rounded-xl shadow-xl p-4 animate-fade-in z-50" style={{ top: 'calc(env(safe-area-inset-top) + 5rem)' }}>
-            <nav className="flex flex-col gap-0.5">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={`/${locale}${link.href}`}
-                  className="min-h-[44px] flex items-center px-4 py-3 text-gray-300 hover:text-white hover:bg-white/15 active:bg-white/10 rounded-xl font-medium transition-all duration-200"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <Link
-                href={`/${locale}/auth`}
-                className="min-h-[44px] flex items-center px-4 py-3 text-gray-400 hover:text-white hover:bg-white/15 active:bg-white/10 rounded-xl font-medium transition-all duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {logInLabel}
-              </Link>
-              <div className="pt-4 mt-2">
-                <Link
-                  href={`/${locale}/onboarding`}
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex w-full min-h-[48px] items-center justify-center rounded-2xl font-semibold bg-gradient-gold text-white shadow-lg shadow-orange-500/30 hover:opacity-95 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                >
-                  {joinNowLabel}
-                </Link>
-              </div>
-            </nav>
-          </div>
-        </div>
-      )}
+      {menuOverlay}
     </header>
   );
 }
