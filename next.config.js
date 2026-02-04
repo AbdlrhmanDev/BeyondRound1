@@ -6,6 +6,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  poweredByHeader: false,
 
   // Strip all console in production (smaller bundles, faster parse, less main-thread work)
   ...(process.env.NODE_ENV === 'production' && {
@@ -122,16 +123,27 @@ const nextConfig = {
   // Transpile packages that need it (tailwind-merge removed – caused vendor-chunks resolution errors in dev)
   transpilePackages: ['lucide-react'],
 
-  // Webpack config to handle ESM packages
+  // Webpack config: ESM fallbacks + aggressive chunk splitting for smaller initial bundles
   webpack: (config, { isServer }) => {
-    // Handle lucide-react and other ESM packages
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
       };
+      // Keep framework in separate chunk for better caching
+      const existingCacheGroups = config.optimization.splitChunks?.cacheGroups || {};
+      config.optimization.splitChunks = {
+        ...config.optimization.splitChunks,
+        cacheGroups: {
+          ...existingCacheGroups,
+          framework: {
+            chunks: 'all',
+            name: 'framework',
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+          },
+        },
+      };
     }
-    // Suppress PackFileCacheStrategy "Serializing big strings" warning (harmless perf hint)
     config.infrastructureLogging = { level: 'error' };
     return config;
   },
@@ -145,6 +157,11 @@ const nextConfig = {
       'date-fns',
       'recharts',
       'sonner',
+      '@tanstack/react-query',
+      '@supabase/supabase-js',
+      'embla-carousel-react',
+      'react-hook-form',
+      'zod',
       '@radix-ui/react-accordion',
       '@radix-ui/react-alert-dialog',
       '@radix-ui/react-aspect-ratio',

@@ -346,8 +346,8 @@ const Auth = () => {
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-primary-foreground/20" />
                   </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 text-primary-foreground/60 bg-background/5">{t("auth.newToBeyondRounds")}</span>
+                  <div className="relative flex justify-center">
+                    <span className="px-4 py-1.5 text-sm font-medium text-primary-foreground/90 bg-white/10 rounded-full">{t("auth.newToBeyondRounds")}</span>
                   </div>
                 </div>
 

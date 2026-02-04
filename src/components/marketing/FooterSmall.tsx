@@ -9,8 +9,6 @@ import type { Locale } from '@/lib/i18n/settings';
 
 const footerLinks = {
   product: [
-    { labelKey: 'common.forDoctors', href: '/for-doctors' },
-    { labelKey: 'common.takeQuiz', href: '/survey', prefetch: false },
     { labelKey: 'common.howItWorks', href: '/learn-more' },
     { labelKey: 'common.pricing', href: '/pricing' },
     { labelKey: 'common.faq', href: '/faq' },

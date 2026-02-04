@@ -37,6 +37,7 @@ export function MarketingHeaderServer({ dict, locale }: MarketingHeaderServerPro
         logInLabel={t('common.logIn')}
         joinNowLabel={t('common.joinNow')}
         brandLabel={t('common.brand')}
+        languageLabel={t('common.language')}
       />
     </DeferredHeader>
   );

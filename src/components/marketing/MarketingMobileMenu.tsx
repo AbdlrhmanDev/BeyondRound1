@@ -61,45 +61,45 @@ export function MarketingMobileMenu({
         aria-label="Close menu"
       />
       <div
-        className="fixed left-3 right-3 mt-2 bg-zinc-900/95 border border-white/10 rounded-xl shadow-xl p-4 animate-fade-in z-[9999]"
+        className="fixed left-3 right-3 mt-2 bg-zinc-900/98 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/40 p-5 animate-fade-in z-[9999] max-h-[calc(100dvh-env(safe-area-inset-top)-6rem)] overflow-y-auto"
         style={{ top: 'calc(env(safe-area-inset-top) + 5rem)' }}
       >
-            <nav className="flex flex-col gap-0.5">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={`/${locale}${link.href}`}
-                  prefetch={false}
-                  className="min-h-[44px] flex items-center px-4 py-3 text-gray-300 hover:text-white hover:bg-white/15 active:bg-white/10 rounded-xl font-medium transition-all duration-200"
-                  onClick={close}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <Link
-                href={`/${locale}/auth`}
-                prefetch={false}
-                className="min-h-[44px] flex items-center px-4 py-3 text-gray-400 hover:text-white hover:bg-white/15 active:bg-white/10 rounded-xl font-medium transition-all duration-200"
-                onClick={close}
-              >
-                {logInLabel}
-              </Link>
-              <div className="pt-4 mt-2 flex flex-col gap-3">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-sm text-gray-400">{languageLabel}</span>
-                  <LanguageLinks variant="overlay" onLinkClick={close} />
-                </div>
-                <Link
-                  href={`/${locale}/onboarding`}
-                  prefetch={false}
-                  onClick={close}
-                  className="flex min-h-[48px] items-center justify-center rounded-2xl font-semibold bg-gradient-gold text-white shadow-lg shadow-orange-500/30 hover:opacity-95 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                >
-                  {joinNowLabel}
-                </Link>
-              </div>
-            </nav>
+        <nav className="flex flex-col gap-0.5">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={`/${locale}${link.href}`}
+              prefetch={false}
+              className="min-h-[44px] flex items-center px-4 py-3 text-white/90 hover:text-white hover:bg-white/10 active:bg-white/5 rounded-xl font-medium transition-all duration-200"
+              onClick={close}
+            >
+              {link.label}
+            </Link>
+          ))}
+          <div className="border-t border-white/10 my-4" aria-hidden />
+          <div className="flex justify-end mb-3">
+            <LanguageLinks variant="overlay" onLinkClick={close} />
           </div>
+          <div className="flex flex-col gap-2">
+            <Link
+              href={`/${locale}/auth`}
+              prefetch={false}
+              className="min-h-[44px] flex items-center justify-center px-4 py-3 text-white/90 hover:text-white hover:bg-white/10 active:bg-white/5 rounded-xl font-medium transition-all duration-200"
+              onClick={close}
+            >
+              {logInLabel}
+            </Link>
+            <Link
+              href={`/${locale}/onboarding`}
+              prefetch={false}
+              onClick={close}
+              className="flex min-h-[52px] items-center justify-center rounded-2xl font-semibold bg-gradient-gold text-white shadow-lg shadow-orange-500/25 hover:opacity-95 hover:brightness-110 active:scale-[0.98] transition-all duration-200"
+            >
+              {joinNowLabel}
+            </Link>
+          </div>
+        </nav>
+      </div>
     </>,
     document.body
   );

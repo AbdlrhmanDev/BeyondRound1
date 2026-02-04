@@ -61,7 +61,9 @@ export default function RootLayout({
     <html lang="de" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
-        <link rel="preload" href="/hero-doctors-friendship-mobile.webp" as="image" media="(min-width: 640px)" />
+        {/* LCP preload: mobile image on small viewports, desktop on large */}
+        <link rel="preload" href="/hero-doctors-friendship-mobile.webp" as="image" media="(max-width: 639px)" />
+        <link rel="preload" href="/hero-doctors-friendship-card.webp" as="image" media="(min-width: 640px)" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -73,7 +75,7 @@ export default function RootLayout({
       <body className={`${dmSans.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}
         <DeferredSpeedInsights />
-        <Script id="theme-init" strategy="lazyOnload">
+        <Script id="theme-init" strategy="beforeInteractive">
           {`(function(){try{var t=localStorage.getItem('theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`}
         </Script>
       </body>

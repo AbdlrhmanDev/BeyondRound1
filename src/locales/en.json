@@ -63,7 +63,8 @@
     "accept": "Accept",
     "getStarted": "Get Started",
     "signOut": "Sign Out",
-    "returnHome": "Return to Home"
+    "returnHome": "Return to Home",
+    "language": "Language"
   },
   "pwa": {
     "installTitle": "Install BeyondRounds",
