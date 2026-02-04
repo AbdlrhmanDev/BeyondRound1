@@ -9,8 +9,7 @@ GRANT USAGE ON SCHEMA cron TO postgres;
 
 -- Set project configuration
 -- Project URL: https://peqluzhrhgnwjhvxxtzs.supabase.co
-ALTER DATABASE postgres SET app.settings.supabase_url = 'https://peqluzhrhgnwjhvxxtzs.supabase.co';
-ALTER DATABASE postgres SET app.settings.service_role_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWx1emhyaGdud2podnh4dHpzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzgxOTI4NiwiZXhwIjoyMDgzMzk1Mjg2fQ.YtHS_8US0TOhV0-s6Xvxe1D3p8UJUdcQ-u2bel03rKc';
+ALTER DATABASE postgres SET app.settings.supabase_ur
 
 -- Create a function to call the Edge Function
 CREATE OR REPLACE FUNCTION public.send_match_notifications()

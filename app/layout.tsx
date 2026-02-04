@@ -7,7 +7,7 @@ import './globals.css';
 const dmSans = DM_Sans({
   subsets: ['latin'],
   variable: '--font-dm-sans',
-  display: 'optional',
+  display: 'swap',
   preload: true,
   adjustFontFallback: true,
 });
@@ -61,6 +61,7 @@ export default function RootLayout({
     <html lang="de" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
+        <link rel="preload" href="/hero-doctors-friendship-mobile.webp" as="image" media="(min-width: 640px)" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

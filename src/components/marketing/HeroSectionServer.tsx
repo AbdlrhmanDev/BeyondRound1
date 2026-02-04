@@ -63,7 +63,7 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
         <div className="grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-8 items-center">
           <div className="lg:col-span-7 text-center lg:text-left order-1 lg:order-1">
             <div
-              className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/90 text-xs sm:text-sm font-semibold mb-5 sm:mb-8 backdrop-blur-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full max-sm:bg-white/10 sm:bg-primary-foreground/5 sm:backdrop-blur-sm border border-primary-foreground/10 text-primary-foreground/90 text-xs sm:text-sm font-semibold mb-5 sm:mb-8"
               role="status"
               aria-label="Exclusively for verified doctors"
             >
@@ -101,7 +101,7 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
 
             {/* Mobile only: simplified card – clear hierarchy, warm grey badges */}
             <div className="sm:hidden mb-8">
-              <div className="relative rounded-2xl bg-primary-foreground/[0.06] border border-primary-foreground/12 p-5 backdrop-blur-sm">
+              <div className="relative rounded-2xl max-sm:bg-white/10 sm:bg-primary-foreground/[0.06] sm:backdrop-blur-sm border border-primary-foreground/12 p-5">
                 <div className="flex flex-wrap justify-center gap-2 mb-4 text-sm font-medium text-primary-foreground/90">
                   <span>{t('home.doctorsOnPlatform')}</span>
                   <span className="text-primary-foreground/40">|</span>
@@ -186,7 +186,7 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
                 {/* Next match panel – compact format */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6">
                   <div
-                    className="bg-primary-foreground/10 backdrop-blur-xl border border-primary-foreground/10 rounded-xl sm:rounded-2xl p-3 sm:p-4"
+                    className="max-sm:bg-white/15 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-xl sm:rounded-2xl p-3 sm:p-4"
                     role="status"
                     aria-live="polite"
                     aria-label={`Next match: ${displayDateCompact}`}
@@ -210,7 +210,7 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
                 </div>
                 {/* Meaningful meetups badge – warm grey, not orange */}
                 <div
-                  className="absolute -bottom-2 -left-2 sm:-bottom-4 sm:-left-4 md:-bottom-6 md:-left-6 bg-primary-foreground/10 backdrop-blur-xl border border-primary-foreground/10 p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl shadow-xl animate-float"
+                  className="absolute -bottom-2 -left-2 sm:-bottom-4 sm:-left-4 md:-bottom-6 md:-left-6 max-sm:bg-white/15 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl shadow-xl animate-float"
                   aria-label="2 or more meaningful meetups"
                 >
                   <div className="flex items-center gap-2 sm:gap-3">
@@ -229,7 +229,7 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
                 </div>
                 {/* Doctors count badge – warm grey */}
                 <div
-                  className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-4 md:-right-4 bg-primary-foreground/10 backdrop-blur-xl border border-primary-foreground/10 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 rounded-xl sm:rounded-2xl shadow-lg animate-float delay-200"
+                  className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-4 md:-right-4 max-sm:bg-white/15 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 rounded-xl sm:rounded-2xl shadow-lg animate-float delay-200"
                   aria-label="Over 5,000 doctors on the platform"
                 >
                   <div className="flex items-center gap-1.5 sm:gap-2">

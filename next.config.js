@@ -7,11 +7,10 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
 
-  // Strip console.log/debug/info in production (smaller bundles, faster parse)
-  // Only applied during build – dev (Turbopack) ignores this
+  // Strip all console in production (smaller bundles, faster parse, less main-thread work)
   ...(process.env.NODE_ENV === 'production' && {
     compiler: {
-      removeConsole: { exclude: ['error', 'warn'] },
+      removeConsole: true,
     },
   }),
 
@@ -140,6 +139,8 @@ const nextConfig = {
   // Experimental features
   experimental: {
     optimizePackageImports: [
+      'i18next',
+      'react-i18next',
       'lucide-react',
       'date-fns',
       'recharts',

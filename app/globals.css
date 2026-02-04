@@ -186,6 +186,20 @@
     font-family: 'Space Grotesk', system-ui, sans-serif;
   }
 
+  /* Performance: skip rendering below-fold until near viewport */
+  .content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 400px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   .font-sans {
     font-family: 'DM Sans', system-ui, sans-serif;
   }

@@ -22,16 +22,16 @@ export function CTASectionServer({ dict, locale }: CTASectionServerProps) {
   const t = getT(dict);
 
   return (
-    <section className="py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
+    <section className="content-visibility-auto py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none [contain:strict]">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/20 blur-[100px] sm:blur-[150px] lg:blur-[200px]" />
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-accent/10 blur-[80px] sm:blur-[120px] lg:blur-[150px]" />
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-primary/15 blur-[60px] sm:blur-[80px] lg:blur-[100px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/20 hidden sm:block sm:blur-[150px] lg:blur-[200px]" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-accent/10 hidden sm:block sm:blur-[120px] lg:blur-[150px]" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-primary/15 hidden sm:block sm:blur-[80px] lg:blur-[100px]" />
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-4xl mx-auto">
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-8">
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full max-sm:bg-white/10 sm:bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-8">
             <Sparkles size={14} className="text-primary" />
             {t('home.joinCommunity')}
           </span>

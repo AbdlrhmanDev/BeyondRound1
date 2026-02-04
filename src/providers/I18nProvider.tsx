@@ -70,7 +70,7 @@ export function I18nProvider({ children, locale, dictionary }: I18nProviderProps
   }
 
   useEffect(() => {
-    const timeout = setTimeout(() => setIsReady(true), 2000); // Fallback: never block > 2s
+    const timeout = setTimeout(() => setIsReady(true), 1500); // Fallback: never block > 1.5s
     const init = async () => {
       try {
         let dict = dictionary;
@@ -83,7 +83,7 @@ export function I18nProvider({ children, locale, dictionary }: I18nProviderProps
         if (i18n.language !== locale) {
           await i18n.changeLanguage(locale);
         }
-        setIsReady(true);
+        setIsReady(true); // Show content as soon as i18n is ready
       } catch (err) {
         console.error('[I18nProvider] init failed:', err);
         setIsReady(true); // Show app anyway to avoid infinite loading

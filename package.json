@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "browserslist": [
-    "last 2 Chrome versions",
-    "last 2 Firefox versions",
-    "last 2 Safari versions",
-    "last 2 Edge versions"
+    "Chrome >= 111",
+    "Firefox >= 111",
+    "Safari >= 16.4",
+    "Edge >= 111",
+    "not dead",
+    "not op_mini all"
   ],
   "scripts": {
     "dev": "next dev --turbo",

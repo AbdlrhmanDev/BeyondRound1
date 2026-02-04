@@ -29,7 +29,7 @@ export function FAQSectionServer({
   locale,
 }: FAQSectionServerProps) {
   return (
-    <section id="faq" className="py-28 lg:py-36 bg-foreground dark:bg-background relative">
+    <section id="faq" className="content-visibility-auto py-28 lg:py-36 bg-foreground dark:bg-background relative">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-start">
           <div className="lg:sticky lg:top-32">
@@ -54,7 +54,7 @@ export function FAQSectionServer({
             {items.map((item, index) => (
               <details
                 key={index}
-                className="group bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl px-6 mb-4 open:border-primary/30"
+                className="group max-sm:bg-white/10 sm:bg-primary-foreground/5 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-2xl px-6 mb-4 open:border-primary/30"
               >
                 <summary className="font-display font-semibold text-primary-foreground py-5 text-lg cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center justify-between">
                   {item.question}

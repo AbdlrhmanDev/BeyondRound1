@@ -17,9 +17,9 @@ export function DeferredSpeedInsights() {
     };
 
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      requestIdleCallback(load, { timeout: 4000 });
+      requestIdleCallback(load, { timeout: 6000 });
     } else {
-      setTimeout(load, 2000);
+      setTimeout(load, 3500);
     }
   }, []);
 

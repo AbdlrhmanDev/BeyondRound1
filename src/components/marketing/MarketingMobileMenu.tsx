@@ -56,12 +56,12 @@ export function MarketingMobileMenu({
       {/* Backdrop - click anywhere outside menu to close */}
       <button
         type="button"
-        className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm cursor-pointer"
+        className="fixed inset-0 z-[9998] bg-black/40 cursor-pointer"
         onClick={close}
         aria-label="Close menu"
       />
       <div
-        className="fixed left-3 right-3 mt-2 bg-black backdrop-blur-xl border border-white/10 rounded-xl shadow-xl p-4 animate-fade-in z-[9999]"
+        className="fixed left-3 right-3 mt-2 bg-zinc-900/95 border border-white/10 rounded-xl shadow-xl p-4 animate-fade-in z-[9999]"
         style={{ top: 'calc(env(safe-area-inset-top) + 5rem)' }}
       >
             <nav className="flex flex-col gap-0.5">

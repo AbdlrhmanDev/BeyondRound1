@@ -12,7 +12,7 @@ export function AboutSectionServer({ dict }: AboutSectionServerProps) {
   const t = getT(dict);
 
   return (
-    <section id="about" className="py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
+    <section id="about" className="content-visibility-auto py-28 lg:py-36 bg-foreground dark:bg-background relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 blur-[150px]" />
@@ -33,7 +33,7 @@ export function AboutSectionServer({ dict }: AboutSectionServerProps) {
           </div>
 
           {/* Quote Block */}
-          <div className="relative bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-3xl p-8 sm:p-10 lg:p-14">
+          <div className="relative max-sm:bg-white/10 sm:bg-primary-foreground/5 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-3xl p-8 sm:p-10 lg:p-14">
             <Quote className="absolute top-6 sm:top-8 left-6 sm:left-8 w-12 h-12 sm:w-16 sm:h-16 text-primary/20" />
 
             <div className="relative z-10 space-y-5 sm:space-y-6 text-base sm:text-lg text-primary-foreground/60 leading-relaxed">

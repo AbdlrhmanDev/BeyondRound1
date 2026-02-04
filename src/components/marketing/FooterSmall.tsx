@@ -41,7 +41,7 @@ export function FooterSmall({ dict, locale }: FooterSmallProps) {
   return (
     <footer className="bg-foreground dark:bg-background relative overflow-hidden border-t border-primary-foreground/10 dark:border-border">
       <div className="absolute inset-0 pointer-events-none [contain:strict]">
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 blur-[80px] sm:blur-[120px] lg:blur-[150px]" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 hidden sm:block sm:blur-[120px] lg:blur-[150px]" />
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
