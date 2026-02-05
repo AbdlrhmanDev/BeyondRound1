@@ -6,9 +6,8 @@ export const metadata: Metadata = {
   description: 'BeyondRounds Privacy Policy.',
 };
 
-// Force static generation
-export const dynamic = 'force-static';
-export const revalidate = 86400; // Revalidate daily
+// Dynamic rendering needed for i18n hooks
+export const dynamic = 'force-dynamic';
 
 export default function PrivacyPage() {
   return <PrivacyPageContent />;

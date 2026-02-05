@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
 import i18n from 'i18next';
 import { initReactI18next, I18nextProvider } from 'react-i18next';
 import type { Locale } from '@/lib/i18n/settings';
@@ -60,13 +60,16 @@ interface I18nProviderProps {
 
 export function I18nProvider({ children, locale, dictionary }: I18nProviderProps) {
   const [isReady, setIsReady] = useState(() => !!dictionary);
+  // Track if we've already applied dictionary to avoid redundant operations on re-renders
+  const dictionaryApplied = useRef(false);
 
-  // Apply dictionary synchronously when provided (avoids hydration mismatch: server/client must render same text)
-  if (dictionary && i18n.isInitialized && typeof i18n.addResourceBundle === 'function') {
+  // Apply dictionary synchronously ONCE when provided (avoids hydration mismatch)
+  if (dictionary && !dictionaryApplied.current && i18n.isInitialized && typeof i18n.addResourceBundle === 'function') {
     if (!hasResourceBundle(locale, 'translation')) {
       i18n.addResourceBundle(locale, 'translation', dictionary, true, true);
       i18n.changeLanguage(locale);
     }
+    dictionaryApplied.current = true;
   }
 
   useEffect(() => {

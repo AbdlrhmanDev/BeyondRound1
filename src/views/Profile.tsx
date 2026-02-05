@@ -3,38 +3,62 @@
 import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
-import LocalizedLink from "@/components/LocalizedLink";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerClose,
+} from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/DashboardLayout";
-import { LocationSelect } from "@/components/LocationSelect";
 import { getProfile, updateProfile } from "@/services/profileService";
-import { getOnboardingPreferences, markOnboardingComplete } from "@/services/onboardingService";
-import { supabase } from "@/integrations/supabase/client";
-import { INTEREST_OPTIONS } from "@/constants/interests";
-import { uploadAvatar, uploadLicense } from "@/services/storageService";
-import { 
-  Camera, 
-  Save,
-  Sparkles,
-  ChevronRight,
-  Stethoscope,
-  Heart,
-  Users,
+import { getOnboardingPreferences, saveOnboardingPreferences, OnboardingPreferences } from "@/services/onboardingService";
+import { uploadAvatar } from "@/services/storageService";
+import { LocationSelect } from "@/components/LocationSelect";
+import {
+  Camera,
   MapPin,
-  Calendar,
-  Dumbbell,
+  Globe,
+  CreditCard,
+  Shield,
   FileText,
-  Upload,
-  Check
+  LogOut,
+  ChevronRight,
+  CheckCircle2,
+  Users,
+  Calendar,
+  Pencil,
+  MessageSquare,
+  Check,
+  ExternalLink,
+  Loader2,
+  Sparkles,
+  Crown,
+  Star,
+  Zap,
 } from "lucide-react";
+import SmartFeedback from "@/components/SmartFeedback";
+import EmailNotificationsToggle from "@/components/EmailNotificationsToggle";
+import { cn } from "@/lib/utils";
 
 interface Profile {
   full_name: string | null;
@@ -47,82 +71,277 @@ interface Profile {
   license_url: string | null;
 }
 
-interface OnboardingPreferences {
-  specialty: string | null;
-  career_stage: string | null;
-  interests: string[] | null;
-  friendship_type: string[] | null;
-  meeting_frequency: string | null;
-  completed_at: string | null;
-  goals?: string[] | null;
-  sports: string[] | null;
-  music_preferences?: string[] | null;
-  movie_preferences?: string[] | null;
-  other_interests?: string[] | null;
-  social_style: string[] | null;
-  culture_interests: string[] | null;
-  lifestyle: string[] | null;
-  availability_slots: string[] | null;
-  open_to_business?: boolean | null;
+interface UserStats {
+  meetups: number;
+  doctorsMet: number;
 }
 
+// Subscription types
+type SubscriptionPlan = 'free' | 'trial' | 'monthly' | 'premium';
+
+interface SubscriptionState {
+  plan: SubscriptionPlan;
+  status: 'active' | 'canceled' | 'expired' | 'none';
+  trialUsed: boolean;
+  nextBillingDate?: string;
+  cancelAtPeriodEnd?: boolean;
+}
+
+// Plan data
+const SUBSCRIPTION_PLANS = {
+  trial: {
+    id: 'trial',
+    name: 'One-Time Trial',
+    price: 9.99,
+    period: 'one-time',
+    popular: false,
+    features: [
+      'Weekly curated group matches',
+      'Group chat access',
+      'RoundsBot icebreakers',
+      'Basic matching algorithm',
+    ],
+    cta: 'Start One-Time Trial',
+  },
+  monthly: {
+    id: 'monthly',
+    name: 'Monthly',
+    price: 14.99,
+    period: 'month',
+    popular: true,
+    features: [
+      'Everything in Trial',
+      'Priority matching algorithm',
+      'Expanded profile & interests',
+      'Early access to new features',
+      'Priority customer support',
+    ],
+    cta: 'Subscribe Monthly',
+  },
+  premium: {
+    id: 'premium',
+    name: 'Premium',
+    price: 29.99,
+    period: 'month',
+    popular: false,
+    features: [
+      'Everything in Monthly',
+      'Advanced lifestyle compatibility',
+      'AI-powered activity suggestions',
+      'Filters by specialty, age & more',
+      'Smaller group preference (2-3)',
+      'Exclusive member events',
+    ],
+    cta: 'Go Premium',
+  },
+} as const;
+
+// Specialties data
+const SPECIALTIES = [
+  { id: "General Practice", label: "General Practice", icon: "🏥" },
+  { id: "Internal Medicine", label: "Internal Medicine", icon: "🩺" },
+  { id: "Surgery", label: "Surgery", icon: "⚕️" },
+  { id: "Pediatrics", label: "Pediatrics", icon: "👶" },
+  { id: "Cardiology", label: "Cardiology", icon: "❤️" },
+  { id: "Neurology", label: "Neurology", icon: "🧠" },
+  { id: "Psychiatry", label: "Psychiatry", icon: "💭" },
+  { id: "Emergency Medicine", label: "Emergency Medicine", icon: "🚑" },
+  { id: "Anesthesiology", label: "Anesthesiology", icon: "💉" },
+  { id: "Radiology", label: "Radiology", icon: "📷" },
+  { id: "Dermatology", label: "Dermatology", icon: "✨" },
+  { id: "Orthopedics", label: "Orthopedics", icon: "🦴" },
+  { id: "Ophthalmology", label: "Ophthalmology", icon: "👁️" },
+  { id: "Gynecology", label: "OB/GYN", icon: "👩‍⚕️" },
+  { id: "Oncology", label: "Oncology", icon: "🎗️" },
+  { id: "Other", label: "Other", icon: "➕" },
+];
+
+// Interests data
+const INTERESTS = [
+  { id: "running", label: "Running", icon: "🏃" },
+  { id: "cycling", label: "Cycling", icon: "🚴" },
+  { id: "swimming", label: "Swimming", icon: "🏊" },
+  { id: "gym", label: "Gym/Weights", icon: "🏋️" },
+  { id: "tennis", label: "Tennis/Padel", icon: "🎾" },
+  { id: "hiking", label: "Hiking", icon: "🥾" },
+  { id: "yoga", label: "Yoga/Pilates", icon: "🧘" },
+  { id: "reading", label: "Reading", icon: "📚" },
+  { id: "cooking", label: "Cooking", icon: "👨‍🍳" },
+  { id: "photography", label: "Photography", icon: "📸" },
+  { id: "travel", label: "Travel", icon: "✈️" },
+  { id: "art", label: "Art/Museums", icon: "🎨" },
+  { id: "board_games", label: "Board Games", icon: "🎲" },
+  { id: "video_games", label: "Video Games", icon: "🎮" },
+  { id: "music", label: "Music", icon: "🎵" },
+  { id: "wine", label: "Wine/Food", icon: "🍷" },
+];
+
+// Languages data
+const LANGUAGES = [
+  { id: "en", label: "English", flag: "🇬🇧" },
+  { id: "de", label: "Deutsch", flag: "🇩🇪" },
+];
+
 const Profile = () => {
-  const { t } = useTranslation();
-  const { user, loading: authLoading } = useAuth();
+  const { t, i18n } = useTranslation();
+  const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useLocalizedNavigate();
   const { toast } = useToast();
-  
+
+  // Data state
   const [profile, setProfile] = useState<Profile | null>(null);
   const [preferences, setPreferences] = useState<OnboardingPreferences | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  
-  const [fullName, setFullName] = useState("");
-  const [country, setCountry] = useState("");
-  const [state, setState] = useState("");
-  const [city, setCity] = useState("");
-  const [neighborhood, setNeighborhood] = useState("");
-  
+  const [stats] = useState<UserStats>({ meetups: 3, doctorsMet: 12 });
+
+  // Subscription state (TODO: fetch from backend)
+  const [subscription, setSubscription] = useState<SubscriptionState>({
+    plan: 'free',
+    status: 'none',
+    trialUsed: false,
+    nextBillingDate: undefined,
+    cancelAtPeriodEnd: false,
+  });
+
+  // Modal/Drawer states
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [nameModalOpen, setNameModalOpen] = useState(false);
+  const [cityDrawerOpen, setCityDrawerOpen] = useState(false);
+  const [languageDrawerOpen, setLanguageDrawerOpen] = useState(false);
+  const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
+  const [subscriptionDrawerOpen, setSubscriptionDrawerOpen] = useState(false);
+
+  // Form state for edit profile modal
+  const [editForm, setEditForm] = useState({
+    name: "",
+    specialty: "",
+    interests: [] as string[],
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Location state for city picker
+  const [locationForm, setLocationForm] = useState({
+    country: "",
+    state: "",
+    city: "",
+  });
+
   // File upload state
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const licenseInputRef = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [licenseUploading, setLicenseUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Constants for avatar upload
+  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+
+  // Name edit state
+  const [editedName, setEditedName] = useState("");
+
+  // Initialize form data when profile/preferences load
+  useEffect(() => {
+    if (profile) {
+      setEditedName(profile.full_name || "");
+      setLocationForm({
+        country: profile.country || "",
+        state: profile.state || "",
+        city: profile.city || "",
+      });
+    }
+    if (preferences) {
+      setEditForm({
+        name: profile?.full_name || "",
+        specialty: preferences.specialty || "",
+        interests: [
+          ...(preferences.interests || []),
+          ...(preferences.sports || []),
+          ...(preferences.other_interests || []),
+        ],
+      });
+    }
+  }, [profile, preferences]);
+
+  // Avatar file selection handler with validation
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
-    
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: t("profile.toastFileTooLarge"), description: t("profile.toastMax5MB"), variant: "destructive" });
+    if (!file) return;
+
+    // Reset error state
+    setAvatarError(null);
+
+    // Validate file type
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(fileExtension || '')) {
+      setAvatarError(t("profile.avatarInvalidType"));
+      toast({
+        title: t("profile.avatarInvalidType"),
+        description: t("profile.avatarAllowedTypes"),
+        variant: "destructive"
+      });
       return;
     }
-    
+
+    // Validate file size (2MB max)
+    if (file.size > MAX_FILE_SIZE) {
+      setAvatarError(t("profile.toastFileTooLarge"));
+      toast({
+        title: t("profile.toastFileTooLarge"),
+        description: t("profile.avatarMaxSize"),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.onerror = () => {
+      setAvatarError(t("profile.avatarReadError"));
+      toast({
+        title: t("profile.avatarReadError"),
+        variant: "destructive"
+      });
+    };
+    reader.readAsDataURL(file);
+    setSelectedFile(file);
+  };
+
+  // Format file size for display
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // Avatar upload handler (from modal)
+  const handleAvatarUpload = async () => {
+    if (!selectedFile || !user) return;
+
     setAvatarUploading(true);
     try {
-      const publicUrl = await uploadAvatar(user.id, file);
-      
+      const publicUrl = await uploadAvatar(user.id, selectedFile);
+
       if (!publicUrl) {
         throw new Error("Failed to upload avatar");
       }
-      
+
       const updatedProfile = await updateProfile(user.id, { avatar_url: publicUrl });
-      
+
       if (updatedProfile) {
-        setProfile(prev => prev ? {
-          ...prev,
-          full_name: updatedProfile.full_name,
-          avatar_url: updatedProfile.avatar_url,
-          city: updatedProfile.city || null,
-          neighborhood: updatedProfile.neighborhood || null,
-          languages: updatedProfile.languages ?? null,
-          license_url: updatedProfile.license_url || null,
-          country: updatedProfile.country ?? null,
-          state: updatedProfile.state ?? null,
-        } : null);
+        // Optimistic update
+        setProfile(prev => prev ? { ...prev, avatar_url: updatedProfile.avatar_url } : null);
       }
-      
+
       toast({ title: t("profile.toastProfilePhotoUpdated") });
+      setAvatarModalOpen(false);
+      setAvatarPreview(null);
+      setSelectedFile(null);
     } catch (error) {
       console.error("Error uploading avatar:", error);
       toast({ title: t("profile.toastUploadFailed"), description: t("profile.toastPleaseTryAgain"), variant: "destructive" });
@@ -131,67 +350,135 @@ const Profile = () => {
     }
   };
 
-  const handleLicenseChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: t("profile.toastFileTooLarge"), description: t("profile.toastMax10MB"), variant: "destructive" });
-      return;
-    }
-    
-    setLicenseUploading(true);
+  // Name update handler
+  const handleNameSave = async () => {
+    if (!user || !editedName.trim()) return;
+
+    setIsSaving(true);
+    // Optimistic update
+    const previousName = profile?.full_name;
+    setProfile(prev => prev ? { ...prev, full_name: editedName.trim() } : null);
+    setNameModalOpen(false);
+
     try {
-      const filePath = await uploadLicense(user.id, file);
-      
-      if (!filePath) {
-        throw new Error("Failed to upload license");
+      const updatedProfile = await updateProfile(user.id, { full_name: editedName.trim() });
+      if (!updatedProfile) {
+        // Revert on failure
+        setProfile(prev => prev ? { ...prev, full_name: previousName || null } : null);
+        toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
+      } else {
+        toast({ title: t("profile.toastNameUpdated") });
       }
-      
-      const updatedProfile = await updateProfile(user.id, { license_url: filePath });
-      
-      if (updatedProfile) {
-        setProfile(prev => prev ? {
-          ...prev,
-          full_name: updatedProfile.full_name,
-          avatar_url: updatedProfile.avatar_url,
-          city: updatedProfile.city || null,
-          neighborhood: updatedProfile.neighborhood || null,
-          languages: updatedProfile.languages ?? null,
-          license_url: updatedProfile.license_url || null,
-          country: updatedProfile.country ?? null,
-          state: updatedProfile.state ?? null,
-        } : null);
-      }
-      
-      // Check if profile is now complete and mark it
-      const isNowComplete = updatedProfile?.full_name && updatedProfile?.city && filePath;
-      
-      if (isNowComplete) {
-        const existingPrefs = await getOnboardingPreferences(user.id);
-        if (!existingPrefs?.completed_at) {
-          await markOnboardingComplete(user.id);
-          
-          // Refresh preferences
-          const prefsData = await getOnboardingPreferences(user.id);
-          if (prefsData) {
-            setPreferences(prefsData as OnboardingPreferences);
-          }
-        }
-      }
-      
-      toast({ 
-        title: t("profile.toastLicenseUpdated"),
-        description: isNowComplete
-          ? t("profile.toastProfileCompleteRefresh")
-          : t("profile.toastFillCityAndSave")
-      });
     } catch (error) {
-      console.error("Error uploading license:", error);
-      toast({ title: t("profile.toastUploadFailed"), description: t("profile.toastPleaseTryAgain"), variant: "destructive" });
+      console.error("Error updating name:", error);
+      setProfile(prev => prev ? { ...prev, full_name: previousName || null } : null);
+      toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
     } finally {
-      setLicenseUploading(false);
+      setIsSaving(false);
     }
+  };
+
+  // City update handler
+  const handleCitySave = async () => {
+    if (!user) return;
+
+    setIsSaving(true);
+    const previousLocation = {
+      country: profile?.country,
+      state: profile?.state,
+      city: profile?.city,
+    };
+
+    // Optimistic update
+    setProfile(prev => prev ? {
+      ...prev,
+      country: locationForm.country,
+      state: locationForm.state,
+      city: locationForm.city,
+    } : null);
+    setCityDrawerOpen(false);
+
+    try {
+      const updatedProfile = await updateProfile(user.id, {
+        country: locationForm.country,
+        state: locationForm.state,
+        city: locationForm.city,
+      });
+
+      if (!updatedProfile) {
+        setProfile(prev => prev ? { ...prev, ...previousLocation } : null);
+        toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
+      } else {
+        toast({ title: t("profile.toastLocationUpdated") });
+      }
+    } catch (error) {
+      console.error("Error updating location:", error);
+      setProfile(prev => prev ? { ...prev, ...previousLocation } : null);
+      toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Language change handler
+  const handleLanguageChange = async (langId: string) => {
+    // Change app language
+    i18n.changeLanguage(langId);
+    setLanguageDrawerOpen(false);
+    toast({ title: t("profile.toastLanguageUpdated") });
+  };
+
+  // Edit Profile save handler
+  const handleEditProfileSave = async () => {
+    if (!user) return;
+
+    setIsSaving(true);
+    const previousProfile = { ...profile };
+    const previousPrefs = { ...preferences };
+
+    // Optimistic update
+    setProfile(prev => prev ? { ...prev, full_name: editForm.name } : null);
+    setPreferences(prev => prev ? {
+      ...prev,
+      specialty: editForm.specialty,
+      interests: editForm.interests.filter(i => INTERESTS.map(int => int.id).includes(i)),
+    } : null);
+    setEditProfileModalOpen(false);
+
+    try {
+      // Update profile name
+      await updateProfile(user.id, { full_name: editForm.name });
+
+      // Update preferences
+      await saveOnboardingPreferences(user.id, {
+        specialty: editForm.specialty,
+        interests: editForm.interests.filter(i => INTERESTS.map(int => int.id).includes(i)),
+      });
+
+      toast({ title: t("profile.toastProfileUpdated") });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      setProfile(previousProfile as Profile);
+      setPreferences(previousPrefs as OnboardingPreferences);
+      toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Interest toggle in edit form
+  const toggleInterest = (interestId: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      interests: prev.interests.includes(interestId)
+        ? prev.interests.filter(i => i !== interestId)
+        : [...prev.interests, interestId],
+    }));
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
   };
 
   useEffect(() => {
@@ -221,14 +508,9 @@ const Profile = () => {
             languages: profileData.languages || null,
             license_url: profileData.license_url || null,
           });
-          setFullName(profileData.full_name || "");
-          setCountry(profileData.country || "");
-          setState(profileData.state || "");
-          setCity(profileData.city || "");
-          setNeighborhood(profileData.neighborhood || "");
         }
         if (prefsData) {
-          setPreferences(prefsData as OnboardingPreferences);
+          setPreferences(prefsData);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -242,125 +524,24 @@ const Profile = () => {
     }
   }, [user]);
 
-  const handleSave = async () => {
-    if (!user) return;
-    
-    setSaving(true);
-    try {
-      // Update profile using service
-      const updatedProfile = await updateProfile(user.id, {
-        full_name: fullName,
-        country: country || null,
-        state: state || null,
-        city: city || null,
-        neighborhood: neighborhood || null,
-      });
-
-      if (!updatedProfile) {
-        throw new Error("Failed to update profile");
-      }
-
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        full_name: updatedProfile.full_name,
-        avatar_url: updatedProfile.avatar_url,
-        city: updatedProfile.city || null,
-        neighborhood: updatedProfile.neighborhood || null,
-        languages: updatedProfile.languages ?? null,
-        license_url: updatedProfile.license_url || null,
-        country: updatedProfile.country ?? null,
-        state: updatedProfile.state ?? null,
-      } : null);
-      setFullName(updatedProfile.full_name || "");
-      setCity(updatedProfile.city || "");
-      setNeighborhood(updatedProfile.neighborhood || "");
-
-      // Check if profile is complete (has name, city, and license)
-      const isComplete = fullName && city && profile?.license_url;
-      
-      if (isComplete) {
-        // Mark onboarding as complete if not already
-        const existingPrefs = await getOnboardingPreferences(user.id);
-        if (!existingPrefs?.completed_at) {
-          const success = await markOnboardingComplete(user.id);
-          if (success) {
-            // Refresh preferences
-            const prefsData = await getOnboardingPreferences(user.id);
-            if (prefsData) {
-              setPreferences(prefsData as OnboardingPreferences);
-            }
-          }
-        }
-      }
-      
-      toast({
-        title: t("profile.toastProfileUpdated"),
-        description: isComplete 
-          ? t("profile.toastProfileCompleteNextRound")
-          : t("profile.toastChangesSavedFillCity"),
-      });
-      
-      // If profile is complete, refresh preferences to update UI
-      if (isComplete) {
-        const { data: prefsData } = await supabase
-          .from("onboarding_preferences")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        
-        if (prefsData) {
-          setPreferences(prefsData as any);
-        }
-      }
-    } catch (error: any) {
-      console.error("Error updating profile:", error);
-      toast({
-        title: t("common.error"),
-        description: error.message || t("profile.toastFailedToUpdateProfile"),
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const formatSlot = (slot: string) => {
-    const slotMap: Record<string, string> = {
-      fri_evening: "Fri Eve",
-      sat_morning: "Sat AM",
-      sat_afternoon: "Sat PM",
-      sat_evening: "Sat Eve",
-      sun_morning: "Sun AM",
-      sun_afternoon: "Sun PM",
-      sun_evening: "Sun Eve",
-      weekday_eve: "Weekday Eve",
-    };
-    return slotMap[slot] || slot;
-  };
-
-  const getInterestLabel = (id: string): string => {
-    const opt = INTEREST_OPTIONS.find((o) => o.id === id);
-    if (opt) return opt.label;
-    const goalKey = `onboarding.goals.${id}`;
-    const translated = t(goalKey);
-    return translated !== goalKey ? translated : id.replace(/_/g, " ");
-  };
-
-  const getCareerStageLabel = (id: string): string => {
-    const key = `onboarding.stage.${id}`;
-    const translated = t(key);
-    return translated !== key ? translated : id.replace(/_/g, " ");
-  };
-
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <Skeleton className="h-10 sm:h-12 w-40 sm:w-48 mb-6 sm:mb-8 rounded-xl" />
-          <Skeleton className="h-80 sm:h-96 rounded-2xl sm:rounded-3xl" />
+      <DashboardLayout>
+        <div className="container mx-auto px-4 py-6 max-w-lg">
+          <div className="flex flex-col items-center mb-6">
+            <Skeleton className="h-24 w-24 rounded-full mb-4" />
+            <Skeleton className="h-6 w-40 mb-2 rounded" />
+            <Skeleton className="h-4 w-24 mb-2 rounded" />
+            <Skeleton className="h-6 w-32 rounded-full" />
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl" />
+          </div>
+          <Skeleton className="h-40 rounded-xl mb-4" />
+          <Skeleton className="h-40 rounded-xl" />
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
@@ -368,431 +549,816 @@ const Profile = () => {
     ?.split(" ")
     .map((n) => n[0])
     .join("")
-    .toUpperCase() || user?.email?.[0].toUpperCase() || "U";
+    .toUpperCase()
+    .slice(0, 2) || user?.email?.[0].toUpperCase() || "U";
+
+  const isVerified = !!profile?.license_url;
+  const displayName = profile?.full_name || t("profile.addYourName");
+  const locationDisplay = [profile?.city, profile?.country].filter(Boolean).join(", ") || t("profile.notSet");
+  const currentLang = LANGUAGES.find(l => l.id === i18n.language) || LANGUAGES[0];
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-12 max-w-3xl">
-        {/* Breadcrumb */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 animate-fade-up">
-          <div className="flex items-center gap-2 min-w-0">
-            <LocalizedLink to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              {t("common.dashboard")}
-            </LocalizedLink>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-primary">{t("dashboard.profile")}</span>
+      <main className="container mx-auto px-4 py-6 max-w-lg">
+        {/* Profile Header - Centered */}
+        <div className="flex flex-col items-center text-center mb-6">
+          {/* Avatar with edit button */}
+          <div className="relative mb-4">
+            <button
+              onClick={() => setAvatarModalOpen(true)}
+              className="relative group"
+              aria-label={t("profile.changePhoto")}
+            >
+              <Avatar className="h-24 w-24 border-4 border-background shadow-lg transition-transform group-hover:scale-105">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </button>
+            <div className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md">
+              <Camera className="h-4 w-4" />
+            </div>
           </div>
-          <Button 
-            onClick={handleSave}
-            disabled={saving}
-            className="gap-2"
+
+          {/* Name (clickable to edit) */}
+          <button
+            onClick={() => {
+              setEditedName(profile?.full_name || "");
+              setNameModalOpen(true);
+            }}
+            className="group flex items-center gap-2 mb-1"
           >
-            <Save className="h-4 w-4" />
-            {saving ? t("profile.saving") : t("profile.save")}
-          </Button>
+            <h1 className="font-display text-xl font-bold text-foreground">
+              {displayName}
+            </h1>
+            <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+
+          {/* Specialty */}
+          {preferences?.specialty && (
+            <p className="text-sm text-muted-foreground mb-3">
+              {preferences.specialty}
+            </p>
+          )}
+
+          {/* Verified Badge */}
+          {isVerified && (
+            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 gap-1.5 px-3 py-1">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {t("profile.verifiedDoctor")}
+            </Badge>
+          )}
         </div>
 
-        <div className="space-y-6">
-          {/* Avatar Section */}
-          <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl overflow-hidden animate-fade-up">
-            <div className="h-24 bg-gradient-gold relative">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.3),transparent_50%)]" />
-            </div>
-            <CardContent className="-mt-12 relative pb-6 px-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-                <div className="relative group">
-                  <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                    <AvatarImage src={profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-gradient-gold text-primary-foreground text-3xl font-display font-bold">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                  />
-                  <button 
-                    onClick={() => avatarInputRef.current?.click()}
-                    disabled={avatarUploading}
-                    className="absolute inset-0 rounded-full bg-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                  >
-                    {avatarUploading ? (
-                      <div className="h-6 w-6 border-2 border-background border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Camera className="h-6 w-6 text-background" />
-                    )}
-                  </button>
-                </div>
-                <div className="flex-1 pt-4 sm:pt-0">
-                  <h2 className="font-display text-2xl font-bold text-foreground">
-                    {profile?.full_name || t("profile.addYourName")}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
-                  {profile?.city && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                      <MapPin className="h-3 w-3" />
-                      {[profile.country, profile.state, profile.city, profile.neighborhood].filter(Boolean).join(", ")}
-                    </p>
-                  )}
-                </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <Card className="rounded-xl bg-card border border-border shadow-sm">
+            <CardContent className="p-4 flex flex-col items-center text-center">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+                <Calendar className="h-5 w-5 text-primary" />
               </div>
+              <span className="text-2xl font-bold text-foreground">{stats.meetups}</span>
+              <span className="text-xs text-muted-foreground">{t("profile.meetups")}</span>
             </CardContent>
           </Card>
-
-          {/* Medical License Section */}
-          <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-75">
-            <CardHeader className="px-6 pt-6 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-                <CardTitle className="text-lg font-display">{t("profile.medicalLicense")}</CardTitle>
+          <Card className="rounded-xl bg-card border border-border shadow-sm">
+            <CardContent className="p-4 flex flex-col items-center text-center">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+                <Users className="h-5 w-5 text-primary" />
               </div>
-            </CardHeader>
-            <CardContent className="px-6 pb-6">
+              <span className="text-2xl font-bold text-foreground">{stats.doctorsMet}</span>
+              <span className="text-xs text-muted-foreground">{t("profile.doctorsMet")}</span>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Preferences Section */}
+        <Card className="rounded-xl bg-card border border-border shadow-sm mb-4">
+          <CardContent className="p-0">
+            <div className="px-4 py-3 border-b border-border">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("profile.preferences")}
+              </h2>
+            </div>
+
+            {/* City */}
+            <button
+              onClick={() => setCityDrawerOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-foreground">{t("profile.city")}</p>
+                  <p className="text-xs text-muted-foreground">{locationDisplay}</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+
+            {/* Language */}
+            <button
+              onClick={() => setLanguageDrawerOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-foreground">{t("profile.language")}</p>
+                  <p className="text-xs text-muted-foreground">{currentLang.flag} {currentLang.label}</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+
+            {/* Email Notifications */}
+            <EmailNotificationsToggle />
+          </CardContent>
+        </Card>
+
+        {/* Account Section */}
+        <Card className="rounded-xl bg-card border border-border shadow-sm mb-4">
+          <CardContent className="p-0">
+            <div className="px-4 py-3 border-b border-border">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("profile.account")}
+              </h2>
+            </div>
+
+            {/* Edit Profile */}
+            <button
+              onClick={() => {
+                setEditForm({
+                  name: profile?.full_name || "",
+                  specialty: preferences?.specialty || "",
+                  interests: [
+                    ...(preferences?.interests || []),
+                    ...(preferences?.sports || []),
+                    ...(preferences?.other_interests || []),
+                  ],
+                });
+                setEditProfileModalOpen(true);
+              }}
+              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-foreground">{t("profile.editProfile")}</p>
+                  <p className="text-xs text-muted-foreground">{t("profile.editProfileDesc")}</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+
+            {/* Subscription & Payments */}
+            <button
+              onClick={() => setSubscriptionDrawerOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "h-9 w-9 rounded-lg flex items-center justify-center",
+                  subscription.plan === 'premium' ? "bg-amber-100 dark:bg-amber-900/30" :
+                  subscription.plan !== 'free' ? "bg-primary/10" : "bg-secondary"
+                )}>
+                  {subscription.plan === 'premium' ? (
+                    <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  ) : subscription.plan !== 'free' ? (
+                    <Star className="h-4 w-4 text-primary" />
+                  ) : (
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-foreground">{t("profile.subscription")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {subscription.plan === 'free'
+                      ? t("profile.freePlan")
+                      : subscription.plan === 'trial'
+                      ? t("profile.plans.trial.name")
+                      : subscription.plan === 'monthly'
+                      ? t("profile.plans.monthly.name")
+                      : t("profile.plans.premium.name")
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {subscription.plan !== 'free' && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
+                    {t("profile.active")}
+                  </Badge>
+                )}
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </button>
+
+            {/* Feedback & Suggestions */}
+            <button
+              onClick={() => setFeedbackOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                </div>
+                <p className="text-sm font-medium text-foreground">{t("profile.feedbackSuggestions")}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+
+            {/* Privacy */}
+            <button
+              onClick={() => window.open("/privacy", "_blank")}
+              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">{t("profile.privacy")}</p>
+              </div>
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            </button>
+
+            {/* Terms of Service */}
+            <button
+              onClick={() => window.open("/terms", "_blank")}
+              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">{t("profile.termsOfService")}</p>
+              </div>
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </CardContent>
+        </Card>
+
+        {/* Log Out Button */}
+        <Card className="rounded-xl bg-card border border-border shadow-sm">
+          <CardContent className="p-0">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center justify-center gap-2 px-4 py-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors rounded-xl"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="font-medium">{t("common.signOut")}</span>
+            </button>
+          </CardContent>
+        </Card>
+
+        {/* Bottom spacing for mobile nav */}
+        <div className="h-4" />
+
+        {/* ========== MODALS & DRAWERS ========== */}
+
+        {/* Avatar Upload Modal */}
+        <Dialog open={avatarModalOpen} onOpenChange={(open) => {
+          setAvatarModalOpen(open);
+          if (!open) {
+            setAvatarPreview(null);
+            setSelectedFile(null);
+            setAvatarError(null);
+          }
+        }}>
+          <DialogContent className="sm:max-w-md rounded-xl">
+            <DialogHeader>
+              <DialogTitle>{t("profile.changePhoto")}</DialogTitle>
+              <DialogDescription>{t("profile.changePhotoDesc")}</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col items-center gap-4 py-4">
+              {/* Circular Avatar Preview */}
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+                  <AvatarImage src={avatarPreview || profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-3xl font-semibold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                {avatarPreview && (
+                  <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
+                    <Check className="h-3.5 w-3.5 text-white" />
+                  </div>
+                )}
+              </div>
+
+              {/* File Info */}
+              {selectedFile && (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground truncate max-w-[200px]">
+                    {selectedFile.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatFileSize(selectedFile.size)}
+                  </p>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {avatarError && (
+                <p className="text-sm text-red-500 text-center">{avatarError}</p>
+              )}
+
+              {/* File Input */}
               <input
-                ref={licenseInputRef}
+                ref={avatarInputRef}
                 type="file"
-                accept="image/*,.pdf"
-                onChange={handleLicenseChange}
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                onChange={handleAvatarSelect}
                 className="hidden"
               />
-              {profile?.license_url ? (
-                <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <Check className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{t("profile.licenseUploaded")}</p>
-                      <p className="text-xs text-muted-foreground">{t("profile.clickToUpdate")}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => licenseInputRef.current?.click()}
-                    disabled={licenseUploading}
-                    className="rounded-lg"
-                  >
-                    {licenseUploading ? t("profile.uploading") : t("profile.update")}
-                  </Button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => licenseInputRef.current?.click()}
-                  disabled={licenseUploading}
-                  className="w-full p-6 border-2 border-dashed border-border rounded-xl hover:border-primary/50 hover:bg-secondary/30 transition-colors text-center"
-                >
-                  {licenseUploading ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      <p className="text-sm text-muted-foreground">{t("profile.uploading")}</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">{t("profile.uploadMedicalLicense")}</p>
-                      <p className="text-xs text-muted-foreground">{t("profile.licenseFileHint")}</p>
-                    </div>
-                  )}
-                </button>
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Basic Info */}
-          <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-100">
-            <CardHeader className="px-6 pt-6 pb-4">
-              <CardTitle className="text-lg font-display">{t("profile.basicInformation")}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-6 pb-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">{t("profile.fullName")}</Label>
-                <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={t("profile.fullNamePlaceholder")}
-                  className="rounded-xl h-12"
-                />
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{t("profile.location")}</p>
-                  <p className="text-xs text-muted-foreground">{t("profile.locationHint")}</p>
-                </div>
+              {/* Select Photo Button */}
+              <Button
+                variant="outline"
+                onClick={() => avatarInputRef.current?.click()}
+                className="rounded-xl"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                {selectedFile ? t("profile.changePhoto") : t("profile.selectPhoto")}
+              </Button>
+
+              {/* File Type Hint */}
+              <p className="text-xs text-muted-foreground text-center">
+                {t("profile.avatarHint")}
+              </p>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => {
+                setAvatarModalOpen(false);
+                setAvatarPreview(null);
+                setSelectedFile(null);
+                setAvatarError(null);
+              }} className="rounded-xl">
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={handleAvatarUpload}
+                disabled={!selectedFile || avatarUploading || !!avatarError}
+                className="rounded-xl"
+              >
+                {avatarUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t("profile.uploading")}
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    {t("common.save")}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Name Edit Modal */}
+        <Dialog open={nameModalOpen} onOpenChange={setNameModalOpen}>
+          <DialogContent className="sm:max-w-md rounded-xl">
+            <DialogHeader>
+              <DialogTitle>{t("profile.editName")}</DialogTitle>
+              <DialogDescription>{t("profile.editNameDesc")}</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Label htmlFor="name" className="text-sm font-medium">
+                {t("profile.fullName")}
+              </Label>
+              <Input
+                id="name"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                placeholder={t("profile.enterYourName")}
+                className="mt-2 rounded-xl"
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setNameModalOpen(false)} className="rounded-xl">
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={handleNameSave}
+                disabled={!editedName.trim() || isSaving}
+                className="rounded-xl"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  t("common.save")
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* City Picker Drawer */}
+        <Drawer open={cityDrawerOpen} onOpenChange={setCityDrawerOpen}>
+          <DrawerContent className="max-h-[85vh]">
+            <div className="mx-auto w-full max-w-lg">
+              <DrawerHeader>
+                <DrawerTitle>{t("profile.selectCity")}</DrawerTitle>
+                <DrawerDescription>{t("profile.selectCityDesc")}</DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-4 space-y-4">
                 <LocationSelect
-                  country={country}
-                  state={state}
-                  city={city}
-                  neighborhood={neighborhood}
-                  onCountryChange={setCountry}
-                  onStateChange={setState}
-                  onCityChange={setCity}
-                  onNeighborhoodChange={setNeighborhood}
+                  country={locationForm.country}
+                  state={locationForm.state}
+                  city={locationForm.city}
+                  onCountryChange={(country) => setLocationForm(prev => ({ ...prev, country, state: "", city: "" }))}
+                  onStateChange={(state) => setLocationForm(prev => ({ ...prev, state, city: "" }))}
+                  onCityChange={(city) => setLocationForm(prev => ({ ...prev, city }))}
                   showNationality={false}
-                  className="w-full"
                   variant="profile"
                 />
               </div>
+              <DrawerFooter>
+                <Button onClick={handleCitySave} disabled={isSaving} className="rounded-xl">
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  {t("common.save")}
+                </Button>
+                <DrawerClose asChild>
+                  <Button variant="outline" className="rounded-xl">{t("common.cancel")}</Button>
+                </DrawerClose>
+              </DrawerFooter>
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Language Picker Drawer */}
+        <Drawer open={languageDrawerOpen} onOpenChange={setLanguageDrawerOpen}>
+          <DrawerContent className="max-h-[50vh]">
+            <div className="mx-auto w-full max-w-lg">
+              <DrawerHeader>
+                <DrawerTitle>{t("profile.selectLanguage")}</DrawerTitle>
+                <DrawerDescription>{t("profile.selectLanguageDesc")}</DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-6 space-y-2">
+                {LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.id}
+                    onClick={() => handleLanguageChange(lang.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-colors",
+                      i18n.language === lang.id
+                        ? "bg-primary/10 border-2 border-primary"
+                        : "bg-secondary hover:bg-secondary/80 border-2 border-transparent"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{lang.flag}</span>
+                      <span className="font-medium text-foreground">{lang.label}</span>
+                    </div>
+                    {i18n.language === lang.id && (
+                      <Check className="h-5 w-5 text-primary" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Edit Profile Full-Screen Modal */}
+        <Dialog open={editProfileModalOpen} onOpenChange={setEditProfileModalOpen}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                {t("profile.editProfile")}
+              </DialogTitle>
+              <DialogDescription>{t("profile.editProfileModalDesc")}</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              {/* Name */}
               <div className="space-y-2">
-                <Label htmlFor="email">{t("profile.email")}</Label>
+                <Label htmlFor="editName" className="text-sm font-medium">
+                  {t("profile.fullName")}
+                </Label>
                 <Input
-                  id="email"
-                  value={user?.email || ""}
-                  disabled
-                  className="rounded-xl h-12 bg-secondary/50"
+                  id="editName"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder={t("profile.enterYourName")}
+                  className="rounded-xl"
                 />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Professional Info */}
-          <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-200">
-            <CardHeader className="px-6 pt-6 pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-display">{t("profile.professionalDetails")}</CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-lg"
-                  onClick={() => navigate("/onboarding")}
-                >
-                  {t("profile.editPreferences")}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="px-6 pb-6 space-y-4">
-              {preferences?.specialty ? (
-                <>
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Stethoscope className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t("profile.specialty")}</p>
-                      <p className="text-sm font-medium text-foreground">{preferences.specialty}</p>
-                    </div>
-                  </div>
-                  
-                  {preferences.career_stage && (
-                    <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
-                      <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                        <Sparkles className="h-5 w-5 text-accent" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">{t("profile.careerStage")}</p>
-                        <p className="text-sm font-medium text-foreground">{getCareerStageLabel(preferences.career_stage)}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {preferences.meeting_frequency && (
-                    <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">{t("profile.meetingPreference")}</p>
-                        <p className="text-sm font-medium text-foreground">{preferences.meeting_frequency}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {preferences.open_to_business && (
-                    <Badge className="bg-primary/10 text-primary border-0">
-                      {t("profile.openToBusiness")}
-                    </Badge>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">
-                    {t("profile.completeOnboardingHint")}
-                  </p>
-                  <Button 
-                    onClick={() => navigate("/interests")}
-                  >
-                    {t("dashboard.addInterests")}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Sports & Activities */}
-          {preferences?.sports && preferences.sports.length > 0 && (
-            <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-250">
-              <CardHeader className="px-6 pt-6 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                    <Dumbbell className="h-5 w-5 text-green-600" />
-                  </div>
-                  <CardTitle className="text-lg font-display">{t("profile.sportsAndFitness")}</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="px-6 pb-6">
-                <div className="flex flex-wrap gap-2">
-                  {preferences.sports.map((sport) => (
-                    <Badge 
-                      key={sport} 
-                      variant="secondary" 
-                      className="px-3 py-1.5 rounded-full text-xs font-medium"
+              {/* Specialty */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("profile.specialty")}</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                  {SPECIALTIES.map((spec) => (
+                    <button
+                      key={spec.id}
+                      type="button"
+                      onClick={() => setEditForm(prev => ({ ...prev, specialty: spec.id }))}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all",
+                        editForm.specialty === spec.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary hover:bg-secondary/80 text-foreground"
+                      )}
                     >
-                      {getInterestLabel(sport)}
-                    </Badge>
+                      <span>{spec.icon}</span>
+                      <span className="truncate">{spec.label}</span>
+                    </button>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
 
-          {/* Availability */}
-          {preferences?.availability_slots && preferences.availability_slots.length > 0 && (
-            <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-300">
-              <CardHeader className="px-6 pt-6 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <CardTitle className="text-lg font-display">{t("profile.weekendAvailability")}</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="px-6 pb-6">
-                <div className="flex flex-wrap gap-2">
-                  {preferences.availability_slots.map((slot) => (
-                    <Badge 
-                      key={slot} 
-                      variant="outline" 
-                      className="px-3 py-1.5 rounded-full text-xs font-medium"
+              {/* Interests */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("profile.interests")}</Label>
+                <p className="text-xs text-muted-foreground">{t("profile.selectInterests")}</p>
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                  {INTERESTS.map((interest) => (
+                    <button
+                      key={interest.id}
+                      type="button"
+                      onClick={() => toggleInterest(interest.id)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all",
+                        editForm.interests.includes(interest.id)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary hover:bg-secondary/80 text-foreground"
+                      )}
                     >
-                      {formatSlot(slot)}
-                    </Badge>
+                      <span>{interest.icon}</span>
+                      <span>{interest.label}</span>
+                    </button>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Interests & Goals */}
-          <Card className="border-0 shadow-xl shadow-foreground/5 rounded-3xl animate-fade-up delay-350">
-            <CardHeader className="px-6 pt-6 pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                    <Heart className="h-5 w-5 text-green-600" />
-                  </div>
-                  <CardTitle className="text-lg font-display">{t("profile.interestsAndGoals")}</CardTitle>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-lg"
-                  onClick={() => navigate("/interests")}
-                >
-                  {t("dashboard.addInterests")}
-                </Button>
               </div>
-            </CardHeader>
-            <CardContent className="px-6 pb-6">
-              {(() => {
-                const hasSocialStyle = (preferences?.social_style?.length ?? 0) > 0;
-                const hasGoals = (preferences?.goals?.length ?? 0) > 0;
-                const hasMusic = (preferences?.music_preferences?.length ?? 0) > 0;
-                const hasMovies = (preferences?.movie_preferences?.length ?? 0) > 0;
-                const hasOther = (preferences?.other_interests?.length ?? 0) > 0;
-                const hasCulture = (preferences?.culture_interests?.length ?? 0) > 0;
-                const hasLifestyle = (preferences?.lifestyle?.length ?? 0) > 0;
-                const hasAny = hasSocialStyle || hasGoals || hasMusic || hasMovies || hasOther || hasCulture || hasLifestyle;
+            </div>
 
-                if (!hasAny) {
-                  return (
-                    <div className="text-center py-6">
-                      <p className="text-sm text-muted-foreground mb-4">{t("profile.addInterestsThroughOnboarding")}</p>
-                      <Button variant="outline" size="sm" onClick={() => navigate("/interests")} className="gap-2">
-                        <Heart className="h-4 w-4" />
-                        {t("dashboard.addInterests")}
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setEditProfileModalOpen(false)} className="rounded-xl">
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={handleEditProfileSave}
+                disabled={isSaving || !editForm.name.trim()}
+                className="rounded-xl"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t("common.loading")}
+                  </>
+                ) : (
+                  t("common.save")
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Subscription Drawer */}
+        <Drawer open={subscriptionDrawerOpen} onOpenChange={setSubscriptionDrawerOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <div className="mx-auto w-full max-w-lg overflow-y-auto">
+              <DrawerHeader className="text-center">
+                <DrawerTitle className="flex items-center justify-center gap-2">
+                  <Crown className="h-5 w-5 text-primary" />
+                  {t("profile.subscriptionPayments")}
+                </DrawerTitle>
+                <DrawerDescription>{t("profile.choosePlan")}</DrawerDescription>
+              </DrawerHeader>
+
+              <div className="px-4 pb-6 space-y-4">
+                {/* If user has active subscription - show current plan info */}
+                {subscription.status === 'active' && subscription.plan !== 'free' && (
+                  <Card className="rounded-xl border-2 border-primary bg-primary/5">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-primary text-primary-foreground">
+                            {t("profile.currentPlan")}
+                          </Badge>
+                          <span className="font-bold text-foreground">
+                            {SUBSCRIPTION_PLANS[subscription.plan as keyof typeof SUBSCRIPTION_PLANS]?.name || 'Free'}
+                          </span>
+                        </div>
+                        {subscription.plan !== 'trial' && (
+                          <span className="text-lg font-bold text-primary">
+                            €{SUBSCRIPTION_PLANS[subscription.plan as keyof typeof SUBSCRIPTION_PLANS]?.price}
+                            <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {subscription.nextBillingDate && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {t("profile.nextBilling")}: <span className="font-medium">{subscription.nextBillingDate}</span>
+                        </p>
+                      )}
+
+                      {subscription.cancelAtPeriodEnd && (
+                        <p className="text-sm text-amber-600 dark:text-amber-400 mb-3">
+                          {t("profile.canceledAtPeriodEnd")}
+                        </p>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 rounded-xl"
+                          onClick={() => {
+                            // TODO: Redirect to Stripe Customer Portal
+                            toast({ title: t("profile.stripePortalComingSoon") });
+                          }}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          {t("profile.manageInStripe")}
+                        </Button>
+                        {!subscription.cancelAtPeriodEnd && subscription.plan !== 'trial' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl"
+                            onClick={() => {
+                              // TODO: Cancel subscription
+                              toast({ title: t("profile.cancelConfirm"), variant: "destructive" });
+                            }}
+                          >
+                            {t("profile.cancelSubscription")}
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Plans Grid */}
+                <div className="space-y-3">
+                  {/* Trial Plan - Show only if trial not used and user is on free plan */}
+                  {!subscription.trialUsed && subscription.plan === 'free' && (
+                    <Card className="rounded-xl border-2 border-border hover:border-primary/50 transition-all">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Zap className="h-4 w-4 text-amber-500" />
+                              <h3 className="font-bold text-foreground">{t("profile.plans.trial.name")}</h3>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{t("profile.plans.trial.desc")}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xl font-bold text-foreground">€9.99</span>
+                            <p className="text-xs text-muted-foreground">{t("profile.oneTime")}</p>
+                          </div>
+                        </div>
+
+                        <ul className="space-y-1.5 mb-4">
+                          {['weeklyMatches', 'groupChat', 'roundsBot', 'basicMatching'].map((feature) => (
+                            <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                              {t(`profile.plans.trial.features.${feature}`)}
+                            </li>
+                          ))}
+                        </ul>
+
+                        <Button
+                          className="w-full rounded-xl"
+                          variant="outline"
+                          onClick={() => {
+                            // TODO: Start trial checkout
+                            toast({ title: t("profile.startingCheckout") });
+                          }}
+                        >
+                          {t("profile.plans.trial.cta")}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Monthly Plan - Most Popular */}
+                  <Card className={cn(
+                    "rounded-xl border-2 transition-all relative overflow-hidden",
+                    subscription.plan === 'monthly'
+                      ? "border-primary bg-primary/5"
+                      : "border-primary/50 hover:border-primary"
+                  )}>
+                    {/* Popular Badge */}
+                    <div className="absolute top-0 right-0">
+                      <div className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-xl">
+                        {t("profile.mostPopular")}
+                      </div>
+                    </div>
+
+                    <CardContent className="p-4 pt-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Star className="h-4 w-4 text-primary" />
+                            <h3 className="font-bold text-foreground">{t("profile.plans.monthly.name")}</h3>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{t("profile.plans.monthly.desc")}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xl font-bold text-primary">€14.99</span>
+                          <p className="text-xs text-muted-foreground">/{t("profile.perMonth")}</p>
+                        </div>
+                      </div>
+
+                      <ul className="space-y-1.5 mb-4">
+                        {['everythingTrial', 'priorityMatching', 'expandedProfile', 'earlyAccess', 'prioritySupport'].map((feature) => (
+                          <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                            {t(`profile.plans.monthly.features.${feature}`)}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <Button
+                        className="w-full rounded-xl"
+                        disabled={subscription.plan === 'monthly' || subscription.plan === 'premium'}
+                        onClick={() => {
+                          // TODO: Start monthly checkout
+                          toast({ title: t("profile.startingCheckout") });
+                        }}
+                      >
+                        {subscription.plan === 'monthly' ? t("profile.currentPlan") : t("profile.plans.monthly.cta")}
                       </Button>
-                    </div>
-                  );
-                }
+                    </CardContent>
+                  </Card>
 
-                return (
-                  <div className="space-y-4">
-                    {hasSocialStyle && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.socialStyle")}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {preferences!.social_style!.map((style) => (
-                            <Badge key={style} variant="secondary" className="px-3 py-1.5 rounded-full text-xs font-medium">
-                              {getInterestLabel(style)}
-                            </Badge>
-                          ))}
+                  {/* Premium Plan */}
+                  <Card className={cn(
+                    "rounded-xl border-2 transition-all",
+                    subscription.plan === 'premium'
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  )}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Crown className="h-4 w-4 text-amber-500" />
+                            <h3 className="font-bold text-foreground">{t("profile.plans.premium.name")}</h3>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{t("profile.plans.premium.desc")}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xl font-bold text-foreground">€29.99</span>
+                          <p className="text-xs text-muted-foreground">/{t("profile.perMonth")}</p>
                         </div>
                       </div>
-                    )}
 
-                    {hasGoals && (
-                      <div className={hasSocialStyle ? "pt-4 border-t border-border/40" : ""}>
-                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.lookingFor")}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {preferences!.goals!.map((goal) => (
-                            <Badge key={goal} variant="outline" className="px-3 py-1.5 rounded-full text-xs font-medium border-primary/30 text-primary">
-                              {getInterestLabel(goal)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      <ul className="space-y-1.5 mb-4">
+                        {['everythingMonthly', 'advancedCompatibility', 'aiSuggestions', 'advancedFilters', 'smallerGroups', 'exclusiveEvents'].map((feature) => (
+                          <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                            {t(`profile.plans.premium.features.${feature}`)}
+                          </li>
+                        ))}
+                      </ul>
 
-                    {(hasMusic || hasMovies || hasOther) && (
-                      <div className="pt-4 border-t border-border/40">
-                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.interests")}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {[...(preferences?.music_preferences || []), ...(preferences?.movie_preferences || []), ...(preferences?.other_interests || [])].map((id) => (
-                            <Badge key={id} variant="secondary" className="px-3 py-1.5 rounded-full text-xs font-medium">
-                              {getInterestLabel(id)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      <Button
+                        className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-primary hover:from-amber-600 hover:to-primary/90"
+                        disabled={subscription.plan === 'premium'}
+                        onClick={() => {
+                          // TODO: Start premium checkout
+                          toast({ title: t("profile.startingCheckout") });
+                        }}
+                      >
+                        {subscription.plan === 'premium' ? t("profile.currentPlan") : t("profile.plans.premium.cta")}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
 
-                    {hasCulture && (
-                      <div className="pt-4 border-t border-border/40">
-                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.culture")}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {preferences!.culture_interests!.map((interest) => (
-                            <Badge key={interest} variant="secondary" className="px-3 py-1.5 rounded-full text-xs font-medium">
-                              {getInterestLabel(interest)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                {/* Money-back guarantee note */}
+                <p className="text-center text-xs text-muted-foreground pt-2">
+                  {t("profile.moneyBackGuarantee")}
+                </p>
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
 
-                    {hasLifestyle && (
-                      <div className="pt-4 border-t border-border/40">
-                        <p className="text-sm font-medium text-muted-foreground mb-3">{t("profile.lifestyle")}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {preferences!.lifestyle!.map((item) => (
-                            <Badge key={item} variant="secondary" className="px-3 py-1.5 rounded-full text-xs font-medium">
-                              {getInterestLabel(item)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </CardContent>
-          </Card>
-        </div>
+        {/* Smart Feedback Drawer */}
+        <SmartFeedback
+          open={feedbackOpen}
+          onOpenChange={setFeedbackOpen}
+          context="profile_suggestion"
+        />
       </main>
     </DashboardLayout>
   );

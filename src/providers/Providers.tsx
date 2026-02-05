@@ -5,23 +5,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { ConditionalAuthProvider } from '@/providers/ConditionalAuthProvider';
-
-const APP_ROUTES = ['/dashboard', '/settings', '/profile', '/matches', '/chat', '/group-chat', '/places', '/onboarding', '/interests', '/survey', '/admin', '/auth', '/forgot-password', '/welcome'];
-
-function pathNeedsQuery(pathname: string | null): boolean {
-  if (!pathname) return false;
-  return APP_ROUTES.some((route) => pathname.includes(route));
-}
-
-function pathNeedsTooltip(pathname: string | null): boolean {
-  if (!pathname) return false;
-  return APP_ROUTES.some((route) => pathname.includes(route));
-}
-
-function pathNeedsLocaleProvider(pathname: string | null): boolean {
-  if (!pathname) return false;
-  return APP_ROUTES.some((route) => pathname.includes(route));
-}
+import { isAppRoute } from '@/lib/routes';
 
 // Lazy-load heavy providers only for app routes (~100KB+ savings on marketing)
 const QueryClientWrapper = dynamic(
@@ -47,9 +31,8 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   const pathname = usePathname();
-  const needsQuery = pathNeedsQuery(pathname);
-  const needsTooltip = pathNeedsTooltip(pathname);
-  const needsLocale = pathNeedsLocaleProvider(pathname);
+  // Single check for all app providers (DRY + consistent)
+  const needsAppProviders = isAppRoute(pathname);
 
   const [showToasters, setShowToasters] = useState(false);
   useEffect(() => {
@@ -69,8 +52,8 @@ export function Providers({ children }: ProvidersProps) {
     </>
   );
 
-  const withTooltip = needsTooltip ? <TooltipProviderWrapper>{inner}</TooltipProviderWrapper> : inner;
-  const withLocale = needsLocale ? <LocaleProviderWrapper>{withTooltip}</LocaleProviderWrapper> : withTooltip;
+  const withTooltip = needsAppProviders ? <TooltipProviderWrapper>{inner}</TooltipProviderWrapper> : inner;
+  const withLocale = needsAppProviders ? <LocaleProviderWrapper>{withTooltip}</LocaleProviderWrapper> : withTooltip;
 
   const content = (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
@@ -78,7 +61,7 @@ export function Providers({ children }: ProvidersProps) {
     </ThemeProvider>
   );
 
-  return needsQuery ? (
+  return needsAppProviders ? (
     <QueryClientWrapper>{content}</QueryClientWrapper>
   ) : (
     content

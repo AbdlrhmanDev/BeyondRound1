@@ -9,11 +9,9 @@ import { pathWithoutLocale } from "@/lib/locale";
 import { preloadRoute } from "@/lib/preloadRoutes";
 import { Button } from "@/components/ui/button";
 import NotificationPopover from "@/components/NotificationPopover";
-import { 
-  LogOut, 
-  Settings, 
-  Users, 
-  Heart, 
+import {
+  Settings,
+  Users,
   LayoutGrid,
   User,
   ArrowRight
@@ -25,7 +23,7 @@ interface DashboardLayoutProps {
 
 const navPaths = [
   { labelKey: "dashboard.title", path: "/dashboard", icon: LayoutGrid },
-  { labelKey: "dashboard.matches", path: "/matches", icon: Heart },
+  { labelKey: "dashboard.groups", path: "/matches", icon: Users },
   { labelKey: "dashboard.profile", path: "/profile", icon: User },
 ];
 
@@ -44,23 +42,23 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background pb-[env(safe-area-inset-bottom)]">
-      {/* Header: mobile-first padding and touch targets */}
-      <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
-        <div className="container mx-auto px-4 sm:px-6 min-h-14 sm:h-16 flex justify-between items-center">
-          <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border bg-card pt-[env(safe-area-inset-top)]">
+        <div className="container mx-auto px-4 sm:px-6 h-14 flex justify-between items-center max-w-5xl">
+          <div className="flex items-center gap-4 min-w-0">
             <div
               role="button"
               tabIndex={0}
-              className="flex items-center gap-2 sm:gap-3 cursor-pointer min-h-[44px] items-center shrink-0 rounded-lg active:opacity-90"
+              className="flex items-center gap-2 cursor-pointer min-h-[44px] shrink-0"
               onClick={() => navigate("/dashboard")}
               onMouseEnter={() => preloadRoute("/dashboard")}
               onFocus={() => preloadRoute("/dashboard")}
               onKeyDown={(e) => e.key === "Enter" && navigate("/dashboard")}
             >
-              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary flex items-center justify-center shrink-0">
-                <span className="text-primary-foreground font-display font-bold text-sm sm:text-lg">B</span>
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-display font-bold text-sm">B</span>
               </div>
-              <span className="font-display text-base sm:text-xl font-bold text-foreground hidden sm:inline truncate">{t("common.brand")}</span>
+              <span className="font-display text-lg font-bold text-foreground hidden sm:inline">{t("common.brand")}</span>
             </div>
 
             {/* Desktop Navigation */}
@@ -74,76 +72,75 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     onClick={() => navigate(item.path)}
                     onMouseEnter={() => preloadRoute(item.path)}
                     onFocus={() => preloadRoute(item.path)}
-                    className={`group gap-2 rounded-full px-3 sm:px-4 min-h-[44px] transition-all duration-200 ${
+                    className={`gap-2 rounded-lg px-3 min-h-[36px] text-sm ${
                       isActive
-                        ? "bg-primary/15 text-primary border border-primary/25 shadow-sm hover:bg-primary/20 hover:border-primary/30"
-                        : "text-muted-foreground hover:text-primary hover:bg-primary/10 hover:shadow-sm"
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }`}
                   >
-                    <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
-                      isActive ? "text-primary" : "group-hover:scale-110"
-                    }`} />
+                    <item.icon className="h-4 w-4" />
                     {t(item.labelKey)}
                   </Button>
                 );
               })}
             </nav>
           </div>
-          
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+
+          <div className="flex items-center gap-1 shrink-0">
             <NotificationPopover />
             <Button
               variant="ghost"
               size="icon"
               aria-label="Open settings"
-              className={`rounded-full min-h-[44px] min-w-[44px] hover:bg-secondary ${
-                pathnameWithoutLocale === "/settings" ? "bg-secondary" : ""
+              className={`rounded-lg min-h-[36px] min-w-[36px] ${
+                pathnameWithoutLocale === "/settings" ? "bg-secondary" : "hover:bg-secondary/50"
               }`}
               onClick={() => navigate("/settings")}
               onMouseEnter={() => preloadRoute("/settings")}
               onFocus={() => preloadRoute("/settings")}
             >
-              <Settings className="h-5 w-5 text-muted-foreground" />
+              <Settings className="h-4 w-4 text-muted-foreground" />
             </Button>
-            <div className="w-px h-5 sm:h-6 bg-border mx-1 sm:mx-2 hidden sm:block" />
             <Button
               variant="ghost"
               onClick={handleSignOut}
-              className="gap-2 min-h-[44px] text-muted-foreground hover:text-foreground rounded-full px-3 sm:px-4"
+              className="gap-2 min-h-[36px] text-muted-foreground hover:text-foreground rounded-lg px-3 hidden sm:flex"
             >
-              <span className="hidden sm:inline">{t("common.signOut")}</span>
-              <ArrowRight className="h-4 w-4 shrink-0" />
+              <span>{t("common.signOut")}</span>
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
-
-        {/* Mobile bottom nav: touch-friendly, labels fully visible */}
-        <nav className="md:hidden flex items-center justify-around border-t border-border/40 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-2 sm:px-4 gap-1 min-h-[64px]" aria-label="Main navigation">
-          {navItems.map((item) => {
-            const isActive = pathnameWithoutLocale === item.path;
-            return (
-              <Button
-                key={item.path}
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(item.path)}
-                onMouseEnter={() => preloadRoute(item.path)}
-                onFocus={() => preloadRoute(item.path)}
-                className={`flex flex-col items-center justify-center gap-1 min-h-[56px] flex-1 max-w-[120px] py-2.5 px-2 rounded-xl transition-all duration-200 overflow-visible ${
-                  isActive
-                    ? "text-primary bg-primary/15 border border-primary/25 shadow-sm"
-                    : "text-muted-foreground hover:text-primary hover:bg-primary/5 active:bg-primary/10"
-                }`}
-              >
-                <item.icon className={`h-5 w-5 sm:h-6 sm:w-6 shrink-0 transition-transform duration-200 ${isActive ? "text-primary" : ""}`} />
-                <span className="text-[11px] sm:text-xs leading-tight whitespace-nowrap overflow-visible font-medium">{t(item.labelKey)}</span>
-              </Button>
-            );
-          })}
-        </nav>
       </header>
 
-      {children}
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card flex items-center justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-4" aria-label="Main navigation">
+        {navItems.map((item) => {
+          const isActive = pathnameWithoutLocale === item.path;
+          return (
+            <Button
+              key={item.path}
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(item.path)}
+              onMouseEnter={() => preloadRoute(item.path)}
+              onFocus={() => preloadRoute(item.path)}
+              className={`flex flex-col items-center justify-center gap-0.5 min-h-[48px] flex-1 max-w-[100px] py-1.5 px-2 rounded-lg ${
+                isActive
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+              <span className="text-[10px] font-medium">{t(item.labelKey)}</span>
+            </Button>
+          );
+        })}
+      </nav>
+
+      <div className="pb-20 md:pb-0">
+        {children}
+      </div>
     </div>
   );
 };

@@ -10,20 +10,21 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { DOMAINS } from "@/lib/domains";
 import { useParams } from "next/navigation";
 
+// Move outside component to avoid recreation on every render
+const NAV_LINKS = [
+  { href: "/for-doctors", labelKey: "common.forDoctors" },
+  { href: "/about", labelKey: "common.about" },
+  { href: "/faq", labelKey: "common.faq" },
+  { href: "/contact", labelKey: "common.contact" },
+  { href: "/pricing", labelKey: "common.pricing" },
+] as const;
+
 const Header = () => {
   const { locale } = useParams<{ locale: string }>();
   const lng = locale === "en" ? "en" : "de";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, loading } = useAuth();
   const { t } = useTranslation();
-
-  const navLinks = [
-    { href: "/for-doctors", labelKey: "common.forDoctors" },
-    { href: "/about", labelKey: "common.about" },
-    { href: "/faq", labelKey: "common.faq" },
-    { href: "/contact", labelKey: "common.contact" },
-    { href: "/pricing", labelKey: "common.pricing" },
-  ];
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)]">
@@ -43,7 +44,7 @@ const Header = () => {
 
               {/* Desktop Navigation */}
               <nav className="hidden md:flex items-center gap-1">
-                {navLinks.map((link) => (
+                {NAV_LINKS.map((link) => (
                   <LocalizedLink
                     key={link.href}
                     to={link.href}
@@ -97,7 +98,7 @@ const Header = () => {
         <div className="md:hidden mx-3 mt-2 sm:mx-4">
           <div className="bg-primary-foreground/5 dark:bg-card/90 backdrop-blur-2xl border border-primary-foreground/10 dark:border-border rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 animate-fade-in">
             <nav className="flex flex-col gap-0.5">
-              {navLinks.map((link) => (
+              {NAV_LINKS.map((link) => (
                 <LocalizedLink
                   key={link.href}
                   to={link.href}
