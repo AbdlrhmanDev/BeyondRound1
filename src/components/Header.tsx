@@ -20,7 +20,8 @@ const NAV_LINKS = [
 ] as const;
 
 const Header = () => {
-  const { locale } = useParams<{ locale: string }>();
+  const params = useParams<{ locale: string }>();
+  const locale = params?.locale;
   const lng = locale === "en" ? "en" : "de";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, loading } = useAuth();

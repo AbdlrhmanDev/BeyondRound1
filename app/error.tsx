@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 const messages = {
   de: {
@@ -26,8 +25,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const pathname = usePathname() ?? '';
-  const locale = pathname.startsWith('/en') ? 'en' : 'de';
+  const locale = 'en'; // Default to English for robustness in error boundary
   const t = messages[locale];
 
   useEffect(() => {

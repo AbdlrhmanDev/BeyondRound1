@@ -44,7 +44,14 @@ export const fetchMatchDetails = async (
     ]);
 
     // Handle preferences result
-    let effectivePrefs = {
+    let effectivePrefs: {
+      specialty: string | null;
+      sports: string[];
+      social_style: string[];
+      culture_interests: string[];
+      lifestyle: string[];
+      availability_slots: string[];
+    } = {
       specialty: null,
       sports: [],
       social_style: [],
@@ -71,7 +78,7 @@ export const fetchMatchDetails = async (
     }
 
     // Handle profile result
-    let userProfile = { city: null, neighborhood: null };
+    let userProfile: { city: string | null; neighborhood: string | null } = { city: null, neighborhood: null };
 
     if (profileRes.status === "fulfilled" && !profileRes.value.error && profileRes.value.data) {
       userProfile = {

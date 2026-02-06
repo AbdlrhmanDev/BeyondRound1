@@ -86,7 +86,7 @@ export function FooterSmall({ dict, locale }: FooterSmallProps) {
                       <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                   ) : (
-                    <Link href={`/${locale}${link.href}`} prefetch={'prefetch' in link ? link.prefetch : true} className={linkClass}>
+                    <Link href={`/${locale}${link.href}`} prefetch={true} className={linkClass}>
                       {t(link.labelKey)}
                       <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Link>

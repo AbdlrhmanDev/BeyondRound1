@@ -10,7 +10,11 @@ interface MarketingLayoutProps {
   params: { locale: string };
 }
 
-/** Marketing: Server layout with I18nProvider for client pages (Pricing, About, FAQ, etc.) */
+/**
+ * Marketing layout with I18nProvider for pages using useTranslation()
+ * (About, Contact, FAQ, Pricing, Terms, Privacy, Waitlist, LearnMore)
+ * Dictionary is passed from server for instant hydration - no loading state.
+ */
 export default async function MarketingLayout({
   children,
   params: { locale },

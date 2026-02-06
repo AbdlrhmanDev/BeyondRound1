@@ -1135,6 +1135,92 @@
     "title": "404",
     "message": "Oops! Page not found"
   },
+  "chatEmpty": {
+    "startConversation": "Start the conversation",
+    "sayHelloTo": "Say hello to {{name}}",
+    "quickStart": "Quick start",
+    "conversationStarters": "Conversation starters",
+    "tip": "Tip: Great conversations start with genuine curiosity",
+    "noGroupChats": "No group chats yet",
+    "bookToUnlock": "Once you book a meetup and get matched, your group chat will appear here.",
+    "howItWorks": {
+      "step1": "Book a meetup slot",
+      "step2": "Get matched with a group",
+      "step3": "Chat opens automatically"
+    },
+    "bookMeetup": "Book a meetup",
+    "quickStarters": {
+      "greeting": "Hey! Great to connect 👋",
+      "lookingForward": "Looking forward to chatting!",
+      "hearAboutWork": "Hi! Would love to hear about your work"
+    },
+    "icebreakers": {
+      "coffee": "What's your favorite coffee order?",
+      "project": "What's the most exciting project you're working on?",
+      "challenges": "Any interesting challenges you're tackling lately?",
+      "whyJoined": "What brought you to BeyondRounds?"
+    }
+  },
+  "groupChatEmpty": {
+    "title": "Your group is ready! 🎉",
+    "subtitle": "Say hello and start planning your meetup together.",
+    "subtitleNames": "{{names}} are waiting to meet you!",
+    "subtitleWithMore": "{{names}} and {{count}} more are waiting!",
+    "tapToSend": "Tap to send",
+    "planMeetup": "Plan your meetup",
+    "aiSuggestion": "Get AI Place Suggestions",
+    "aiHint": "AI picks the perfect spot for your group",
+    "actions": {
+      "introduce": "Introduce yourself",
+      "availability": "Share your availability",
+      "location": "Suggest a neighborhood"
+    },
+    "messages": {
+      "intro": "Hey everyone! I'm {{name}}, excited to meet you all! 👋",
+      "availability": "What days work best for everyone this week?",
+      "location": "Any preferred neighborhoods or areas that work for the group?"
+    },
+    "starters": {
+      "wave": "Hey everyone! 👋",
+      "weekend": "Anyone free this weekend?",
+      "coffee": "Coffee or drinks?",
+      "excited": "Can't wait to meet you all!"
+    }
+  },
+  "chat": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "edited": "edited",
+    "editMessage": "Edit message",
+    "deleteMessage": "Delete message",
+    "messageDeleted": "Message deleted",
+    "messageEdited": "Message edited",
+    "couldNotEdit": "Could not edit message",
+    "couldNotDelete": "Could not delete message",
+    "planMeetup": "Plan your meetup",
+    "voteDay": "Vote Day",
+    "voteTime": "Vote Time",
+    "voteActivity": "Vote Activity",
+    "suggestPlaceBtn": "Suggest Place",
+    "aiSuggest": "AI Place Suggestions",
+    "pollDay": "Let's pick a day! Vote below:",
+    "pollTime": "What time works best?",
+    "pollActivity": "What should we do?",
+    "pollOther": "Other (comment below)",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "evening": "Evening",
+    "coffee": "Coffee",
+    "brunch": "Brunch",
+    "walk": "Walk",
+    "dinner": "Dinner",
+    "suggestPlace": "I'd like to suggest a place!",
+    "placePrompt": "What about meeting at",
+    "placeName": "place name",
+    "in": "in",
+    "yourCity": "your city",
+    "thoughts": "What do you think?"
+  },
   "learnMore": {
     "howItWorks": "How It Works",
     "findYourTribe": "Find Your Tribe —",

@@ -34,7 +34,7 @@ export function MarketingHeaderHtml({ dict, locale, pathWithoutLocale = '' }: Ma
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)]">
       <div className="mx-3 mt-3 sm:mx-4 sm:mt-4">
-        <div className="max-sm:bg-white/10 sm:bg-primary-foreground/5 sm:backdrop-blur-2xl border border-primary-foreground/10 rounded-xl sm:rounded-2xl shadow-lg">
+        <div className="max-sm:bg-foreground/95 sm:bg-primary-foreground/5 sm:backdrop-blur-2xl border border-primary-foreground/10 rounded-xl sm:rounded-2xl shadow-lg">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between min-h-14 sm:h-16">
               <Link

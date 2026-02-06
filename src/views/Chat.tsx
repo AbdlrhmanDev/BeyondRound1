@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Send, Sparkles, Image as ImageIcon, X, Loader2, Upload } from "lucide-react";
+import { ArrowLeft, Send, Image as ImageIcon, X, Loader2, Upload } from "lucide-react";
+import { ChatEmptyState } from "@/components/ChatEmptyState";
 import { useToast } from "@/hooks/use-toast";
 import { compressImages } from "@/utils/imageCompression";
 import { ImageViewer } from "@/components/ImageViewer";
@@ -336,6 +337,33 @@ const Chat = () => {
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Direct send for quick messages (used by ChatEmptyState)
+  const sendDirectMessage = async (content: string) => {
+    if (!content.trim() || !user || !conversationId) return;
+
+    setSending(true);
+    try {
+      const messageData = await sendMessage({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        content: content.trim(),
+      });
+
+      if (!messageData) {
+        throw new Error("Failed to send message");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Error",
+        description: "Could not send message",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSend = async () => {
     if ((!newMessage.trim() && selectedImages.length === 0) || !user || !conversationId) return;
 
@@ -549,17 +577,10 @@ const Chat = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-1">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-16 text-center px-4">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-gold/10 flex items-center justify-center shadow-lg">
-              <Sparkles className="h-10 w-10 text-primary" />
-            </div>
-            <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-              Start the conversation!
-            </h3>
-            <p className="text-muted-foreground text-sm max-w-sm leading-relaxed">
-              Say hello to {otherUser?.full_name || "your new connection"}
-            </p>
-          </div>
+          <ChatEmptyState
+            otherUserName={otherUser?.full_name}
+            onSendMessage={sendDirectMessage}
+          />
         ) : (
           filteredMessages.map((message, index) => {
             const isOwn = message.sender_id === user?.id;
@@ -604,7 +625,7 @@ const Chat = () => {
                                 key={idx}
                                 className="relative rounded-lg overflow-hidden group cursor-pointer"
                                 onClick={() => {
-                                  setViewingImages(mediaUrls);
+                                  setViewingImages(mediaUrls || null);
                                   setViewingImageIndex(idx);
                                 }}
                               >

@@ -480,7 +480,7 @@ const Dashboard = () => {
                       Groups are finalized every Thursday.
                     </p>
                     <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
+                      <Calendar className="h-4 w-4  py-3" />
                       <span>Next group: This Thursday</span>
                     </div>
                   </>
@@ -512,7 +512,7 @@ const Dashboard = () => {
           {/* Next Group Info (when user has a group) */}
           {displayedGroup && (
             <Card className="rounded-xl bg-card border border-border">
-              <CardContent className="py-4 px-5">
+              <CardContent className="py-3 px-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
@@ -532,7 +532,7 @@ const Dashboard = () => {
           {/* Profile Status (when incomplete) */}
           {!isProfileComplete && (
             <Card className="rounded-xl bg-card border border-border">
-              <CardContent className="py-4 px-5">
+              <CardContent className="py-3 px-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">

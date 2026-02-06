@@ -46,7 +46,32 @@ export function createClient(): SupabaseClient<Database> {
 }
 
 // Legacy export for backward compatibility
-export const supabase = typeof window !== 'undefined' ? createClient() : null;
+// Note: This is null on server-side, but all uses are client-side
+// Using non-null assertion since client components always have access
+export const supabase: SupabaseClient<Database> | null = typeof window !== 'undefined' ? createClient() : null;
+
+/**
+ * Get the Supabase client with non-null assertion
+ * Use when you're certain the code runs client-side
+ */
+export function getSupabase(): SupabaseClient<Database> {
+  if (!supabase) {
+    throw new Error('Supabase client not available - this code must run on client side');
+  }
+  return supabase;
+}
 
 // Alias for use in hooks
 export const getClient = createClient;
+
+/**
+ * Get a non-null Supabase client
+ * Use this instead of `supabase` to avoid null checks
+ * Throws error if called on server side
+ */
+export function getSupabaseClient(): SupabaseClient<Database> {
+  if (typeof window === 'undefined') {
+    throw new Error('getSupabaseClient() must be called on the client side');
+  }
+  return createClient();
+}

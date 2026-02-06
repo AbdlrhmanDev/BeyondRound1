@@ -1,0 +1,302 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e7]:
+        - link "✦ BeyondRounds" [ref=e8] [cursor=pointer]:
+          - /url: /de
+          - generic [ref=e10]: ✦
+          - generic [ref=e11]: BeyondRounds
+        - navigation [ref=e12]:
+          - link "Für Ärzte" [ref=e13] [cursor=pointer]:
+            - /url: /de/for-doctors
+          - link "Über uns" [ref=e14] [cursor=pointer]:
+            - /url: /de/about
+          - link "FAQ" [ref=e15] [cursor=pointer]:
+            - /url: /de/faq
+          - link "Kontakt" [ref=e16] [cursor=pointer]:
+            - /url: /de/contact
+          - link "Preise" [ref=e17] [cursor=pointer]:
+            - /url: /de/pricing
+          - generic [ref=e18]:
+            - link "Deutsch" [ref=e19] [cursor=pointer]:
+              - /url: /de
+              - text: DE
+            - link "English" [ref=e20] [cursor=pointer]:
+              - /url: /en
+              - text: EN
+        - generic [ref=e21]:
+          - link "Anmelden" [ref=e22] [cursor=pointer]:
+            - /url: /de/auth
+          - link "Jetzt teilnehmen" [ref=e23] [cursor=pointer]:
+            - /url: /de/onboarding
+    - main [ref=e24]:
+      - generic [ref=e25]:
+        - region "Welcome to BeyondRounds - Your next great friendship awaits" [ref=e26]:
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - status "Exclusively for verified doctors" [ref=e31]:
+                - generic [ref=e33]: ✓
+                - generic [ref=e34]: Nur für verifizierte Ärzte
+              - heading "Deine nächste große Freundschaft wartet" [level=1] [ref=e36]:
+                - text: Deine nächste große
+                - text: Freundschaft wartet
+              - paragraph [ref=e37]: Wöchentliche, kuratierte Kleingruppen-Treffen mit passenden Ärzt:innen
+              - list [ref=e38]:
+                - listitem [ref=e39]:
+                  - generic [ref=e40]: 👩‍⚕️
+                  - text: Ärzte mit gleichen Werten
+                - listitem [ref=e41]:
+                  - generic [ref=e42]: 🧠
+                  - text: KI-basiertes Matching
+                - listitem [ref=e43]:
+                  - generic [ref=e44]: ☕
+                  - text: Echte Gespräche, nicht Chats
+              - generic [ref=e45]:
+                - generic [ref=e46]:
+                  - generic [ref=e47]: 🔒
+                  - text: Verifizierte Ärzt:innen
+                - generic [ref=e48]:
+                  - generic [ref=e49]: 🛡
+                  - text: Moderierte Gruppen
+                - generic [ref=e50]:
+                  - generic [ref=e51]: 📍
+                  - text: Öffentliche Treffpunkte
+              - generic [ref=e52]:
+                - link "Secure your match - go to onboarding" [ref=e53] [cursor=pointer]:
+                  - /url: /de/onboarding
+                  - text: Jetzt Match sichern
+                  - generic [ref=e54]: →
+                - paragraph [ref=e55]: Kein Spam · Jeder Arzt wird verifiziert
+              - list [ref=e56]:
+                - listitem [ref=e57]:
+                  - generic [ref=e59]: ✓
+                  - generic [ref=e60]: Nur verifizierte Ärzte
+                - listitem [ref=e61]:
+                  - generic [ref=e63]: ✓
+                  - generic [ref=e64]: Jede Woche neue relevante Kontakte
+                - listitem [ref=e65]:
+                  - generic [ref=e67]: ✓
+                  - generic [ref=e68]: Kein Risiko – kündige jederzeit
+            - generic [ref=e73]:
+              - img "Doctors enjoying genuine friendship at a coffee meetup" [ref=e76]
+              - 'status "Next match: Feb 12 · 16:00" [ref=e79]':
+                - generic [ref=e80]:
+                  - generic [ref=e81]:
+                    - paragraph [ref=e82]: Nächster Match in
+                    - paragraph [ref=e83]: Feb 12 · 16:00
+                    - paragraph [ref=e84]: Für Ärzt:innen in deiner Stadt
+                  - generic [ref=e85]: Live
+              - generic "2 or more meaningful meetups" [ref=e87]:
+                - generic [ref=e88]:
+                  - generic [ref=e90]: 👥
+                  - generic [ref=e91]:
+                    - paragraph [ref=e92]: 2+ echte Treffen
+                    - paragraph [ref=e93]: Echte Verbindungen, nicht nur Chats
+              - generic "Over 5,000 doctors on the platform" [ref=e94]:
+                - generic [ref=e99]: 5.000+ Ärzte
+        - generic [ref=e105]:
+          - generic [ref=e106]:
+            - generic [ref=e107]:
+              - img [ref=e108]
+              - text: So funktioniert's
+            - heading "So funktioniert BeyondRounds" [level=2] [ref=e114]
+            - paragraph [ref=e115]: Echte Freundschaften sollten nicht dem Zufall überlassen bleiben. So machen wir es möglich.
+          - generic [ref=e116]:
+            - generic [ref=e117]:
+              - img [ref=e119]
+              - generic [ref=e122]:
+                - generic [ref=e123]: SCHRITT 01
+                - img [ref=e125]
+                - heading "Profil ausfüllen" [level=3] [ref=e129]
+                - paragraph [ref=e130]: Erzähl uns von dir — Fachrichtung, Interessen, Lebensstil und was du dir von Freundschaften wünschst. So verschwendest du keine Zeit mit den falschen Menschen.
+            - generic [ref=e131]:
+              - img [ref=e133]
+              - generic [ref=e136]:
+                - generic [ref=e137]: SCHRITT 02
+                - img [ref=e139]
+                - heading "Kuratierte Matches erhalten" [level=3] [ref=e145]
+                - paragraph [ref=e146]: Jeden Donnerstag um 16 Uhr erhältst du eine kleine Gruppe von 3–4 Ärzt:innen, abgestimmt auf gemeinsame Interessen, passende Zeiten und Nähe.
+            - generic [ref=e148]:
+              - generic [ref=e149]: SCHRITT 03
+              - img [ref=e151]
+              - heading "Im echten Leben treffen" [level=3] [ref=e156]
+              - paragraph [ref=e157]: Vernetz dich im Gruppen-Chat, plant ein Treffen und entdeckt Freundschaften jenseits der Klinik. RoundsBot hilft beim Eisbrechen!
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - img [ref=e162]
+            - text: Community beitreten
+          - heading "Finde Ärzt:innen, die du wirklich treffen möchtest" [level=2] [ref=e168]
+          - paragraph [ref=e169]: Jede Woche treffen sich kleine Gruppen verifizierter Ärzt:innen im echten Leben. Kein Wischen. Keine peinlichen Chats. Nur echte Verbindungen.
+          - paragraph [ref=e170]: Vertraut von Ärzt:innen in ganz Deutschland
+          - generic [ref=e171]:
+            - generic [ref=e172]:
+              - img [ref=e174]
+              - paragraph [ref=e179]: 5,000+
+              - paragraph [ref=e180]: Verifizierte Ärzte
+            - generic [ref=e181]:
+              - img [ref=e183]
+              - paragraph [ref=e188]: 12,000+
+              - paragraph [ref=e189]: Treffen organisiert
+            - generic [ref=e190]:
+              - img [ref=e192]
+              - paragraph [ref=e194]: "30"
+              - paragraph [ref=e195]: Tage Garantie
+          - generic [ref=e196]:
+            - generic [ref=e197]:
+              - generic [ref=e198]: 🔒
+              - text: Verifizierte Ärzt:innen
+            - generic [ref=e199]:
+              - generic [ref=e200]: 🛡
+              - text: Moderierte Gruppen
+            - generic [ref=e201]:
+              - generic [ref=e202]: 📍
+              - text: Öffentliche Treffpunkte
+          - generic [ref=e203]:
+            - generic [ref=e204]:
+              - link "Jetzt Match sichern" [ref=e205] [cursor=pointer]:
+                - /url: /de/onboarding
+                - text: Jetzt Match sichern
+                - img [ref=e206]
+              - link "Mehr erfahren" [ref=e209] [cursor=pointer]:
+                - /url: /de/learn-more
+            - paragraph [ref=e210]: Nächste Gruppe startet Donnerstag · 16 Uhr
+          - generic [ref=e212]:
+            - generic [ref=e214]: ML
+            - blockquote [ref=e215]:
+              - paragraph [ref=e216]: “Über BeyondRounds habe ich zwei meiner engsten Freund:innen gefunden. Wir treffen uns noch jeden Monat.”
+              - generic [ref=e217]: — Dr. Maria L., Pädiatrie
+        - generic [ref=e220]:
+          - generic [ref=e221]:
+            - generic [ref=e222]:
+              - img [ref=e223]
+              - text: Unsere Geschichte
+            - heading "Entstanden aus einer Nachtschicht" [level=2] [ref=e225]
+          - generic [ref=e226]:
+            - img [ref=e227]
+            - generic [ref=e230]:
+              - paragraph [ref=e231]: Die Idee zu BeyondRounds entstand während einer dieser Nachtschichten, die jede Ärztin und jeder Arzt kennt. Nach Jahren zwischen Kliniken und der anspruchsvollen Medizin fand ich mich von Kolleg:innen umgeben – und doch einsam.
+              - paragraph [ref=e232]: "Ich war schon immer gesellig. Aber etwas fehlte. Gespräche drehten sich um Fälle, Protokolle und Forschung. Fachlich bereichernd – aber ich sehnte mich nach mehr: echten Freundschaften jenseits der Klinikmauern."
+              - paragraph [ref=e233]: Alles änderte sich, als eine gemeinsame Freundin mich mit vier anderen Ärzt:innen bekannt machte. Wir entdeckten gemeinsame Leidenschaft für Wandern, ähnlichen Musikgeschmack und einen Humor, den nur Mediziner:innen verstehen.
+              - paragraph [ref=e234]: "Da wurde mir klar: Wenn ich mich trotz brillanter Kolleg:innen so isoliert fühlte – wie vielen anderen Ärzt:innen ging es genauso?"
+              - paragraph [ref=e235]: BeyondRounds entstand aus dieser Erkenntnis – denn wenn du deinen Tribe findest, fügt sich alles andere.
+          - paragraph [ref=e237]: "Unsere Mission ist einfach: Ärzt:innen dabei zu helfen, Freundschaften zu finden, die ihr Leben bereichern – außerhalb der Klinik."
+        - generic [ref=e240]:
+          - generic [ref=e241]:
+            - generic [ref=e242]:
+              - generic [ref=e243]: "?"
+              - text: FAQ
+            - heading "Noch Fragen?" [level=2] [ref=e244]
+            - paragraph [ref=e245]: Alles Wichtige zu BeyondRounds. Nicht gefunden? Wir helfen gern.
+            - link "Support-Team kontaktieren" [ref=e246] [cursor=pointer]:
+              - /url: mailto:support@beyondrounds.app
+              - text: Support-Team kontaktieren
+              - generic [ref=e247]: →
+          - generic [ref=e248]:
+            - group [ref=e249]:
+              - generic "Was genau ist BeyondRounds? ▼" [ref=e250] [cursor=pointer]:
+                - text: Was genau ist BeyondRounds?
+                - generic [ref=e251]: ▼
+            - group [ref=e252]:
+              - generic "Wer kann beitreten? ▼" [ref=e253] [cursor=pointer]:
+                - text: Wer kann beitreten?
+                - generic [ref=e254]: ▼
+            - group [ref=e255]:
+              - generic "Wie funktioniert das Matching? ▼" [ref=e256] [cursor=pointer]:
+                - text: Wie funktioniert das Matching?
+                - generic [ref=e257]: ▼
+            - group [ref=e258]:
+              - generic "Was, wenn ich mit meiner Gruppe nicht connecte? ▼" [ref=e259] [cursor=pointer]:
+                - text: Was, wenn ich mit meiner Gruppe nicht connecte?
+                - generic [ref=e260]: ▼
+            - group [ref=e261]:
+              - generic "Wo treffen sich Gruppen typischerweise? ▼" [ref=e262] [cursor=pointer]:
+                - text: Wo treffen sich Gruppen typischerweise?
+                - generic [ref=e263]: ▼
+            - group [ref=e264]:
+              - generic "Ist es sicher, Leute aus der App zu treffen? ▼" [ref=e265] [cursor=pointer]:
+                - text: Ist es sicher, Leute aus der App zu treffen?
+                - generic [ref=e266]: ▼
+            - group [ref=e267]:
+              - generic "Was ist die 30-Tage-Freundschafts-Garantie? ▼" [ref=e268] [cursor=pointer]:
+                - text: Was ist die 30-Tage-Freundschafts-Garantie?
+                - generic [ref=e269]: ▼
+            - group [ref=e270]:
+              - generic "Kann ich jederzeit pausieren oder kündigen? ▼" [ref=e271] [cursor=pointer]:
+                - text: Kann ich jederzeit pausieren oder kündigen?
+                - generic [ref=e272]: ▼
+            - link "Alle FAQ anzeigen →" [ref=e273] [cursor=pointer]:
+              - /url: /de/faq
+    - contentinfo [ref=e274]:
+      - generic [ref=e275]:
+        - generic [ref=e276]:
+          - generic [ref=e277]:
+            - link "BeyondRounds" [ref=e278] [cursor=pointer]:
+              - /url: /de
+              - img [ref=e280]
+              - generic [ref=e286]: BeyondRounds
+            - paragraph [ref=e287]: Wo Ärzte Freunde werden. Ein exklusiver Social Club nur für verifizierte Mediziner:innen.
+            - generic [ref=e288]:
+              - link "contact@beyondrounds.app" [ref=e289] [cursor=pointer]:
+                - /url: mailto:contact@beyondrounds.app
+                - img [ref=e291]
+                - generic [ref=e294]: contact@beyondrounds.app
+              - generic [ref=e295]:
+                - img [ref=e297]
+                - generic [ref=e300]: Berlin, Deutschland
+          - generic [ref=e301]:
+            - heading "Produkt" [level=4] [ref=e302]
+            - list [ref=e303]:
+              - listitem [ref=e304]:
+                - link "So funktioniert's" [ref=e305] [cursor=pointer]:
+                  - /url: /de/learn-more
+                  - text: So funktioniert's
+                  - img [ref=e306]
+              - listitem [ref=e309]:
+                - link "Preise" [ref=e310] [cursor=pointer]:
+                  - /url: /de/pricing
+                  - text: Preise
+                  - img [ref=e311]
+              - listitem [ref=e314]:
+                - link "FAQ" [ref=e315] [cursor=pointer]:
+                  - /url: /de/faq
+                  - text: FAQ
+                  - img [ref=e316]
+              - listitem [ref=e319]:
+                - link "Über uns" [ref=e320] [cursor=pointer]:
+                  - /url: /de/about
+                  - text: Über uns
+                  - img [ref=e321]
+          - generic [ref=e324]:
+            - heading "Rechtliches" [level=4] [ref=e325]
+            - list [ref=e326]:
+              - listitem [ref=e327]:
+                - link "AGB" [ref=e328] [cursor=pointer]:
+                  - /url: /de/terms
+                  - text: AGB
+                  - img [ref=e329]
+              - listitem [ref=e332]:
+                - link "Datenschutzerklärung" [ref=e333] [cursor=pointer]:
+                  - /url: /de/privacy
+                  - text: Datenschutzerklärung
+                  - img [ref=e334]
+          - generic [ref=e337]:
+            - heading "Support" [level=4] [ref=e338]
+            - list [ref=e339]:
+              - listitem [ref=e340]:
+                - link "Kontakt" [ref=e341] [cursor=pointer]:
+                  - /url: mailto:contact@beyondrounds.app
+                  - text: Kontakt
+                  - img [ref=e342]
+              - listitem [ref=e345]:
+                - link "FAQ" [ref=e346] [cursor=pointer]:
+                  - /url: /de/faq
+                  - text: FAQ
+                  - img [ref=e347]
+        - generic [ref=e350]:
+          - paragraph [ref=e351]: © 2026 BeyondRounds. Alle Rechte vorbehalten
+          - paragraph [ref=e352]: Von Ärzten für Ärzte
+  - alert [ref=e353]
+```

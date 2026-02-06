@@ -95,7 +95,7 @@ const AdminAuditLogs = () => {
                           </p>
                         )}
 
-                        {log.old_values && log.new_values && typeof log.old_values === 'object' && typeof log.new_values === 'object' && (
+                        {Boolean(log.old_values) && Boolean(log.new_values) && typeof log.old_values === 'object' && typeof log.new_values === 'object' && (
                           <div className="mt-2 text-xs">
                             <details className="cursor-pointer">
                               <summary className="text-muted-foreground hover:text-foreground">

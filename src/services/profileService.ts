@@ -1,9 +1,15 @@
 /**
  * Profile Service - Handles profile-related operations
- * Following Single Responsibility Principle
+ * Refactored to use centralized utilities for validation, logging, and error handling
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
+import { validateUserId } from '@/lib/validation';
+import { tryCatch, normalizeError, ErrorCodes, AppError } from '@/lib/errors';
+
+// Scoped logger for this service
+const log = logger.scope('ProfileService');
 
 export interface Profile {
   user_id: string;
@@ -36,58 +42,58 @@ export interface PublicProfile {
  * Gets user profile by user ID
  */
 export const getProfile = async (userId: string): Promise<Profile | null> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for getProfile:", userId);
-      return null;
-    }
+  const validUserId = validateUserId(userId, 'getProfile');
+  if (!validUserId) return null;
 
-    const { data, error } = await supabase
+  const [result, error] = await tryCatch(async () => {
+    const { data, error: dbError } = await supabase
       .from("profiles")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", validUserId)
       .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching profile:", error);
-      return null;
+    if (dbError) {
+      throw normalizeError(dbError, 'getProfile');
     }
 
     return data as unknown as Profile | null;
-  } catch (error) {
-    console.error("Error fetching profile:", error);
+  }, 'getProfile');
+
+  if (error) {
+    log.error('Failed to fetch profile', error, { userId: validUserId });
     return null;
   }
+
+  return result;
 };
 
 /**
  * Gets public profile (limited fields) by user ID
  */
 export const getPublicProfile = async (userId: string): Promise<PublicProfile | null> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for getPublicProfile:", userId);
-      return null;
-    }
+  const validUserId = validateUserId(userId, 'getPublicProfile');
+  if (!validUserId) return null;
 
-    const { data, error } = await supabase
+  const [result, error] = await tryCatch(async () => {
+    const { data, error: dbError } = await supabase
       .from("profiles")
       .select("user_id, full_name, avatar_url, city, neighborhood, gender")
-      .eq("user_id", userId)
+      .eq("user_id", validUserId)
       .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching public profile:", error);
-      return null;
+    if (dbError) {
+      throw normalizeError(dbError, 'getPublicProfile');
     }
 
     return data as PublicProfile | null;
-  } catch (error) {
-    console.error("Error fetching public profile:", error);
+  }, 'getPublicProfile');
+
+  if (error) {
+    log.error('Failed to fetch public profile', error, { userId: validUserId });
     return null;
   }
+
+  return result;
 };
 
 /**
@@ -97,80 +103,84 @@ export const updateProfile = async (
   userId: string,
   updates: Partial<Profile>
 ): Promise<Profile | null> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for updateProfile:", userId);
-      return null;
-    }
+  const validUserId = validateUserId(userId, 'updateProfile');
+  if (!validUserId) return null;
 
-    if (!updates || Object.keys(updates).length === 0) {
-      console.error("No updates provided for updateProfile");
-      return null;
-    }
+  if (!updates || Object.keys(updates).length === 0) {
+    log.warn('No updates provided for updateProfile', { userId: validUserId });
+    return null;
+  }
 
-    const { data, error } = await supabase
+  const [result, error] = await tryCatch(async () => {
+    // Try update first
+    const { data, error: updateError } = await supabase
       .from("profiles")
       .update(updates)
-      .eq("user_id", userId)
+      .eq("user_id", validUserId)
       .select()
       .maybeSingle();
 
-    if (error) {
-      console.error("Error updating profile:", error);
-      return null;
+    if (updateError) {
+      throw normalizeError(updateError, 'updateProfile');
     }
 
-    // If no rows updated (profile may not exist), try upsert to create it
+    // If no rows updated, upsert to create profile
     if (!data) {
+      log.debug('Profile not found, attempting upsert', { userId: validUserId });
+
       const { data: upsertData, error: upsertError } = await supabase
         .from("profiles")
         .upsert(
-          { user_id: userId, ...updates },
+          { user_id: validUserId, ...updates },
           { onConflict: "user_id", ignoreDuplicates: false }
         )
         .select()
         .maybeSingle();
 
       if (upsertError) {
-        console.error("Error upserting profile:", upsertError);
-        return null;
+        throw normalizeError(upsertError, 'updateProfile.upsert');
       }
+
       return upsertData as unknown as Profile | null;
     }
 
     return data as unknown as Profile;
-  } catch (error) {
-    console.error("Error updating profile:", error);
+  }, 'updateProfile');
+
+  if (error) {
+    log.error('Failed to update profile', error, { userId: validUserId });
     return null;
   }
+
+  log.info('Profile updated successfully', { userId: validUserId });
+  return result;
 };
 
 /**
  * Gets user's city
  */
 export const getUserCity = async (userId: string): Promise<string | null> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for getUserCity:", userId);
-      return null;
-    }
+  const validUserId = validateUserId(userId, 'getUserCity');
+  if (!validUserId) return null;
 
-    const { data, error } = await supabase
+  const [result, error] = await tryCatch(async () => {
+    const { data, error: dbError } = await supabase
       .from("profiles")
       .select("city")
-      .eq("user_id", userId)
+      .eq("user_id", validUserId)
       .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching user city:", error);
-      return null;
+    if (dbError) {
+      throw normalizeError(dbError, 'getUserCity');
     }
 
     return data?.city || null;
-  } catch (error) {
-    console.error("Error fetching user city:", error);
+  }, 'getUserCity');
+
+  if (error) {
+    log.error('Failed to fetch user city', error, { userId: validUserId });
     return null;
   }
+
+  return result;
 };

@@ -1135,6 +1135,92 @@
     "title": "404",
     "message": "Seite nicht gefunden"
   },
+  "chatEmpty": {
+    "startConversation": "Starte das Gespräch",
+    "sayHelloTo": "Sag hallo zu {{name}}",
+    "quickStart": "Schnellstart",
+    "conversationStarters": "Gesprächsstarter",
+    "tip": "Tipp: Gute Gespräche beginnen mit echter Neugier",
+    "noGroupChats": "Noch keine Gruppenchats",
+    "bookToUnlock": "Sobald du ein Treffen buchst und gematcht wirst, erscheint dein Gruppenchat hier.",
+    "howItWorks": {
+      "step1": "Buche ein Treffen",
+      "step2": "Werde mit einer Gruppe gematcht",
+      "step3": "Chat öffnet sich automatisch"
+    },
+    "bookMeetup": "Treffen buchen",
+    "quickStarters": {
+      "greeting": "Hey! Schön, sich zu verbinden 👋",
+      "lookingForward": "Freue mich auf den Austausch!",
+      "hearAboutWork": "Hi! Würde gern mehr über deine Arbeit erfahren"
+    },
+    "icebreakers": {
+      "coffee": "Was ist dein Lieblingskaffee?",
+      "project": "An welchem spannenden Projekt arbeitest du gerade?",
+      "challenges": "Gibt es interessante Herausforderungen, denen du dich stellst?",
+      "whyJoined": "Was hat dich zu BeyondRounds gebracht?"
+    }
+  },
+  "groupChatEmpty": {
+    "title": "Deine Gruppe ist bereit! 🎉",
+    "subtitle": "Sag Hallo und plant euer Treffen gemeinsam.",
+    "subtitleNames": "{{names}} warten darauf, dich kennenzulernen!",
+    "subtitleWithMore": "{{names}} und {{count}} weitere warten!",
+    "tapToSend": "Antippen zum Senden",
+    "planMeetup": "Plant euer Treffen",
+    "aiSuggestion": "KI-Ortsvorschläge",
+    "aiHint": "KI findet den perfekten Ort für eure Gruppe",
+    "actions": {
+      "introduce": "Stell dich vor",
+      "availability": "Teile deine Verfügbarkeit",
+      "location": "Schlage eine Gegend vor"
+    },
+    "messages": {
+      "intro": "Hey zusammen! Ich bin {{name}}, freue mich auf euch! 👋",
+      "availability": "Welche Tage passen euch diese Woche am besten?",
+      "location": "Gibt es bevorzugte Stadtteile oder Gegenden für die Gruppe?"
+    },
+    "starters": {
+      "wave": "Hey zusammen! 👋",
+      "weekend": "Jemand am Wochenende Zeit?",
+      "coffee": "Kaffee oder Drinks?",
+      "excited": "Freue mich auf euch!"
+    }
+  },
+  "chat": {
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "edited": "bearbeitet",
+    "editMessage": "Nachricht bearbeiten",
+    "deleteMessage": "Nachricht löschen",
+    "messageDeleted": "Nachricht gelöscht",
+    "messageEdited": "Nachricht bearbeitet",
+    "couldNotEdit": "Nachricht konnte nicht bearbeitet werden",
+    "couldNotDelete": "Nachricht konnte nicht gelöscht werden",
+    "planMeetup": "Treffen planen",
+    "voteDay": "Tag wählen",
+    "voteTime": "Zeit wählen",
+    "voteActivity": "Aktivität wählen",
+    "suggestPlaceBtn": "Ort vorschlagen",
+    "aiSuggest": "KI Ortsvorschläge",
+    "pollDay": "Lasst uns einen Tag wählen! Stimmt ab:",
+    "pollTime": "Welche Uhrzeit passt am besten?",
+    "pollActivity": "Was sollen wir machen?",
+    "pollOther": "Anderes (unten kommentieren)",
+    "morning": "Morgen",
+    "afternoon": "Nachmittag",
+    "evening": "Abend",
+    "coffee": "Kaffee",
+    "brunch": "Brunch",
+    "walk": "Spaziergang",
+    "dinner": "Abendessen",
+    "suggestPlace": "Ich möchte einen Ort vorschlagen!",
+    "placePrompt": "Wie wäre es, uns zu treffen bei",
+    "placeName": "Ortsname",
+    "in": "in",
+    "yourCity": "deiner Stadt",
+    "thoughts": "Was denkt ihr?"
+  },
   "learnMore": {
     "howItWorks": "So funktioniert's",
     "findYourTribe": "Finde deinen Tribe —",

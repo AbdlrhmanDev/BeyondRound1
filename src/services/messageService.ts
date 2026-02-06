@@ -377,24 +377,40 @@ export const sendGroupMessage = async (message: {
       return null;
     }
 
-    // Convert group_conversation_id to conversation_id for group_messages table
-    const { data, error } = await supabase
+    // Build insert payload - only include media fields if has_media is true
+    const insertPayload: Record<string, unknown> = {
+      conversation_id: message.group_conversation_id,
+      sender_id: message.sender_id,
+      content: message.content,
+    };
+
+    // Only add media fields if there's media (to avoid issues if columns don't exist)
+    if (message.has_media) {
+      insertPayload.media_urls = message.media_urls || [];
+      insertPayload.media_type = message.media_type;
+      insertPayload.has_media = true;
+    }
+
+    console.log("[sendGroupMessage] Inserting message:", insertPayload);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await supabase!
       .from("group_messages")
-      .insert({
-        conversation_id: message.group_conversation_id,
-        sender_id: message.sender_id,
-        content: message.content,
-        media_urls: message.media_urls || [],
-        media_type: message.media_type,
-        has_media: message.has_media || false,
-      })
+      .insert(insertPayload as any)
       .select()
       .single();
 
     if (error) {
-      console.error("Error sending group message:", error);
+      console.error("[sendGroupMessage] Supabase error:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
       return null;
     }
+
+    console.log("[sendGroupMessage] Success! Data:", data);
 
     // Validate response data
     if (!data || typeof data !== 'object') {
@@ -449,5 +465,101 @@ export const updateGroupMessageMedia = async (
   } catch (error) {
     console.error("Error updating group message media:", error);
     return false;
+  }
+};
+
+/**
+ * Deletes a group message (soft delete)
+ * Only the message sender can delete their own message
+ */
+export const deleteGroupMessage = async (
+  messageId: string,
+  userId: string
+): Promise<boolean> => {
+  try {
+    // Input validation
+    if (!messageId?.trim()) {
+      console.error("Invalid messageId for deleteGroupMessage:", messageId);
+      return false;
+    }
+
+    if (!userId?.trim()) {
+      console.error("Invalid userId for deleteGroupMessage:", userId);
+      return false;
+    }
+
+    const { error } = await supabase
+      .from("group_messages")
+      .update({ is_deleted: true })
+      .eq("id", messageId)
+      .eq("sender_id", userId); // Only allow deleting own messages
+
+    if (error) {
+      console.error("Error deleting group message:", error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting group message:", error);
+    return false;
+  }
+};
+
+/**
+ * Edits a group message content
+ * Only the message sender can edit their own message
+ */
+export const editGroupMessage = async (
+  messageId: string,
+  userId: string,
+  newContent: string
+): Promise<Message | null> => {
+  try {
+    // Input validation
+    if (!messageId?.trim()) {
+      console.error("Invalid messageId for editGroupMessage:", messageId);
+      return null;
+    }
+
+    if (!userId?.trim()) {
+      console.error("Invalid userId for editGroupMessage:", userId);
+      return null;
+    }
+
+    if (!newContent?.trim()) {
+      console.error("Invalid newContent for editGroupMessage:", newContent);
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from("group_messages")
+      .update({
+        content: newContent.trim(),
+        edited_at: new Date().toISOString()
+      })
+      .eq("id", messageId)
+      .eq("sender_id", userId) // Only allow editing own messages
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error editing group message:", error);
+      return null;
+    }
+
+    if (!data || typeof data !== 'object') {
+      console.error("Invalid response data from editGroupMessage");
+      return null;
+    }
+
+    return {
+      ...data,
+      group_conversation_id: data.conversation_id,
+      conversation_id: undefined,
+    } as unknown as Message;
+  } catch (error) {
+    console.error("Error editing group message:", error);
+    return null;
   }
 };

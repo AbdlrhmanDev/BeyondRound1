@@ -13,15 +13,20 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2, Image as ImageIcon, X, Upload, Circle, Stethoscope, MapPin as MapPinIcon } from "lucide-react";
+import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2, Image as ImageIcon, X, Upload, Circle, Stethoscope, MapPin as MapPinIcon, MoreVertical, Pencil, Trash2, Check, Vote, Coffee, Calendar, Clock } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { compressImages } from "@/utils/imageCompression";
 import { ImageViewer } from "@/components/ImageViewer";
-import { getGroupMessages, getGroupConversation, sendGroupMessage, updateGroupMessageMedia, Message } from "@/services/messageService";
+import { getGroupMessages, getGroupConversation, sendGroupMessage, updateGroupMessageMedia, deleteGroupMessage, editGroupMessage, Message } from "@/services/messageService";
 import { getGroupInfo, getGroupMembers } from "@/services/matchService";
 import { getPublicProfile } from "@/services/profileService";
 import { getPublicPreferences } from "@/services/onboardingService";
 import { uploadPhotos } from "@/services/storageService";
+import { GroupChatEmptyState } from "@/components/GroupChatEmptyState";
+import { Poll } from "@/components/Poll";
+import { createPoll, getPolls, getPollTemplates, PollWithVotes } from "@/services/pollService";
 
 interface Member {
   user_id: string;
@@ -38,6 +43,7 @@ const GroupChat = () => {
   const navigate = useLocalizedNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -53,11 +59,16 @@ const GroupChat = () => {
   const [viewingImageIndex, setViewingImageIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const [polls, setPolls] = useState<PollWithVotes[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -400,10 +411,11 @@ const GroupChat = () => {
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSend = async () => {
-    if ((!input.trim() && selectedImages.length === 0) || !user || !conversationId) return;
+  const handleSend = async (directMessage?: string) => {
+    const messageToSend = directMessage ?? input;
+    if ((!messageToSend.trim() && selectedImages.length === 0) || !user || !conversationId) return;
 
-    const messageContent = input.trim();
+    const messageContent = messageToSend.trim();
     const hasImages = selectedImages.length > 0;
 
     // Clear form immediately for better UX
@@ -469,16 +481,38 @@ const GroupChat = () => {
         );
 
       } else {
-        // No images, send normally using service
+        // Text-only message - add optimistic update for instant display
+        const optimisticMessage: Message = {
+          id: `temp-${Date.now()}-${Math.random()}`,
+          sender_id: user.id,
+          content: messageContent,
+          created_at: new Date().toISOString(),
+          read_at: null,
+          is_deleted: false,
+        };
+
+        // Show message immediately in UI
+        setMessages((prev) => [...prev, optimisticMessage]);
+
+        // Send to database
         const messageData = await sendGroupMessage({
           group_conversation_id: conversationId,
           sender_id: user.id,
-          content: messageContent || '',
+          content: messageContent,
         });
 
         if (!messageData) {
+          // Remove optimistic message on error
+          setMessages((prev) => prev.filter(msg => msg.id !== optimisticMessage.id));
           throw new Error("Failed to send message");
         }
+
+        // Replace optimistic message with real one from database
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === optimisticMessage.id ? messageData : msg
+          )
+        );
       }
 
       // Upload images in background and replace temporary previews (non-blocking)
@@ -619,6 +653,188 @@ const GroupChat = () => {
       full_name: null,
       avatar_url: null
     };
+  };
+
+  const handleStartEdit = (message: Message) => {
+    setEditingMessageId(message.id);
+    setEditContent(message.content);
+    // Focus input after state update
+    setTimeout(() => editInputRef.current?.focus(), 0);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditContent("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMessageId || !user || !editContent.trim()) return;
+
+    const originalMessage = messages.find(m => m.id === editingMessageId);
+    if (!originalMessage) return;
+
+    // Optimistic update
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === editingMessageId
+          ? { ...msg, content: editContent.trim(), edited_at: new Date().toISOString() }
+          : msg
+      )
+    );
+    setEditingMessageId(null);
+    setEditContent("");
+
+    try {
+      const result = await editGroupMessage(editingMessageId, user.id, editContent.trim());
+      if (!result) {
+        // Rollback on error
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === editingMessageId ? originalMessage : msg
+          )
+        );
+        toast({
+          title: t("common.error"),
+          description: t("chat.couldNotEdit"),
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error editing message:", error);
+      // Rollback on error
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === editingMessageId ? originalMessage : msg
+        )
+      );
+      toast({
+        title: t("common.error"),
+        description: t("chat.couldNotEdit"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!user) return;
+
+    const originalMessage = messages.find(m => m.id === messageId);
+    if (!originalMessage) return;
+
+    // Optimistic update - mark as deleted
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === messageId ? { ...msg, is_deleted: true } : msg
+      )
+    );
+
+    try {
+      const success = await deleteGroupMessage(messageId, user.id);
+      if (!success) {
+        // Rollback on error
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === messageId ? originalMessage : msg
+          )
+        );
+        toast({
+          title: t("common.error"),
+          description: t("chat.couldNotDelete"),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: t("chat.messageDeleted"),
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      // Rollback on error
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === messageId ? originalMessage : msg
+        )
+      );
+      toast({
+        title: t("common.error"),
+        description: t("chat.couldNotDelete"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSaveEdit();
+    } else if (e.key === "Escape") {
+      handleCancelEdit();
+    }
+  };
+
+  // Fetch polls for the conversation
+  const fetchPolls = useCallback(async () => {
+    if (!conversationId || !user) return;
+    try {
+      const pollsData = await getPolls(conversationId, user.id);
+      setPolls(pollsData);
+    } catch (error) {
+      console.error("Error fetching polls:", error);
+    }
+  }, [conversationId, user]);
+
+  // Fetch polls on mount and when conversation changes
+  useEffect(() => {
+    fetchPolls();
+  }, [fetchPolls]);
+
+  // Quick action handlers for voting and suggesting places
+  const handleCreatePoll = async (pollType: 'day' | 'time' | 'activity') => {
+    if (!conversationId || !user) return;
+
+    const templates = getPollTemplates(t);
+    const template = templates[pollType];
+
+    try {
+      const poll = await createPoll({
+        conversation_id: conversationId,
+        creator_id: user.id,
+        poll_type: pollType,
+        question: template.question,
+        options: template.options,
+        is_multiple_choice: false,
+      });
+
+      if (poll) {
+        // Refresh polls
+        fetchPolls();
+        setShowQuickActions(false);
+        toast({
+          title: t("chat.pollCreated", "Poll created!"),
+          description: t("chat.pollCreatedDesc", "Your group can now vote."),
+        });
+      } else {
+        toast({
+          title: t("common.error"),
+          description: t("chat.couldNotCreatePoll", "Could not create poll"),
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating poll:", error);
+      toast({
+        title: t("common.error"),
+        description: t("chat.couldNotCreatePoll", "Could not create poll"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSuggestPlace = () => {
+    const city = members.find(m => m.city)?.city || t("chat.yourCity", "your city");
+    const message = `📍 ${t("chat.suggestPlace", "I'd like to suggest a place!")}\n\n${t("chat.placePrompt", "What about meeting at")} [${t("chat.placeName", "place name")}] ${t("chat.in", "in")} ${city}?\n\n${t("chat.thoughts", "What do you think?")} 👍👎`;
+    setInput(message);
+    setShowQuickActions(false);
   };
 
   if (authLoading || loading) {
@@ -866,28 +1082,17 @@ const GroupChat = () => {
         <div className="relative max-w-3xl mx-auto h-full flex flex-col">
           <div className="flex-1 px-4 sm:px-6 py-6 sm:py-8 space-y-4">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-6 shadow-xl border border-primary/10">
-                  <Users className="h-12 w-12 text-primary" />
-                </div>
-                <h3 className="font-display font-semibold text-xl mb-2 text-foreground">Start the conversation</h3>
-                <p className="text-muted-foreground text-sm max-w-md mb-8 leading-relaxed">
-                  Say hello to your group! Plan a meetup or just get to know each other.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleAIPlaceSuggestion}
-                  disabled={aiLoading}
-                  className="gap-2 rounded-full shadow-md hover:shadow-lg transition-all border-primary/30 hover:border-primary/50"
-                >
-                  {aiLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <MapPin className="h-4 w-4" />
-                  )}
-                  Get AI Place Suggestions
-                </Button>
-              </div>
+              <GroupChatEmptyState
+                members={members}
+                currentUserId={user?.id}
+                groupName={groupName}
+                onSendMessage={(message) => {
+                  // Send message directly without relying on input state
+                  handleSend(message);
+                }}
+                onAISuggestion={handleAIPlaceSuggestion}
+                aiLoading={aiLoading}
+              />
             ) : (
               messages
                 .filter((message) => !message.is_deleted)
@@ -939,65 +1144,133 @@ const GroupChat = () => {
                             )}
                           </div>
                         )}
-                        <div
-                          className={`rounded-2xl px-4 py-3 shadow-md transition-all hover:shadow-lg ${isAI
-                            ? "bg-accent/10 border border-accent/20 text-foreground"
-                            : isOwn
-                              ? "bg-gradient-to-r from-primary to-orange-500 text-white rounded-br-md shadow-[0_2px_12px_rgba(255,152,0,0.3)]"
-                              : "bg-card text-foreground border border-border/60 rounded-bl-md shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
-                            } ${isConsecutive && !isOwn ? "rounded-tl-md" : ""} ${isConsecutive && isOwn ? "rounded-tr-md" : ""}`}
-                        >
-                          {/* Display images */}
-                          {(() => {
-                            // Handle both array and JSONB formats, and ensure it's an array
-                            let mediaUrls = message.media_urls;
-                            if (typeof mediaUrls === 'string') {
-                              try {
-                                mediaUrls = JSON.parse(mediaUrls);
-                              } catch (e) {
-                                console.error('Failed to parse media_urls:', e);
-                                mediaUrls = [];
-                              }
-                            }
-                            const hasMedia = message.has_media && Array.isArray(mediaUrls) && mediaUrls.length > 0;
+                        <div className={`relative group ${isOwn ? 'flex flex-row-reverse items-start gap-1' : 'flex items-start gap-1'}`}>
+                          {/* Edit/Delete dropdown for own messages */}
+                          {isOwn && !isAI && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                >
+                                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-36">
+                                <DropdownMenuItem onClick={() => handleStartEdit(message)} className="gap-2">
+                                  <Pencil className="h-4 w-4" />
+                                  {t("chat.edit")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteMessage(message.id)}
+                                  className="gap-2 text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  {t("chat.delete")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                          <div
+                            className={`rounded-2xl px-4 py-3 shadow-md transition-all hover:shadow-lg ${isAI
+                              ? "bg-accent/10 border border-accent/20 text-foreground"
+                              : isOwn
+                                ? "bg-gradient-to-r from-primary to-orange-500 text-white rounded-br-md shadow-[0_2px_12px_rgba(255,152,0,0.3)]"
+                                : "bg-card text-foreground border border-border/60 rounded-bl-md shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+                              } ${isConsecutive && !isOwn ? "rounded-tl-md" : ""} ${isConsecutive && isOwn ? "rounded-tr-md" : ""}`}
+                          >
+                            {/* Display images */}
+                            {(() => {
+                              // Handle both array and JSONB formats, and ensure it's an array
+                              type MediaItem = { url: string; type: string; size?: number };
+                              let parsedMedia: MediaItem[] = [];
 
-                            return hasMedia ? (
-                              <div className={`grid gap-2.5 mb-2 ${message.content ? 'mb-3' : ''}`} style={{ gridTemplateColumns: mediaUrls.length === 1 ? '1fr' : mediaUrls.length === 2 ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' }}>
-                                {mediaUrls.map((media: { url?: string; type?: string; size?: number } | string, idx: number) => {
-                                  const imageUrl = typeof media === 'string' ? media : (media.url || '');
-                                  return (
+                              if (message.media_urls) {
+                                if (typeof message.media_urls === 'string') {
+                                  try {
+                                    parsedMedia = JSON.parse(message.media_urls);
+                                  } catch (e) {
+                                    console.error('Failed to parse media_urls:', e);
+                                  }
+                                } else if (Array.isArray(message.media_urls)) {
+                                  parsedMedia = message.media_urls.map(m =>
+                                    typeof m === 'string' ? { url: m, type: 'image' } : { url: m.url || '', type: m.type || 'image', size: m.size }
+                                  );
+                                }
+                              }
+
+                              const hasMedia = message.has_media && parsedMedia.length > 0;
+
+                              return hasMedia ? (
+                                <div className={`grid gap-2.5 mb-2 ${message.content ? 'mb-3' : ''}`} style={{ gridTemplateColumns: parsedMedia.length === 1 ? '1fr' : parsedMedia.length === 2 ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' }}>
+                                  {parsedMedia.map((media, idx) => (
                                     <div
                                       key={idx}
-                                      className="relative rounded-2xl overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] bg-card border border-border/30"
+                                      className="relative rounded-2xl overflow-hidden group/image cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] bg-card border border-border/30"
                                       onClick={() => {
-                                        setViewingImages(mediaUrls);
+                                        setViewingImages(parsedMedia);
                                         setViewingImageIndex(idx);
                                       }}
                                     >
                                       <img
-                                        src={imageUrl}
+                                        src={media.url}
                                         alt={`Attachment ${idx + 1}`}
                                         className="w-full h-auto max-h-72 object-cover"
                                         width={288}
                                         height={288}
                                         loading="lazy"
                                         onError={(e) => {
-                                          console.error('Failed to load image:', imageUrl);
+                                          console.error('Failed to load image:', media.url);
                                           (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                       />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity" />
                                     </div>
-                                  );
-                                })}
+                                  ))}
+                                </div>
+                              ) : null;
+                            })()}
+                            {/* Edit mode or display mode */}
+                            {editingMessageId === message.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  ref={editInputRef}
+                                  value={editContent}
+                                  onChange={(e) => setEditContent(e.target.value)}
+                                  onKeyDown={handleEditKeyPress}
+                                  className="flex-1 h-8 text-sm bg-background/90 border-white/30 text-foreground"
+                                  autoFocus
+                                />
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={handleSaveEdit}
+                                  className="h-7 w-7 hover:bg-white/20"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={handleCancelEdit}
+                                  className="h-7 w-7 hover:bg-white/20"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
                               </div>
-                            ) : null;
-                          })()}
-                          {message.content && (
-                            <p className={`text-sm whitespace-pre-wrap leading-relaxed ${isOwn ? 'text-white' : 'text-foreground'}`}>
-                              {message.content}
-                            </p>
-                          )}
+                            ) : message.content ? (
+                              <p className={`text-sm whitespace-pre-wrap leading-relaxed ${isOwn ? 'text-white' : 'text-foreground'}`}>
+                                {message.content}
+                              </p>
+                            ) : null}
+                            {/* Edited indicator */}
+                            {message.edited_at && !editingMessageId && (
+                              <span className={`text-[10px] mt-1 block ${isOwn ? 'text-white/60' : 'text-muted-foreground'}`}>
+                                ({t("chat.edited")})
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {isFirstInGroup && (
                           <span className={`text-xs text-muted-foreground mt-1.5 px-1.5 ${isOwn ? 'text-right' : 'text-left'}`}>
@@ -1035,6 +1308,73 @@ const GroupChat = () => {
                 <Upload className="h-8 w-8 text-primary" />
                 <p className="text-sm font-semibold text-primary">Drop images here</p>
               </div>
+            </div>
+          )}
+
+          {/* Quick Actions Panel */}
+          {showQuickActions && (
+            <div className="mb-3 p-3 rounded-xl bg-secondary/50 border border-border/50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Vote className="h-3.5 w-3.5" />
+                  {t("chat.planMeetup", "Plan your meetup")}
+                </p>
+                <button
+                  onClick={() => setShowQuickActions(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Poll Options */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                <button
+                  onClick={() => handleCreatePoll('day')}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                >
+                  <Calendar className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium text-foreground">{t("chat.voteDay", "Vote Day")}</span>
+                </button>
+                <button
+                  onClick={() => handleCreatePoll('time')}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                >
+                  <Clock className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium text-foreground">{t("chat.voteTime", "Vote Time")}</span>
+                </button>
+                <button
+                  onClick={() => handleCreatePoll('activity')}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                >
+                  <Coffee className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium text-foreground">{t("chat.voteActivity", "Vote Activity")}</span>
+                </button>
+                <button
+                  onClick={handleSuggestPlace}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                >
+                  <MapPin className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium text-foreground">{t("chat.suggestPlaceBtn", "Suggest Place")}</span>
+                </button>
+              </div>
+
+              {/* AI Suggestion */}
+              <button
+                onClick={() => {
+                  handleAIPlaceSuggestion();
+                  setShowQuickActions(false);
+                }}
+                disabled={aiLoading}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-primary/10 to-orange-500/10 hover:from-primary/20 hover:to-orange-500/20 border border-primary/20 transition-all group"
+              >
+                {aiLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                ) : (
+                  <Sparkles className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
+                )}
+                <span className="text-sm font-medium text-primary">{t("chat.aiSuggest", "AI Place Suggestions")}</span>
+              </button>
             </div>
           )}
 
@@ -1089,6 +1429,15 @@ const GroupChat = () => {
             >
               <ImageIcon className="h-5 w-5 text-muted-foreground" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowQuickActions(!showQuickActions)}
+              className={`rounded-full h-12 w-12 flex-shrink-0 hover:bg-primary/10 transition-all hover:scale-105 shadow-sm border border-border/30 ${showQuickActions ? 'bg-primary/10 border-primary/30' : ''}`}
+              title={t("chat.planMeetup", "Plan meetup")}
+            >
+              <Vote className="h-5 w-5 text-muted-foreground" />
+            </Button>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -1097,7 +1446,7 @@ const GroupChat = () => {
               className="flex-1 rounded-full border-border/60 focus-visible:ring-primary/50 h-12 px-5 shadow-sm bg-background/80 text-sm font-medium placeholder:text-muted-foreground/60"
             />
             <Button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={(!input.trim() && selectedImages.length === 0) || uploadingImages}
               className="rounded-full h-12 px-7 bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:scale-105"
               title="Send message"

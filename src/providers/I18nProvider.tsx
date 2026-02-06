@@ -59,34 +59,41 @@ interface I18nProviderProps {
 }
 
 export function I18nProvider({ children, locale, dictionary }: I18nProviderProps) {
+  // Instant ready when dictionary is provided from server (SSR hydration path)
   const [isReady, setIsReady] = useState(() => !!dictionary);
   // Track if we've already applied dictionary to avoid redundant operations on re-renders
   const dictionaryApplied = useRef(false);
 
   // Apply dictionary synchronously ONCE when provided (avoids hydration mismatch)
+  // This runs during render before useEffect, so translations are available immediately
   if (dictionary && !dictionaryApplied.current && i18n.isInitialized && typeof i18n.addResourceBundle === 'function') {
     if (!hasResourceBundle(locale, 'translation')) {
       i18n.addResourceBundle(locale, 'translation', dictionary, true, true);
+    }
+    if (i18n.language !== locale) {
       i18n.changeLanguage(locale);
     }
     dictionaryApplied.current = true;
   }
 
   useEffect(() => {
-    const timeout = setTimeout(() => setIsReady(true), 1500); // Fallback: never block > 1.5s
+    // If dictionary was provided from server, translations are already applied synchronously
+    // No async work needed - skip entirely for instant hydration
+    if (dictionary && dictionaryApplied.current) {
+      return;
+    }
+
+    // Client-only path: load locale asynchronously
+    const timeout = setTimeout(() => setIsReady(true), 300); // Fallback: never block > 300ms
     const init = async () => {
       try {
-        let dict = dictionary;
-        if (!dict) {
-          const mod = await loadLocale(locale);
-          dict = mod.default as Record<string, unknown>;
-        }
-        // Always init with full resources so translations load correctly
+        const mod = await loadLocale(locale);
+        const dict = mod.default as Record<string, unknown>;
         await initializeI18n(locale, dict);
         if (i18n.language !== locale) {
           await i18n.changeLanguage(locale);
         }
-        setIsReady(true); // Show content as soon as i18n is ready
+        setIsReady(true);
       } catch (err) {
         console.error('[I18nProvider] init failed:', err);
         setIsReady(true); // Show app anyway to avoid infinite loading
@@ -122,11 +129,11 @@ export function I18nProvider({ children, locale, dictionary }: I18nProviderProps
         {children}
         {!isReady && (
           <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/95 backdrop-blur-sm"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-background"
             aria-live="polite"
             aria-label="Loading"
           >
-            <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
           </div>
         )}
       </I18nextProvider>

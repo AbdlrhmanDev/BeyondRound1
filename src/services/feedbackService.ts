@@ -125,7 +125,8 @@ export const getFeedbackStats = async (contextType?: string): Promise<{
   ratingDistribution: Record<number, number>;
 } | null> => {
   try {
-    let query = supabase
+    // Note: rating column may not be in generated types but exists in DB
+    let query = supabase!
       .from("feedback")
       .select("rating")
       .not("rating", "is", null);
@@ -134,7 +135,7 @@ export const getFeedbackStats = async (contextType?: string): Promise<{
       query = query.eq("context_type", contextType);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query as { data: { rating: number }[] | null; error: unknown };
 
     if (error) {
       console.error("Error fetching feedback stats:", error);

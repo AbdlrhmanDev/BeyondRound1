@@ -384,9 +384,9 @@ const Profile = () => {
 
     setIsSaving(true);
     const previousLocation = {
-      country: profile?.country,
-      state: profile?.state,
-      city: profile?.city,
+      country: profile?.country ?? null,
+      state: profile?.state ?? null,
+      city: profile?.city ?? null,
     };
 
     // Optimistic update
@@ -617,7 +617,7 @@ const Profile = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <Card className="rounded-xl bg-card border border-border shadow-sm">
-            <CardContent className="p-4 flex flex-col items-center text-center">
+            <CardContent className="pt-3 pb-4 px-4 flex flex-col items-center text-center">
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
@@ -626,7 +626,7 @@ const Profile = () => {
             </CardContent>
           </Card>
           <Card className="rounded-xl bg-card border border-border shadow-sm">
-            <CardContent className="p-4 flex flex-col items-center text-center">
+            <CardContent className="pt-3 pb-4 px-4 flex flex-col items-center text-center">
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
                 <Users className="h-5 w-5 text-primary" />
               </div>

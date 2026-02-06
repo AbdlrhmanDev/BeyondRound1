@@ -31,7 +31,7 @@ export function CTASectionServer({ dict, locale }: CTASectionServerProps) {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-4xl mx-auto">
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full max-sm:bg-white/10 sm:bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-8">
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full max-sm:bg-foreground/80 sm:bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-8">
             <Sparkles size={14} className="text-primary" />
             {t('home.joinCommunity')}
           </span>

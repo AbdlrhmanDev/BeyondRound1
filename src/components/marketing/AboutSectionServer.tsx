@@ -32,8 +32,8 @@ export function AboutSectionServer({ dict }: AboutSectionServerProps) {
             </h2>
           </div>
 
-          {/* Quote Block */}
-          <div className="relative max-sm:bg-white/10 sm:bg-primary-foreground/5 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-3xl p-8 sm:p-10 lg:p-14">
+          {/* Quote Block - no backdrop-blur on mobile for TBT */}
+          <div className="relative max-sm:bg-foreground/80 sm:bg-primary-foreground/5 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-3xl p-8 sm:p-10 lg:p-14">
             <Quote className="absolute top-6 sm:top-8 left-6 sm:left-8 w-12 h-12 sm:w-16 sm:h-16 text-primary/20" />
 
             <div className="relative z-10 space-y-5 sm:space-y-6 text-base sm:text-lg text-primary-foreground/60 leading-relaxed">
