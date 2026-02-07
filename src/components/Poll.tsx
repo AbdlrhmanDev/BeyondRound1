@@ -125,7 +125,10 @@ export const Poll = ({ poll, userId, onVoteChange, isOwn = false }: PollProps) =
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36">
-              <DropdownMenuItem onClick={handleClose} className="gap-2">
+              <DropdownMenuItem
+                onClick={handleClose}
+                className="gap-2 bg-[#FF8A00] text-white hover:bg-[#FF8A00]/90 focus:bg-[#FF8A00]/90 focus:text-white transition-colors"
+              >
                 <Lock className="h-4 w-4" />
                 {t('chat.closePoll', 'Close Poll')}
               </DropdownMenuItem>

@@ -8,7 +8,7 @@ import { ArrowRight, Mail, Sparkles, ArrowLeft, Check, MailCheck } from "lucide-
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import LocalizedLink from "@/components/LocalizedLink";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient, supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const emailSchema = z.object({
@@ -53,7 +53,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+      const { error } = await getSupabaseClient().auth.resetPasswordForEmail(formData.email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 

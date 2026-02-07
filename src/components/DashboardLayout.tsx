@@ -72,11 +72,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     onClick={() => navigate(item.path)}
                     onMouseEnter={() => preloadRoute(item.path)}
                     onFocus={() => preloadRoute(item.path)}
-                    className={`gap-2 rounded-lg px-3 min-h-[36px] text-sm ${
-                      isActive
+                    className={`gap-2 rounded-lg px-3 min-h-[36px] text-sm ${isActive
                         ? "bg-secondary text-foreground"
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    }`}
+                      }`}
                   >
                     <item.icon className="h-4 w-4" />
                     {t(item.labelKey)}
@@ -88,19 +87,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
           <div className="flex items-center gap-1 shrink-0">
             <NotificationPopover />
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Open settings"
-              className={`rounded-lg min-h-[36px] min-w-[36px] ${
-                pathnameWithoutLocale === "/settings" ? "bg-secondary" : "hover:bg-secondary/50"
-              }`}
-              onClick={() => navigate("/settings")}
-              onMouseEnter={() => preloadRoute("/settings")}
-              onFocus={() => preloadRoute("/settings")}
-            >
-              <Settings className="h-4 w-4 text-muted-foreground" />
-            </Button>
             <Button
               variant="ghost"
               onClick={handleSignOut}
@@ -125,11 +111,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               onClick={() => navigate(item.path)}
               onMouseEnter={() => preloadRoute(item.path)}
               onFocus={() => preloadRoute(item.path)}
-              className={`flex flex-col items-center justify-center gap-0.5 min-h-[48px] flex-1 max-w-[100px] py-1.5 px-2 rounded-lg ${
-                isActive
+              className={`flex flex-col items-center justify-center gap-0.5 min-h-[48px] flex-1 max-w-[100px] py-1.5 px-2 rounded-lg ${isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
               <span className="text-[10px] font-medium">{t(item.labelKey)}</span>

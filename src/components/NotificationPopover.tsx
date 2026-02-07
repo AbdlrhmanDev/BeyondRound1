@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Bell, Check, Users, Calendar, Heart, Sparkles, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -34,12 +34,13 @@ const NotificationPopover = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<any>(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
 
     try {
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
@@ -53,9 +54,9 @@ const NotificationPopover = () => {
         setLoading(false);
         return;
       }
-      
+
       setNotifications((data || []) as Notification[]);
-      
+
       // If no notifications exist, create welcome notification for existing users
       if ((!data || data.length === 0) && user.id) {
         const { data: profile } = await supabase
@@ -63,7 +64,7 @@ const NotificationPopover = () => {
           .select("id")
           .eq("user_id", user.id)
           .maybeSingle();
-        
+
         if (profile) {
           // Check if welcome notification already exists
           const { data: existingWelcome } = await supabase
@@ -72,7 +73,7 @@ const NotificationPopover = () => {
             .eq("user_id", user.id)
             .eq("type", "welcome")
             .maybeSingle();
-          
+
           if (!existingWelcome) {
             // Create welcome notification (keys for i18n; app resolves with current locale)
             const { data: newNotification } = await supabase
@@ -87,7 +88,7 @@ const NotificationPopover = () => {
               })
               .select()
               .single();
-            
+
             if (newNotification) {
               setNotifications([newNotification as Notification]);
             }
@@ -111,16 +112,11 @@ const NotificationPopover = () => {
 
     fetchNotifications();
 
-    // Clean up existing channel before creating a new one
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
     // Subscribe to new notifications with comprehensive error handling
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    
+    let channel: any = null;
+
     try {
+      const supabase = getSupabaseClient();
       channel = supabase
         .channel(`notifications-${user.id}`, {
           config: {
@@ -169,10 +165,10 @@ const NotificationPopover = () => {
             }
           }
         );
-      
+
       // Subscribe with error handling - wrap in try-catch to prevent unhandled rejections
       try {
-        channel.subscribe((status) => {
+        channel.subscribe((status: string) => {
           // Only log errors, not normal status changes
           if (status === "SUBSCRIBED") {
             channelRef.current = channel;
@@ -194,7 +190,7 @@ const NotificationPopover = () => {
     return () => {
       if (channelRef.current) {
         channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
+        getSupabaseClient().removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
@@ -202,13 +198,21 @@ const NotificationPopover = () => {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const displayNotifications = useMemo(() => {
+    // Deduplicate by ID and sort by date (though API should handle sorting)
+    const unique = notifications.filter((n, index, self) =>
+      index === self.findIndex((t) => t.id === n.id)
+    );
+    return unique;
+  }, [notifications]);
+
   const markAllRead = async () => {
     if (!user || unreadCount === 0) return;
 
     try {
       const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
-      
-      const { error } = await supabase
+
+      const { error } = await getSupabaseClient()
         .from("notifications")
         .update({ read: true, read_at: new Date().toISOString() })
         .in("id", unreadIds);
@@ -228,7 +232,7 @@ const NotificationPopover = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await getSupabaseClient()
         .from("notifications")
         .update({ read: true, read_at: new Date().toISOString() })
         .eq("id", notificationId);
@@ -245,7 +249,7 @@ const NotificationPopover = () => {
 
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
-    
+
     if (notification.link) {
       navigate(notification.link);
       setOpen(false);
@@ -341,9 +345,9 @@ const NotificationPopover = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="rounded-full hover:bg-secondary relative"
         >
           <Bell className="h-5 w-5 text-muted-foreground" />
@@ -355,16 +359,16 @@ const NotificationPopover = () => {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[calc(100vw-2rem)] max-w-80 p-0 rounded-xl sm:rounded-2xl border-border/50 shadow-xl" 
+        className="w-[calc(100vw-2rem)] max-w-80 p-0 rounded-xl sm:rounded-2xl border-border/50 shadow-xl"
         align="end"
         sideOffset={8}
       >
         <div className="flex items-center justify-between p-4 border-b border-border/40">
           <h3 className="font-display font-semibold">{t("notifications.heading")}</h3>
           {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-xs text-muted-foreground hover:text-foreground h-8"
               onClick={markAllRead}
             >
@@ -373,60 +377,55 @@ const NotificationPopover = () => {
             </Button>
           )}
         </div>
-        
+
         <div className="max-h-80 overflow-y-auto">
           {loading ? (
             <div className="p-8 text-center">
               <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">{t("notifications.loading")}</p>
             </div>
-          ) : notifications.length > 0 ? (
+          ) : displayNotifications.length > 0 ? (
             <div className="divide-y divide-border/40">
-              {notifications
-                .filter((n, index, self) => 
-                  // Remove duplicates by keeping only first occurrence of each id
-                  index === self.findIndex((t) => t.id === n.id)
-                )
-                .map((notification) => {
-                  const displayTitle = getDisplayTitle(notification);
-                  const displayMessage = getDisplayMessage(notification);
-                  return (
-                <div
-                  key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={cn(
-                    "p-4 hover:bg-secondary/50 transition-colors cursor-pointer",
-                    !notification.read && "bg-primary/5"
-                  )}
-                >
-                  <div className="flex gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                      {getIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className={cn(
-                          "text-sm",
-                          !notification.read && "font-medium"
-                        )}>
-                          {displayTitle}
-                        </p>
-                        {!notification.read && (
-                          <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
-                        )}
+              {displayNotifications.map((notification) => {
+                const displayTitle = getDisplayTitle(notification);
+                const displayMessage = getDisplayMessage(notification);
+                return (
+                  <div
+                    key={notification.id}
+                    onClick={() => handleNotificationClick(notification)}
+                    className={cn(
+                      "p-4 hover:bg-secondary/50 transition-colors cursor-pointer",
+                      !notification.read && "bg-primary/5"
+                    )}
+                  >
+                    <div className="flex gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+                        {getIcon(notification.type)}
                       </div>
-                      {displayMessage ? (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {displayMessage}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={cn(
+                            "text-sm",
+                            !notification.read && "font-medium"
+                          )}>
+                            {displayTitle}
+                          </p>
+                          {!notification.read && (
+                            <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
+                          )}
+                        </div>
+                        {displayMessage ? (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                            {displayMessage}
+                          </p>
+                        ) : null}
+                        <p className="text-xs text-muted-foreground/70 mt-1">
+                          {formatTime(notification.created_at)}
                         </p>
-                      ) : null}
-                      <p className="text-xs text-muted-foreground/70 mt-1">
-                        {formatTime(notification.created_at)}
-                      </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                  );
+                );
               })}
             </div>
           ) : (
@@ -438,10 +437,10 @@ const NotificationPopover = () => {
             </div>
           )}
         </div>
-        
+
         <div className="p-3 border-t border-border/40">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full text-sm text-muted-foreground hover:text-foreground rounded-xl"
           >
             {t("notifications.viewAll")}

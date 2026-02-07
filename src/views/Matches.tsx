@@ -66,7 +66,7 @@ const Matches = () => {
   // Filter to show only the highest scoring group
   const highestScoreGroup = groups.length > 0 && groups[0].average_score !== null && groups[0].average_score !== undefined
     ? [groups[0]] // Show only the first group (highest score)
-    : groups.length > 0 
+    : groups.length > 0
       ? [groups[0]] // If no score, still show the first group
       : [];
 
@@ -94,7 +94,7 @@ const Matches = () => {
   const handleFetchMatchDetails = useCallback(async (group: MatchGroup) => {
     setSelectedGroup(group);
     setMatchDetails(null);
-    
+
     const details = await fetchDetails(group);
     if (details) {
       setMatchDetails(details);
@@ -125,7 +125,7 @@ const Matches = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-5xl">
+      <main className="container mx-auto px-4 sm:px-6 pt-6 mt-10 sm:pt-8 pb-6 sm:py-8 max-w-5xl">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold">{t("dashboard.groups")}</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -211,7 +211,7 @@ const Matches = () => {
                             {t("matches.groupReady")}
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="text-muted-foreground flex-shrink-0">
+                          <Badge variant="secondary" className="bg-secondary/50 text-muted-foreground flex-shrink-0 border-none">
                             <Lock className="h-3 w-3 mr-1" />
                             {t("matches.forming")}
                           </Badge>
@@ -306,19 +306,15 @@ const Matches = () => {
                       </div>
                     )}
 
-                    {!group.matchDetails && (
-                      <div className="px-5 py-3 border-b border-border">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleFetchMatchDetails(group)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          <Info className="h-3 w-3 mr-1.5" />
-                          {t("dashboard.viewGroupContext")}
-                        </Button>
+                    {/* Shared interests context link */}
+                    <div className="px-5 py-3.5 border-t border-border/40 group/context cursor-pointer hover:bg-secondary/20 transition-colors" onClick={() => handleFetchMatchDetails(group)}>
+                      <div className="flex items-center gap-2 text-muted-foreground group-hover/context:text-foreground transition-colors">
+                        <Info className="h-4 w-4 shrink-0" />
+                        <span className="text-sm font-medium">
+                          {t("dashboard.viewGroupContext", "View what shaped this group")}
+                        </span>
                       </div>
-                    )}
+                    </div>
 
                     {/* Actions */}
                     <div className="px-5 py-4">
@@ -326,11 +322,11 @@ const Matches = () => {
                         /* Group is ready - show Enter Group button */
                         <Button
                           onClick={() => startGroupChat(group)}
-                          className="w-full bg-primary hover:bg-primary/90"
+                          className="w-full h-14 text-lg font-bold bg-[#FF8A00] hover:bg-[#FF8A00]/90 text-white rounded-2xl shadow-[0_8px_20px_rgba(255,138,0,0.25)] border-none transition-all active:scale-[0.98]"
                         >
-                          <MessageCircle className="h-4 w-4 mr-2" />
+                          <MessageCircle className="h-6 w-6 mr-3" />
                           {t("dashboard.enterGroup")}
-                          <ChevronRight className="h-4 w-4 ml-auto" />
+                          <ChevronRight className="h-5 w-5 ml-auto opacity-70" />
                         </Button>
                       ) : (
                         /* Group is forming - show locked state */
@@ -382,109 +378,109 @@ const Matches = () => {
                 );
               }
               return (
-              <div className="space-y-6 py-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Heart className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-foreground">{t("matches.interestsAlignment")}</h4>
-                      <p className="text-xs text-muted-foreground">{t("matches.highestWeightInMatching")}</p>
-                    </div>
-                  </div>
-                  {details.sharedInterests.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 pl-14">
-                      {details.sharedInterests.map((interest) => (
-                        <Badge key={interest} variant="secondary" className="px-3 py-1.5">
-                          {interest}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground pl-14">{t("matches.noSharedInterestsFound")}</p>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                      <Stethoscope className="h-5 w-5 text-accent" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-foreground">{t("dashboard.specialty")}</h4>
-                      <p className="text-xs text-muted-foreground">{t("matches.medicalSpecialtySimilarity")}</p>
-                    </div>
-                  </div>
-                  <div className="pl-14">
-                    <Badge 
-                      variant={details.specialtyMatch.type === 'same' ? 'default' : 'secondary'}
-                      className="px-3 py-1.5"
-                    >
-                      {details.specialtyMatch.type === 'same' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                      {details.specialtyMatch.value}
-                      {details.specialtyMatch.type === 'same' && ` ${t("matches.same")}`}
-                      {details.specialtyMatch.type === 'related' && ` ${t("matches.related")}`}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <MapPin className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-foreground">{t("matches.location")}</h4>
-                      <p className="text-xs text-muted-foreground">{t("matches.locationDescription")}</p>
-                    </div>
-                  </div>
-                  <div className="pl-14">
+                <div className="space-y-6 py-4">
+                  <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="px-3 py-1.5">
-                        {details.locationMatch.city}
-                      </Badge>
-                      {details.locationMatch.neighborhood && (
-                        <>
-                          <span className="text-muted-foreground">•</span>
-                          <Badge 
-                            variant={details.locationMatch.sameNeighborhood ? 'default' : 'outline'}
-                            className="px-3 py-1.5"
-                          >
-                            {details.locationMatch.neighborhood}
-                            {details.locationMatch.sameNeighborhood && (
-                              <CheckCircle2 className="h-3 w-3 ml-1" />
-                            )}
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Heart className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-foreground">{t("matches.interestsAlignment")}</h4>
+                        <p className="text-xs text-muted-foreground">{t("matches.highestWeightInMatching")}</p>
+                      </div>
+                    </div>
+                    {details.sharedInterests.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 pl-14">
+                        {details.sharedInterests.map((interest) => (
+                          <Badge key={interest} variant="secondary" className="px-3 py-1.5">
+                            {interest}
                           </Badge>
-                        </>
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground pl-14">{t("matches.noSharedInterestsFound")}</p>
+                    )}
                   </div>
-                </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                      <Calendar className="h-5 w-5 text-accent" />
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                        <Stethoscope className="h-5 w-5 text-accent" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-foreground">{t("dashboard.specialty")}</h4>
+                        <p className="text-xs text-muted-foreground">{t("matches.medicalSpecialtySimilarity")}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-foreground">{t("matches.availabilityOverlap")}</h4>
-                      <p className="text-xs text-muted-foreground">{t("matches.friSunTimeSlots")}</p>
+                    <div className="pl-14">
+                      <Badge
+                        variant={details.specialtyMatch.type === 'same' ? 'default' : 'secondary'}
+                        className="px-3 py-1.5"
+                      >
+                        {details.specialtyMatch.type === 'same' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                        {details.specialtyMatch.value}
+                        {details.specialtyMatch.type === 'same' && ` ${t("matches.same")}`}
+                        {details.specialtyMatch.type === 'related' && ` ${t("matches.related")}`}
+                      </Badge>
                     </div>
                   </div>
-                  {details.sharedAvailability.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 pl-14">
-                      {details.sharedAvailability.map((slot) => (
-                        <Badge key={slot} variant="secondary" className="px-3 py-1.5">
-                          {formatSlot(slot)}
-                        </Badge>
-                      ))}
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <MapPin className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-foreground">{t("matches.location")}</h4>
+                        <p className="text-xs text-muted-foreground">{t("matches.locationDescription")}</p>
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground pl-14">{t("matches.noOverlappingAvailabilityFound")}</p>
-                  )}
+                    <div className="pl-14">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="px-3 py-1.5">
+                          {details.locationMatch.city}
+                        </Badge>
+                        {details.locationMatch.neighborhood && (
+                          <>
+                            <span className="text-muted-foreground">•</span>
+                            <Badge
+                              variant={details.locationMatch.sameNeighborhood ? 'default' : 'outline'}
+                              className="px-3 py-1.5"
+                            >
+                              {details.locationMatch.neighborhood}
+                              {details.locationMatch.sameNeighborhood && (
+                                <CheckCircle2 className="h-3 w-3 ml-1" />
+                              )}
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-10 w-10 my-4 rounded-xl bg-accent/10 flex items-center justify-center">
+                        <Calendar className="h-5 w-5 text-accent " />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-foreground">{t("matches.availabilityOverlap")}</h4>
+                        <p className="text-xs text-muted-foreground">{t("matches.friSunTimeSlots")}</p>
+                      </div>
+                    </div>
+                    {details.sharedAvailability.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 pl-14">
+                        {details.sharedAvailability.map((slot) => (
+                          <Badge key={slot} variant="secondary" className="px-3 py-1.5">
+                            {formatSlot(slot)}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground pl-14">{t("matches.noOverlappingAvailabilityFound")}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
               );
             })()}
           </DialogContent>

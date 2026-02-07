@@ -649,6 +649,72 @@ export type Database = {
         }
         Relationships: []
       }
+      polls: {
+        Row: {
+          id: string
+          conversation_id: string
+          creator_id: string
+          poll_type: string
+          question: string
+          options: Json
+          is_multiple_choice: boolean
+          is_closed: boolean
+          closes_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          creator_id: string
+          poll_type: string
+          question: string
+          options: Json
+          is_multiple_choice?: boolean
+          is_closed?: boolean
+          closes_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          creator_id?: string
+          poll_type?: string
+          question?: string
+          options?: Json
+          is_multiple_choice?: boolean
+          is_closed?: boolean
+          closes_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      poll_votes: {
+        Row: {
+          id: string
+          poll_id: string
+          user_id: string
+          option_index: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          poll_id: string
+          user_id: string
+          option_index: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          poll_id?: string
+          user_id?: string
+          option_index?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
       specialty_relationships: {
         Row: {
           id: string

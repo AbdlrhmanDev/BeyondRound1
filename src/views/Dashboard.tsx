@@ -23,7 +23,8 @@ import {
   Sparkles,
   Clock,
   CheckCircle2,
-  Edit3
+  Edit3,
+  ChevronRight
 } from "lucide-react";
 
 interface Profile {
@@ -330,7 +331,7 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-2xl">
+      <main className="container mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-6 sm:py-8 max-w-2xl">
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">
@@ -402,10 +403,11 @@ const Dashboard = () => {
               <div className="px-5 py-4 bg-secondary/30">
                 <Button
                   onClick={() => handleEnterGroup(displayedGroup)}
-                  className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90"
+                  className="w-full h-14 text-lg font-bold bg-[#FF8A00] hover:bg-[#FF8A00]/90 text-white rounded-2xl shadow-[0_8px_20px_rgba(255,138,0,0.25)] border-none transition-all active:scale-[0.98]"
                 >
-                  <MessageCircle className="h-5 w-5 mr-2" />
+                  <MessageCircle className="h-6 w-6 mr-3" />
                   Enter Group
+                  <ChevronRight className="h-5 w-5 ml-auto opacity-70" />
                 </Button>
               </div>
 
@@ -511,19 +513,21 @@ const Dashboard = () => {
 
           {/* Next Group Info (when user has a group) */}
           {displayedGroup && (
-            <Card className="rounded-xl bg-card border border-border">
-              <CardContent className="py-3 px-4">
+            <Card className="rounded-xl bg-card border border-border/50 shadow-sm overflow-hidden">
+              <CardContent className="py-5 px-5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                      <Calendar className="h-6 w-6 text-slate-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground">Next group forms Thursday</p>
-                      <p className="text-xs text-muted-foreground">New groups are created weekly</p>
+                      <p className="text-sm font-bold text-slate-900 leading-tight">Next group forms Thursday</p>
+                      <p className="text-xs text-slate-500 mt-1 font-medium">New groups are created weekly</p>
                     </div>
                   </div>
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <div className="h-6 w-6 rounded-full bg-green-50 flex items-center justify-center border border-green-100 shrink-0">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -531,22 +535,23 @@ const Dashboard = () => {
 
           {/* Profile Status (when incomplete) */}
           {!isProfileComplete && (
-            <Card className="rounded-xl bg-card border border-border">
-              <CardContent className="py-3 px-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Users className="h-4 w-4 text-primary" />
+            <Card className="rounded-xl bg-card border border-border/50 shadow-sm overflow-hidden">
+              <CardContent className="py-5 px-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                      <Users className="h-6 w-6 text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground">Profile incomplete</p>
-                      <p className="text-xs text-muted-foreground">Finish to join a group</p>
+                      <p className="text-sm font-bold text-slate-900 leading-tight">Profile incomplete</p>
+                      <p className="text-xs text-slate-500 mt-1 font-medium">Finish to join a group</p>
                     </div>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => navigate("/onboarding")}
+                    className="rounded-xl border-slate-200 h-10 px-4 font-bold text-slate-900 hover:bg-slate-50 transition-colors shrink-0"
                   >
                     Continue
                   </Button>

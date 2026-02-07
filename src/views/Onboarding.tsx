@@ -11,7 +11,6 @@ import LocalizedLink from "@/components/LocalizedLink";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { getProfile, updateProfile } from "@/services/profileService";
 import { getOnboardingPreferences, saveOnboardingPreferences, markOnboardingComplete } from "@/services/onboardingService";
@@ -19,6 +18,7 @@ import { uploadAvatar, uploadLicense } from "@/services/storageService";
 import { createNotification } from "@/services/notificationService";
 import { LocationSelect } from "@/components/LocationSelect";
 import { LanguageLinks } from "@/components/marketing/LanguageLinks";
+import { getSupabaseClient } from "@/integrations/supabase/client";
 import { CalculateScoreBadge } from "@/components/CalculateScoreBadge";
 
 interface ExtendedError extends Error {
@@ -757,7 +757,7 @@ const Onboarding = () => {
       }
 
       // Save onboarding data
-      const { data: { user: newUser }, error: getUserError } = await supabase.auth.getUser();
+      const { data: { user: newUser }, error: getUserError } = await getSupabaseClient().auth.getUser();
       
       if (!newUser) {
         // User not authenticated yet - store data in localStorage to save after email confirmation

@@ -27,6 +27,16 @@ const Header = () => {
   const { user, loading } = useAuth();
   const { t } = useTranslation();
 
+  // Helper to get the correct dashboard URL based on environment
+  const getDashboardUrl = () => {
+    // In production, use the app subdomain
+    if (typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
+      return `${DOMAINS.app}/${lng}/dashboard`;
+    }
+    // In local development, use relative path if possible or keep localhost domain
+    return `/${lng}/dashboard`;
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)]">
       <div className="mx-3 mt-3 sm:mx-4 sm:mt-4">
@@ -59,8 +69,10 @@ const Header = () => {
 
               {/* Desktop CTA */}
               <div className="hidden md:flex items-center gap-3">
-                {!loading && user ? (
-                  <a href={`${DOMAINS.app}/${lng}/dashboard`} className="[&>button]:cursor-pointer">
+                {loading ? (
+                  <div className="h-10 w-24 rounded-lg bg-primary-foreground/10 animate-pulse" />
+                ) : user ? (
+                  <a href={getDashboardUrl()} className="[&>button]:cursor-pointer">
                     <Button>{t("common.dashboard")}</Button>
                   </a>
                 ) : (
@@ -110,8 +122,10 @@ const Header = () => {
                 </LocalizedLink>
               ))}
               <div className="flex flex-col gap-2 pt-3 mt-2 border-t border-white/10">
-                {!loading && user ? (
-                  <a href={`${DOMAINS.app}/${lng}/dashboard`} onClick={() => setIsMenuOpen(false)} className="block">
+                {loading ? (
+                  <div className="h-11 w-full rounded-lg bg-primary-foreground/10 animate-pulse" />
+                ) : user ? (
+                  <a href={getDashboardUrl()} onClick={() => setIsMenuOpen(false)} className="block">
                     <Button className="w-full min-h-[44px] justify-center">{t("common.dashboard")}</Button>
                   </a>
                 ) : (

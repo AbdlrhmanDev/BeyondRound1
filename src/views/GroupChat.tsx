@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
+import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useParams } from "next/navigation";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient } from "@/integrations/supabase/client";
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,19 +16,28 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2, Image as ImageIcon, X, Upload, Circle, Stethoscope, MapPin as MapPinIcon, MoreVertical, Pencil, Trash2, Check, Vote, Coffee, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2, Image as ImageIcon, X, Upload, Circle, Stethoscope, MapPin as MapPinIcon, MoreVertical, Pencil, Trash2, Check, Vote, Coffee, Calendar, Clock, BarChart3, Plus, PenLine } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { compressImages } from "@/utils/imageCompression";
-import { ImageViewer } from "@/components/ImageViewer";
+
+const ImageViewer = dynamic(() => import("@/components/ImageViewer").then(mod => mod.ImageViewer), {
+  ssr: false,
+  loading: () => null
+});
 import { getGroupMessages, getGroupConversation, sendGroupMessage, updateGroupMessageMedia, deleteGroupMessage, editGroupMessage, Message } from "@/services/messageService";
 import { getGroupInfo, getGroupMembers } from "@/services/matchService";
 import { getPublicProfile } from "@/services/profileService";
 import { getPublicPreferences } from "@/services/onboardingService";
 import { uploadPhotos } from "@/services/storageService";
 import { GroupChatEmptyState } from "@/components/GroupChatEmptyState";
-import { Poll } from "@/components/Poll";
+
+const Poll = dynamic(() => import("@/components/Poll").then(mod => mod.Poll), {
+  ssr: false,
+  loading: () => <div className="h-40 animate-pulse bg-muted rounded-xl mb-4" />
+});
 import { createPoll, getPolls, getPollTemplates, PollWithVotes } from "@/services/pollService";
 
 interface Member {
@@ -36,6 +48,188 @@ interface Member {
   specialty?: string | null;
   interests?: string[];
 }
+
+const MessageItem = memo(({
+  message,
+  isOwn,
+  sender,
+  isConsecutive,
+  editingMessageId,
+  editContent,
+  setEditContent,
+  handleStartEdit,
+  handleSaveEdit,
+  handleCancelEdit,
+  handleDeleteMessage,
+  handleEditKeyPress,
+  editInputRef,
+  setViewingImages,
+  setViewingImageIndex,
+  t
+}: {
+  message: Message;
+  isOwn: boolean;
+  sender: Member;
+  isConsecutive: boolean;
+  editingMessageId: string | null;
+  editContent: string;
+  setEditContent: (val: string) => void;
+  handleStartEdit: (msg: Message) => void;
+  handleSaveEdit: () => void;
+  handleCancelEdit: () => void;
+  handleDeleteMessage: (id: string) => void;
+  handleEditKeyPress: (e: React.KeyboardEvent) => void;
+  editInputRef: React.RefObject<HTMLInputElement>;
+  setViewingImages: (images: any[] | null) => void;
+  setViewingImageIndex: (idx: number) => void;
+  t: any;
+}) => {
+  const isAI = message.content.startsWith("🤖 AI");
+  const initials = sender.full_name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase() || "U";
+
+  const showAvatar = !isOwn && !isConsecutive;
+  const showName = !isOwn && !isConsecutive;
+
+  // Handle media parsing efficiently
+  const parsedMedia = useMemo(() => {
+    if (!message.media_urls) return [];
+    if (typeof message.media_urls === 'string') {
+      try {
+        return JSON.parse(message.media_urls);
+      } catch (e) {
+        return [];
+      }
+    }
+    if (Array.isArray(message.media_urls)) {
+      return message.media_urls.map(m =>
+        typeof m === 'string' ? { url: m, type: 'image' } : { url: m.url || '', type: m.type || 'image', size: m.size }
+      );
+    }
+    return [];
+  }, [message.media_urls]);
+
+  const hasMedia = message.has_media && parsedMedia.length > 0;
+
+  return (
+    <div className={`flex gap-2 sm:gap-3 ${isOwn ? "flex-row-reverse" : "flex-row"} ${isConsecutive ? "mt-1" : "mt-6"} w-full`}>
+      {!isOwn && (
+        showAvatar ? (
+          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 ring-2 ring-background shadow-md border-2 border-background">
+            <AvatarImage src={sender.avatar_url || undefined} />
+            <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white text-xs font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <div className="w-8 sm:w-10 flex-shrink-0" />
+        )
+      )}
+
+      <div className={`flex-1 ${isOwn ? "items-end" : "items-start"} flex flex-col max-w-[85%] sm:max-w-[75%]`}>
+        {showName && (
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <span className="text-sm font-semibold text-foreground">
+              {sender.full_name || "Anonymous"}
+            </span>
+            {sender.specialty && (
+              <span className="text-xs text-muted-foreground font-medium">• {sender.specialty}</span>
+            )}
+          </div>
+        )}
+        <div className="relative group flex items-start gap-1">
+          <div
+            className={`rounded-2xl px-4 py-3 shadow-md transition-all hover:shadow-lg backdrop-blur-sm ${isAI
+              ? "bg-accent/10 border border-accent/20 text-foreground"
+              : isOwn
+                ? "bg-gradient-to-br from-primary via-orange-500 to-orange-600 text-white rounded-br-md shadow-[0_4px_12px_rgba(255,152,0,0.25)] border border-white/10"
+                : "bg-card/95 text-foreground border border-border/80 rounded-bl-md shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
+              } ${isConsecutive && !isOwn ? "rounded-tl-md" : ""} ${isConsecutive && isOwn ? "rounded-tr-md" : ""}`}
+          >
+            {hasMedia && (
+              <div className={`grid gap-2.5 mb-2 ${message.content ? 'mb-3' : ''}`} style={{ gridTemplateColumns: parsedMedia.length === 1 ? '1fr' : 'repeat(2, 1fr)' }}>
+                {parsedMedia.map((media: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="relative rounded-2xl overflow-hidden group/image cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] bg-card border border-border/30 aspect-square"
+                    onClick={() => {
+                      setViewingImages(parsedMedia);
+                      setViewingImageIndex(idx);
+                    }}
+                  >
+                    <Image
+                      src={media.url}
+                      alt={`Attachment ${idx + 1}`}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 400px"
+                      className="object-cover"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {editingMessageId === message.id ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  ref={editInputRef}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  onKeyDown={handleEditKeyPress}
+                  className="flex-1 h-8 text-sm bg-background/90 border-white/30 text-foreground"
+                  autoFocus
+                />
+                <Button size="icon" variant="ghost" onClick={handleSaveEdit} className="h-7 w-7 hover:bg-white/20">
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={handleCancelEdit} className="h-7 w-7 hover:bg-white/20">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : message.content ? (
+              <p className={`text-sm whitespace-pre-wrap leading-relaxed ${isOwn ? 'text-white' : 'text-foreground'}`}>
+                {message.content}
+              </p>
+            ) : null}
+            <div className="flex items-center justify-end gap-1.5 mt-1.5 -mb-1 opacity-70">
+              {message.edited_at && !editingMessageId && (
+                <span className={`text-[9px] ${isOwn ? 'text-white/80' : 'text-muted-foreground'}`}>{t("chat.edited")}</span>
+              )}
+              <span className={`text-[10px] font-medium ${isOwn ? 'text-white/90' : 'text-muted-foreground'}`}>
+                {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          </div>
+          {isOwn && !isAI && (
+            <div className="order-first">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-36">
+                  <DropdownMenuItem onClick={() => handleStartEdit(message)} className="gap-2">
+                    <Pencil className="h-4 w-4" /> {t("chat.edit")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDeleteMessage(message.id)} className="gap-2 text-destructive focus:text-destructive">
+                    <Trash2 className="h-4 w-4" /> {t("chat.delete")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+MessageItem.displayName = "MessageItem";
 
 const GroupChat = () => {
   const params = useParams();
@@ -63,11 +257,15 @@ const GroupChat = () => {
   const [editContent, setEditContent] = useState("");
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [polls, setPolls] = useState<PollWithVotes[]>([]);
+  const [showCustomPoll, setShowCustomPoll] = useState(false);
+  const [customQuestion, setCustomQuestion] = useState("");
+  const [customOptions, setCustomOptions] = useState(["", ""]);
+  const [customMultipleChoice, setCustomMultipleChoice] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -210,17 +408,17 @@ const GroupChat = () => {
     if (channelRef.current) {
       try {
         channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
+        getSupabaseClient().removeChannel(channelRef.current);
       } catch (err) {
         // Silently handle cleanup errors
       }
       channelRef.current = null;
     }
 
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: RealtimeChannel | null = null;
 
     try {
-      channel = supabase
+      channel = getSupabaseClient()
         .channel(`group_messages:${conversationId}`, {
           config: {
             broadcast: { self: false },
@@ -287,7 +485,7 @@ const GroupChat = () => {
       if (channelRef.current) {
         try {
           channelRef.current.unsubscribe();
-          supabase.removeChannel(channelRef.current);
+          getSupabaseClient().removeChannel(channelRef.current);
         } catch (err) {
           // Silently handle cleanup errors
         }
@@ -298,11 +496,15 @@ const GroupChat = () => {
 
   useEffect(() => {
     if (messagesEndRef.current) {
+      // Use 'auto' for mass updates or large history, 'smooth' for single new messages
+      const isInitialLoad = messages.length > 0 && messages.length < 15;
+      const behavior = isInitialLoad ? "auto" : "smooth";
+
       requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        messagesEndRef.current?.scrollIntoView({ behavior });
       });
     }
-  }, [messages]);
+  }, [messages.length]); // Only scroll when message count changes, not on every content update
 
   const processImageFiles = (files: File[]) => {
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
@@ -608,7 +810,7 @@ const GroupChat = () => {
       // Get a city from members
       const city = members.find(m => m.city)?.city || "your city";
 
-      const response = await supabase.functions.invoke("generate-place-suggestions", {
+      const response = await getSupabaseClient().functions.invoke("generate-place-suggestions", {
         body: {
           city,
           memberNames,
@@ -788,11 +990,60 @@ const GroupChat = () => {
     fetchPolls();
   }, [fetchPolls]);
 
+  // Real-time subscription for polls & poll_votes
+  const pollChannelRef = useRef<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    if (!conversationId || !user) return;
+
+    // Clean up existing poll channel
+    if (pollChannelRef.current) {
+      try {
+        pollChannelRef.current.unsubscribe();
+        getSupabaseClient().removeChannel(pollChannelRef.current);
+      } catch (err) { /* ignore */ }
+      pollChannelRef.current = null;
+    }
+
+    try {
+      const pollChannel = getSupabaseClient()
+        .channel(`polls:${conversationId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "polls", filter: `conversation_id=eq.${conversationId}` },
+          () => { fetchPolls(); }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "poll_votes" },
+          () => { fetchPolls(); }
+        );
+
+      pollChannel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          pollChannelRef.current = pollChannel;
+        }
+      });
+    } catch (err) {
+      console.error("Error subscribing to poll changes:", err);
+    }
+
+    return () => {
+      if (pollChannelRef.current) {
+        try {
+          pollChannelRef.current.unsubscribe();
+          getSupabaseClient().removeChannel(pollChannelRef.current);
+        } catch (err) { /* ignore */ }
+        pollChannelRef.current = null;
+      }
+    };
+  }, [conversationId, user, fetchPolls]);
+
   // Quick action handlers for voting and suggesting places
   const handleCreatePoll = async (pollType: 'day' | 'time' | 'activity') => {
     if (!conversationId || !user) return;
 
-    const templates = getPollTemplates(t);
+    const templates = getPollTemplates(t as (key: string, fallback?: string) => string);
     const template = templates[pollType];
 
     try {
@@ -806,6 +1057,15 @@ const GroupChat = () => {
       });
 
       if (poll) {
+        // Send a chat message announcing the poll
+        const pollEmoji = pollType === 'day' ? '📅' : pollType === 'time' ? '⏰' : '☕';
+        const announceMsg = `${pollEmoji} ${t("chat.pollAnnounce", "I created a poll:")} "${template.question}"`;
+        await sendGroupMessage({
+          group_conversation_id: conversationId,
+          sender_id: user.id,
+          content: announceMsg,
+        });
+
         // Refresh polls
         fetchPolls();
         setShowQuickActions(false);
@@ -822,6 +1082,75 @@ const GroupChat = () => {
       }
     } catch (error) {
       console.error("Error creating poll:", error);
+      toast({
+        title: t("common.error"),
+        description: t("chat.couldNotCreatePoll", "Could not create poll"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateCustomPoll = async () => {
+    if (!conversationId || !user) return;
+
+    const question = customQuestion.trim();
+    const options = customOptions.map(o => o.trim()).filter(o => o.length > 0);
+
+    if (!question) {
+      toast({
+        title: t("common.error"),
+        description: t("chat.pollNeedsQuestion", "Please enter a question"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (options.length < 2) {
+      toast({
+        title: t("common.error"),
+        description: t("chat.pollNeedsOptions", "Please add at least 2 options"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const poll = await createPoll({
+        conversation_id: conversationId,
+        creator_id: user.id,
+        poll_type: 'custom',
+        question,
+        options: options.map(text => ({ text })),
+        is_multiple_choice: customMultipleChoice,
+      });
+
+      if (poll) {
+        const announceMsg = `📊 ${t("chat.pollAnnounce", "I created a poll:")} "${question}"`;
+        await sendGroupMessage({
+          group_conversation_id: conversationId,
+          sender_id: user.id,
+          content: announceMsg,
+        });
+
+        fetchPolls();
+        setShowCustomPoll(false);
+        setShowQuickActions(false);
+        setCustomQuestion("");
+        setCustomOptions(["", ""]);
+        setCustomMultipleChoice(false);
+        toast({
+          title: t("chat.pollCreated", "Poll created!"),
+          description: t("chat.pollCreatedDesc", "Your group can now vote."),
+        });
+      } else {
+        toast({
+          title: t("common.error"),
+          description: t("chat.couldNotCreatePoll", "Could not create poll"),
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating custom poll:", error);
       toast({
         title: t("common.error"),
         description: t("chat.couldNotCreatePoll", "Could not create poll"),
@@ -857,13 +1186,13 @@ const GroupChat = () => {
       <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(circle_at_1px_1px,rgb(255,152,0)_1px,transparent_0)] [background-size:24px_24px] pointer-events-none" />
 
       {/* Header */}
-      <header className="border-b border-border/50 bg-card/90 backdrop-blur-md sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-4">
+      <header className="border-b border-border/50 bg-card/90 backdrop-blur-md sticky top-0 z-10 shadow-sm pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto px-2 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate("/matches")}
-            className="rounded-full"
+            className="rounded-full bg-[#FF8A00] hover:bg-[#FF8A00]/90 text-white shadow-md transition-all active:scale-95"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -1079,9 +1408,10 @@ const GroupChat = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/3 to-background" />
 
         {/* Centered chat container */}
-        <div className="relative max-w-3xl mx-auto h-full flex flex-col">
-          <div className="flex-1 px-4 sm:px-6 py-6 sm:py-8 space-y-4">
-            {messages.length === 0 ? (
+        <div className="relative max-w-4xl mx-auto h-full flex flex-col">
+          <div className="flex-1 pl-2 pr-1 sm:px-6 py-4 sm:py-8 space-y-4 overflow-x-hidden">
+
+            {messages.length === 0 && polls.length === 0 ? (
               <GroupChatEmptyState
                 members={members}
                 currentUserId={user?.id}
@@ -1094,196 +1424,63 @@ const GroupChat = () => {
                 aiLoading={aiLoading}
               />
             ) : (
-              messages
-                .filter((message) => !message.is_deleted)
-                .map((message, index) => {
-                  const isOwn = message.sender_id === user?.id;
-                  const isAI = message.content.startsWith("🤖 AI");
-                  const sender = getMemberInfo(message.sender_id);
-                  const initials = sender.full_name
-                    ?.split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase() || "U";
+              <div className="space-y-4">
+                {messages
+                  .filter((message) => !message.is_deleted)
+                  .map((message, index) => {
+                    const prevMessage = index > 0 ? messages[index - 1] : null;
+                    const isConsecutive = prevMessage &&
+                      prevMessage.sender_id === message.sender_id &&
+                      !prevMessage.is_deleted &&
+                      new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() < 5 * 60 * 1000;
 
-                  // Group consecutive messages from same sender
-                  const prevMessage = index > 0 ? messages[index - 1] : null;
-                  const isConsecutive = prevMessage &&
-                    prevMessage.sender_id === message.sender_id &&
-                    !prevMessage.is_deleted &&
-                    new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() < 5 * 60 * 1000; // 5 minutes
-                  const showAvatar = !isOwn && !isConsecutive;
-                  const showName = !isOwn && !isConsecutive;
-                  const isFirstInGroup = !isConsecutive;
+                    return (
+                      <MessageItem
+                        key={message.id}
+                        message={message}
+                        isOwn={message.sender_id === user?.id}
+                        sender={getMemberInfo(message.sender_id)}
+                        isConsecutive={!!isConsecutive}
+                        editingMessageId={editingMessageId}
+                        editContent={editContent}
+                        setEditContent={setEditContent}
+                        handleStartEdit={handleStartEdit}
+                        handleSaveEdit={handleSaveEdit}
+                        handleCancelEdit={handleCancelEdit}
+                        handleDeleteMessage={handleDeleteMessage}
+                        handleEditKeyPress={handleEditKeyPress}
+                        editInputRef={editInputRef}
+                        setViewingImages={setViewingImages}
+                        setViewingImageIndex={setViewingImageIndex}
+                        t={t}
+                      />
+                    );
+                  })}
+              </div>
+            )}
 
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""} ${isConsecutive ? "mt-1" : "mt-6"}`}
-                    >
-                      {showAvatar ? (
-                        <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-background shadow-md border-2 border-background">
-                          <AvatarImage src={sender.avatar_url || undefined} />
-                          <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white text-sm font-semibold">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div className="w-10 flex-shrink-0" />
-                      )}
-                      <div className={`flex-1 ${isOwn ? "items-end flex flex-col" : "items-start flex flex-col"} max-w-[70%]`}>
-                        {showName && (
-                          <div className="flex items-center gap-2 mb-2 px-1">
-                            <span className="text-sm font-semibold text-foreground">
-                              {sender.full_name || "Anonymous"}
-                            </span>
-                            {sender.specialty && (
-                              <span className="text-xs text-muted-foreground font-medium">
-                                • {sender.specialty}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <div className={`relative group ${isOwn ? 'flex flex-row-reverse items-start gap-1' : 'flex items-start gap-1'}`}>
-                          {/* Edit/Delete dropdown for own messages */}
-                          {isOwn && !isAI && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                                >
-                                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-36">
-                                <DropdownMenuItem onClick={() => handleStartEdit(message)} className="gap-2">
-                                  <Pencil className="h-4 w-4" />
-                                  {t("chat.edit")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteMessage(message.id)}
-                                  className="gap-2 text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  {t("chat.delete")}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                          <div
-                            className={`rounded-2xl px-4 py-3 shadow-md transition-all hover:shadow-lg ${isAI
-                              ? "bg-accent/10 border border-accent/20 text-foreground"
-                              : isOwn
-                                ? "bg-gradient-to-r from-primary to-orange-500 text-white rounded-br-md shadow-[0_2px_12px_rgba(255,152,0,0.3)]"
-                                : "bg-card text-foreground border border-border/60 rounded-bl-md shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
-                              } ${isConsecutive && !isOwn ? "rounded-tl-md" : ""} ${isConsecutive && isOwn ? "rounded-tr-md" : ""}`}
-                          >
-                            {/* Display images */}
-                            {(() => {
-                              // Handle both array and JSONB formats, and ensure it's an array
-                              type MediaItem = { url: string; type: string; size?: number };
-                              let parsedMedia: MediaItem[] = [];
-
-                              if (message.media_urls) {
-                                if (typeof message.media_urls === 'string') {
-                                  try {
-                                    parsedMedia = JSON.parse(message.media_urls);
-                                  } catch (e) {
-                                    console.error('Failed to parse media_urls:', e);
-                                  }
-                                } else if (Array.isArray(message.media_urls)) {
-                                  parsedMedia = message.media_urls.map(m =>
-                                    typeof m === 'string' ? { url: m, type: 'image' } : { url: m.url || '', type: m.type || 'image', size: m.size }
-                                  );
-                                }
-                              }
-
-                              const hasMedia = message.has_media && parsedMedia.length > 0;
-
-                              return hasMedia ? (
-                                <div className={`grid gap-2.5 mb-2 ${message.content ? 'mb-3' : ''}`} style={{ gridTemplateColumns: parsedMedia.length === 1 ? '1fr' : parsedMedia.length === 2 ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' }}>
-                                  {parsedMedia.map((media, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="relative rounded-2xl overflow-hidden group/image cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] bg-card border border-border/30"
-                                      onClick={() => {
-                                        setViewingImages(parsedMedia);
-                                        setViewingImageIndex(idx);
-                                      }}
-                                    >
-                                      <img
-                                        src={media.url}
-                                        alt={`Attachment ${idx + 1}`}
-                                        className="w-full h-auto max-h-72 object-cover"
-                                        width={288}
-                                        height={288}
-                                        loading="lazy"
-                                        onError={(e) => {
-                                          console.error('Failed to load image:', media.url);
-                                          (e.target as HTMLImageElement).style.display = 'none';
-                                        }}
-                                      />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity" />
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null;
-                            })()}
-                            {/* Edit mode or display mode */}
-                            {editingMessageId === message.id ? (
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  ref={editInputRef}
-                                  value={editContent}
-                                  onChange={(e) => setEditContent(e.target.value)}
-                                  onKeyDown={handleEditKeyPress}
-                                  className="flex-1 h-8 text-sm bg-background/90 border-white/30 text-foreground"
-                                  autoFocus
-                                />
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={handleSaveEdit}
-                                  className="h-7 w-7 hover:bg-white/20"
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={handleCancelEdit}
-                                  className="h-7 w-7 hover:bg-white/20"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ) : message.content ? (
-                              <p className={`text-sm whitespace-pre-wrap leading-relaxed ${isOwn ? 'text-white' : 'text-foreground'}`}>
-                                {message.content}
-                              </p>
-                            ) : null}
-                            {/* Edited indicator */}
-                            {message.edited_at && !editingMessageId && (
-                              <span className={`text-[10px] mt-1 block ${isOwn ? 'text-white/60' : 'text-muted-foreground'}`}>
-                                ({t("chat.edited")})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {isFirstInGroup && (
-                          <span className={`text-xs text-muted-foreground mt-1.5 px-1.5 ${isOwn ? 'text-right' : 'text-left'}`}>
-                            {new Date(message.created_at).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
+            {/* Active Polls Section - Now at the bottom */}
+            {polls.length > 0 && !loading && (
+              <div className="space-y-4 mt-6 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center gap-2 px-1">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {t("chat.activePolls", "Active Polls")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">({polls.filter(p => !Boolean(p.is_closed)).length})</span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {polls.map((poll) => (
+                    <Poll
+                      key={poll.id}
+                      poll={poll}
+                      userId={user?.id || ''}
+                      onVoteChange={fetchPolls}
+                      isOwn={poll.creator_id === user?.id}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>
@@ -1291,7 +1488,7 @@ const GroupChat = () => {
       </div>
 
       {/* Input - Floating Premium Container */}
-      <div className="sticky bottom-0 z-10 px-4 pb-6 pt-4">
+      <div className="sticky bottom-0 z-10 px-2 sm:px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 sm:pt-4">
         <div
           ref={dropZoneRef}
           className={`max-w-3xl mx-auto rounded-2xl border border-border/60 bg-card/98 backdrop-blur-xl shadow-[0_-8px_32px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.05)] p-4 transition-all relative ${isDragging ? 'bg-primary/10 border-primary shadow-[0_-8px_32px_rgba(255,152,0,0.25)]' : ''
@@ -1320,7 +1517,7 @@ const GroupChat = () => {
                   {t("chat.planMeetup", "Plan your meetup")}
                 </p>
                 <button
-                  onClick={() => setShowQuickActions(false)}
+                  onClick={() => { setShowQuickActions(false); setShowCustomPoll(false); }}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="h-4 w-4" />
@@ -1328,53 +1525,148 @@ const GroupChat = () => {
               </div>
 
               {/* Poll Options */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                <button
-                  onClick={() => handleCreatePoll('day')}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                >
-                  <Calendar className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-medium text-foreground">{t("chat.voteDay", "Vote Day")}</span>
-                </button>
-                <button
-                  onClick={() => handleCreatePoll('time')}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                >
-                  <Clock className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-medium text-foreground">{t("chat.voteTime", "Vote Time")}</span>
-                </button>
-                <button
-                  onClick={() => handleCreatePoll('activity')}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                >
-                  <Coffee className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-medium text-foreground">{t("chat.voteActivity", "Vote Activity")}</span>
-                </button>
-                <button
-                  onClick={handleSuggestPlace}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                >
-                  <MapPin className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-medium text-foreground">{t("chat.suggestPlaceBtn", "Suggest Place")}</span>
-                </button>
-              </div>
+              {!showCustomPoll ? (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+                    <button
+                      onClick={() => handleCreatePoll('day')}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                    >
+                      <Calendar className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-medium text-foreground">{t("chat.voteDay", "Vote Day")}</span>
+                    </button>
+                    <button
+                      onClick={() => handleCreatePoll('time')}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                    >
+                      <Clock className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-medium text-foreground">{t("chat.voteTime", "Vote Time")}</span>
+                    </button>
+                    <button
+                      onClick={() => handleCreatePoll('activity')}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                    >
+                      <Coffee className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-medium text-foreground">{t("chat.voteActivity", "Vote Activity")}</span>
+                    </button>
+                    <button
+                      onClick={handleSuggestPlace}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                    >
+                      <MapPin className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-medium text-foreground">{t("chat.suggestPlaceBtn", "Suggest Place")}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowCustomPoll(true)}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
+                    >
+                      <BarChart3 className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-medium text-foreground">{t("chat.customPoll", "Poll")}</span>
+                    </button>
+                  </div>
 
-              {/* AI Suggestion */}
-              <button
-                onClick={() => {
-                  handleAIPlaceSuggestion();
-                  setShowQuickActions(false);
-                }}
-                disabled={aiLoading}
-                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-primary/10 to-orange-500/10 hover:from-primary/20 hover:to-orange-500/20 border border-primary/20 transition-all group"
-              >
-                {aiLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                ) : (
-                  <Sparkles className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
-                )}
-                <span className="text-sm font-medium text-primary">{t("chat.aiSuggest", "AI Place Suggestions")}</span>
-              </button>
+                  {/* AI Suggestion */}
+                  <button
+                    onClick={() => {
+                      handleAIPlaceSuggestion();
+                      setShowQuickActions(false);
+                    }}
+                    disabled={aiLoading}
+                    className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-primary/10 to-orange-500/10 hover:from-primary/20 hover:to-orange-500/20 border border-primary/20 transition-all group"
+                  >
+                    {aiLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
+                    )}
+                    <span className="text-sm font-medium text-primary">{t("chat.aiSuggest", "AI Place Suggestions")}</span>
+                  </button>
+                </>
+              ) : (
+                /* Custom Poll Builder */
+                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <PenLine className="h-4 w-4 text-primary" />
+                      {t("chat.createCustomPoll", "Create Custom Poll")}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setShowCustomPoll(false);
+                        setCustomQuestion("");
+                        setCustomOptions(["", ""]);
+                        setCustomMultipleChoice(false);
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {t("common.back", "Back")}
+                    </button>
+                  </div>
+
+                  {/* Question */}
+                  <Input
+                    value={customQuestion}
+                    onChange={(e) => setCustomQuestion(e.target.value)}
+                    placeholder={t("chat.pollQuestionPlaceholder", "Your question...")}
+                    className="h-10 rounded-xl text-sm bg-background/80 border-border/50 focus-visible:ring-primary/50"
+                  />
+
+                  {/* Options */}
+                  <div className="space-y-2">
+                    {customOptions.map((option, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-5 text-center font-medium">{idx + 1}</span>
+                        <Input
+                          value={option}
+                          onChange={(e) => {
+                            const updated = [...customOptions];
+                            updated[idx] = e.target.value;
+                            setCustomOptions(updated);
+                          }}
+                          placeholder={`${t("chat.option", "Option")} ${idx + 1}`}
+                          className="h-9 rounded-xl text-sm bg-background/80 border-border/50 focus-visible:ring-primary/50 flex-1"
+                        />
+                        {customOptions.length > 2 && (
+                          <button
+                            onClick={() => setCustomOptions(customOptions.filter((_, i) => i !== idx))}
+                            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {customOptions.length < 6 && (
+                      <button
+                        onClick={() => setCustomOptions([...customOptions, ""])}
+                        className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors ml-7"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        {t("chat.addOption", "Add option")}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Multiple choice toggle + Create button */}
+                  <div className="flex items-center justify-between pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={customMultipleChoice}
+                        onCheckedChange={(checked) => setCustomMultipleChoice(checked === true)}
+                      />
+                      <span className="text-xs text-muted-foreground">{t("chat.multipleChoice", "Multiple choice")}</span>
+                    </label>
+                    <Button
+                      onClick={handleCreateCustomPoll}
+                      size="sm"
+                      className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-600 text-white"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      {t("chat.createPoll", "Create Poll")}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

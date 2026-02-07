@@ -2,7 +2,8 @@
  * Poll Service - Handles poll-related operations for group meetup planning
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface PollOption {
   text: string;
@@ -13,7 +14,7 @@ export interface Poll {
   id: string;
   conversation_id: string;
   creator_id: string;
-  poll_type: 'day' | 'time' | 'activity' | 'place' | 'custom';
+  poll_type: 'day' | 'time' | 'activity' | 'place' | 'Poll' | 'custom';
   question: string;
   options: PollOption[];
   is_multiple_choice: boolean;
@@ -41,7 +42,7 @@ export interface PollWithVotes extends Poll {
 export interface CreatePollInput {
   conversation_id: string;
   creator_id: string;
-  poll_type: 'day' | 'time' | 'activity' | 'place' | 'custom';
+  poll_type: 'day' | 'time' | 'activity' | 'place' | 'Poll' | 'custom';
   question: string;
   options: PollOption[];
   is_multiple_choice?: boolean;
@@ -68,14 +69,14 @@ export const createPoll = async (input: CreatePollInput): Promise<Poll | null> =
       return null;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from("polls")
       .insert({
         conversation_id: input.conversation_id,
         creator_id: input.creator_id,
         poll_type: input.poll_type,
         question: input.question,
-        options: input.options,
+        options: input.options as unknown as Json,
         is_multiple_choice: input.is_multiple_choice ?? false,
         closes_at: input.closes_at ?? null,
       })
@@ -87,7 +88,7 @@ export const createPoll = async (input: CreatePollInput): Promise<Poll | null> =
       return null;
     }
 
-    return data as Poll;
+    return data as unknown as Poll;
   } catch (error) {
     console.error("Error creating poll:", error);
     return null;
@@ -108,7 +109,7 @@ export const getPolls = async (
     }
 
     // Get polls
-    const { data: polls, error: pollsError } = await supabase
+    const { data: polls, error: pollsError } = await getSupabaseClient()
       .from("polls")
       .select("*")
       .eq("conversation_id", conversationId)
@@ -125,7 +126,7 @@ export const getPolls = async (
 
     // Get all votes for these polls
     const pollIds = polls.map((p) => p.id);
-    const { data: votes, error: votesError } = await supabase
+    const { data: votes, error: votesError } = await getSupabaseClient()
       .from("poll_votes")
       .select("*")
       .in("poll_id", pollIds);
@@ -139,7 +140,7 @@ export const getPolls = async (
     // Combine polls with vote data
     return polls.map((poll) => {
       const pollVotes = votesData.filter((v) => v.poll_id === poll.id);
-      const options = (poll.options as PollOption[]) || [];
+      const options = (poll.options as unknown as PollOption[]) || [];
       const voteCounts = options.map(
         (_, idx) => pollVotes.filter((v) => v.option_index === idx).length
       );
@@ -175,7 +176,7 @@ export const getPoll = async (
       return null;
     }
 
-    const { data: poll, error: pollError } = await supabase
+    const { data: poll, error: pollError } = await getSupabaseClient()
       .from("polls")
       .select("*")
       .eq("id", pollId)
@@ -186,7 +187,7 @@ export const getPoll = async (
       return null;
     }
 
-    const { data: votes, error: votesError } = await supabase
+    const { data: votes, error: votesError } = await getSupabaseClient()
       .from("poll_votes")
       .select("*")
       .eq("poll_id", pollId);
@@ -196,7 +197,7 @@ export const getPoll = async (
     }
 
     const pollVotes = votes || [];
-    const options = (poll.options as PollOption[]) || [];
+    const options = (poll.options as unknown as PollOption[]) || [];
     const voteCounts = options.map(
       (_, idx) => pollVotes.filter((v) => v.option_index === idx).length
     );
@@ -237,7 +238,7 @@ export const votePoll = async (
       return false;
     }
 
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from("poll_votes")
       .insert({
         poll_id: pollId,
@@ -276,7 +277,7 @@ export const unvotePoll = async (
       return false;
     }
 
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from("poll_votes")
       .delete()
       .eq("poll_id", pollId)
@@ -308,7 +309,7 @@ export const closePoll = async (
       return false;
     }
 
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from("polls")
       .update({ is_closed: true })
       .eq("id", pollId)
@@ -339,7 +340,7 @@ export const deletePoll = async (
       return false;
     }
 
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from("polls")
       .delete()
       .eq("id", pollId)

@@ -20,7 +20,8 @@
       "Bash(npm run lint:*)",
       "Bash(npx tsc:*)",
       "Bash(node -e:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npx next build:*)"
     ]
   }
 }

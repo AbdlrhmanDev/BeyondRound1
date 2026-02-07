@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Calendar } from "lucide-react";
 
@@ -66,7 +66,7 @@ const GroupCountdown = () => {
       setTimeLeft(newTimeLeft);
 
       if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 &&
-          newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
+        newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
         const newNextThursday = getNextThursday();
         setNextThursday(newNextThursday);
       }
@@ -83,7 +83,7 @@ const GroupCountdown = () => {
     });
   };
 
-  const TimeUnit = ({ value, label }: { value: number; label: string }) => (
+  const TimeUnit = memo(({ value, label }: { value: number; label: string }) => (
     <div className="flex flex-col items-center gap-1">
       <div className="bg-background rounded-md px-2.5 py-1.5 min-w-[40px] text-center border border-border">
         <span className="text-lg font-semibold text-foreground tabular-nums">
@@ -94,7 +94,9 @@ const GroupCountdown = () => {
         {label}
       </span>
     </div>
-  );
+  ));
+
+  TimeUnit.displayName = "TimeUnit";
 
   return (
     <Card className="rounded-xl bg-card border border-border">

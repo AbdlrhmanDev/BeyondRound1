@@ -29,15 +29,16 @@ export const joinWaitlist = async (
     }
 
     // Insert into waitlist table
-    // Note: Using 'as any' because waitlist table types haven't been generated yet
+    if (!supabase) {
+      throw new Error('Supabase client is not initialized');
+    }
+
     const { error } = await (supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from('waitlist' as any)
       .insert({
         email: data.email.trim().toLowerCase(),
         city: data.city?.trim() || null,
         medical_specialty: data.medicalSpecialty?.trim() || null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       }) as any);
 
     if (error) {
@@ -46,18 +47,18 @@ export const joinWaitlist = async (
         return { success: false, error: 'This email is already on the waitlist' };
       }
       console.error('Error joining waitlist:', error);
-      return { 
-        success: false, 
-        error: 'Failed to join waitlist. Please try again later.' 
+      return {
+        success: false,
+        error: 'Failed to join waitlist. Please try again later.'
       };
     }
 
     return { success: true };
   } catch (error) {
     console.error('Error joining waitlist:', error);
-    return { 
-      success: false, 
-      error: 'An unexpected error occurred. Please try again later.' 
+    return {
+      success: false,
+      error: 'An unexpected error occurred. Please try again later.'
     };
   }
 };
@@ -67,10 +68,13 @@ export const joinWaitlist = async (
  */
 export const getWaitlistCount = async (): Promise<number> => {
   try {
-    // Note: Using 'as any' because get_waitlist_count function types haven't been generated yet
-    // eslint-disable-next-line
+    if (!supabase) {
+      console.error('Supabase client is not initialized');
+      return 500;
+    }
+
     const { data, error } = await (supabase.rpc('get_waitlist_count' as any) as any);
-    
+
     if (error) {
       console.error('Error getting waitlist count:', error);
       return 500; // Default fallback number

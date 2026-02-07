@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { joinWaitlist, getWaitlistCount } from "@/services/waitlistService";
-import { 
-  UserPlus, 
-  Users, 
+import { useAuth } from "@/hooks/useAuth";
+import { useParams } from "next/navigation";
+import {
+  UserPlus,
+  Users,
   Heart,
   CheckCircle2,
   Mail,
@@ -33,6 +35,9 @@ import {
 const Waitlist = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+  const params = useParams<{ locale: string }>();
+  const lng = params?.locale === "en" ? "en" : "de";
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
   const [specialty, setSpecialty] = useState("");
@@ -59,7 +64,7 @@ const Waitlist = () => {
     const steps = 60;
     const increment = (targetCount - start) / steps;
     const stepDuration = duration / steps;
-    
+
     let current = start;
     const timer = setInterval(() => {
       current += increment;
@@ -70,7 +75,7 @@ const Waitlist = () => {
         setAnimatedCount(Math.floor(current));
       }
     }, stepDuration);
-    
+
     return () => clearInterval(timer);
   };
 
@@ -104,7 +109,7 @@ const Waitlist = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.trim()) {
       toast({
         title: t("waitlistPage.toastEmailRequired"),
@@ -130,6 +135,18 @@ const Waitlist = () => {
         setSpecialty("");
         // Update count immediately after successful submission
         updateWaitlistCount();
+
+        // Trigger email notification
+        try {
+          await fetch('/api/notifications/whitelist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+        } catch (emailError) {
+          console.error("Failed to send waitlist confirmation email:", emailError);
+        }
+
         toast({
           title: "You're on the list!",
           description: "We'll notify you when we launch.",
@@ -177,7 +194,7 @@ const Waitlist = () => {
       </div>
 
       {/* Subtle grid pattern */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
@@ -209,6 +226,16 @@ const Waitlist = () => {
                     BeyondRounds
                   </span>
                 </div>
+
+                {!authLoading && user && (
+                  <div className="absolute right-4 sm:right-6">
+                    <LocalizedLink to="/dashboard">
+                      <Button size="sm" variant="hero" className="h-9 px-4 text-xs font-bold">
+                        {t("common.dashboard")}
+                      </Button>
+                    </LocalizedLink>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -228,12 +255,12 @@ const Waitlist = () => {
             <p className="text-xl md:text-2xl text-primary-foreground/60 mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-up delay-200">
               {t("waitlistPage.heroSubtitle")}
             </p>
-            
+
             {/* Primary CTA */}
             <div className="mb-6 animate-fade-up delay-300 flex flex-col sm:flex-row gap-4 justify-center items-center">
               <a href="#waitlist-form">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   variant="hero"
                   className="h-14 px-8 text-lg group"
                 >
@@ -370,7 +397,7 @@ const Waitlist = () => {
                     <p className="text-primary-foreground/60 mb-6">
                       {t("waitlistPage.successDesc")}
                     </p>
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={() => setSubmitted(false)}
                       className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"

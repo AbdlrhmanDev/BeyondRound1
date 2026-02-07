@@ -43,7 +43,7 @@ const Contact = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form
     const validation = validateContactForm(formData);
     if (!validation.valid) {
@@ -216,7 +216,7 @@ const Contact = () => {
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                      <Label htmlFor="name" className="text-base font-medium text-primary-foreground/70 mb-2 block">
+                      <Label htmlFor="name" className="text-base font-medium text-white mb-2 block">
                         {t("contact.fullName")}
                       </Label>
                       <Input
@@ -227,9 +227,8 @@ const Contact = () => {
                         onChange={handleChange}
                         placeholder="Dr. Jane Smith"
                         required
-                        className={`h-14 bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl ${
-                          errors.name ? 'border-destructive' : !formData.name.trim() ? 'border-primary/50' : ''
-                        }`}
+                        className={`h-14 bg-background/10 border-primary-foreground/20 text-white placeholder:text-white/40 rounded-2xl ${errors.name ? 'border-destructive' : !formData.name.trim() ? 'border-primary/50' : ''
+                          }`}
                       />
                       {errors.name && (
                         <p className="text-destructive text-xs mt-1">{errors.name}</p>
@@ -237,7 +236,7 @@ const Contact = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="email" className="text-base font-medium text-primary-foreground/70 mb-2 block">
+                      <Label htmlFor="email" className="text-base font-medium text-white mb-2 block">
                         Email Address *
                       </Label>
                       <Input
@@ -248,9 +247,8 @@ const Contact = () => {
                         onChange={handleChange}
                         placeholder="doctor@hospital.com"
                         required
-                        className={`h-14 bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl ${
-                          errors.email ? 'border-destructive' : !formData.email.trim() ? 'border-primary/50' : ''
-                        }`}
+                        className={`h-14 bg-background/10 border-primary-foreground/20 text-white placeholder:text-white/40 rounded-2xl ${errors.email ? 'border-destructive' : !formData.email.trim() ? 'border-primary/50' : ''
+                          }`}
                       />
                       {errors.email && (
                         <p className="text-destructive text-xs mt-1">{errors.email}</p>
@@ -258,7 +256,7 @@ const Contact = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="subject" className="text-base font-medium text-primary-foreground/70 mb-2 block">
+                      <Label htmlFor="subject" className="text-base font-medium text-white mb-2 block">
                         {t("contact.subjectRequired")}
                       </Label>
                       <Input
@@ -269,9 +267,8 @@ const Contact = () => {
                         onChange={handleChange}
                         placeholder="How can we help?"
                         required
-                        className={`h-14 bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl ${
-                          errors.subject ? 'border-destructive' : !formData.subject.trim() ? 'border-primary/50' : ''
-                        }`}
+                        className={`h-14 bg-background/10 border-primary-foreground/20 text-white placeholder:text-white/40 rounded-2xl ${errors.subject ? 'border-destructive' : !formData.subject.trim() ? 'border-primary/50' : ''
+                          }`}
                       />
                       {errors.subject && (
                         <p className="text-destructive text-xs mt-1">{errors.subject}</p>
@@ -279,7 +276,7 @@ const Contact = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="message" className="text-base font-medium text-primary-foreground/70 mb-2 block">
+                      <Label htmlFor="message" className="text-base font-medium text-white mb-2 block">
                         {t("contact.messageRequired")}
                       </Label>
                       <Textarea
@@ -290,9 +287,8 @@ const Contact = () => {
                         placeholder="Tell us more about your question or feedback..."
                         required
                         rows={6}
-                        className={`bg-background/10 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground rounded-2xl resize-none ${
-                          errors.message ? 'border-destructive' : !formData.message.trim() ? 'border-primary/50' : ''
-                        }`}
+                        className={`bg-background/10 border-primary-foreground/20 text-white placeholder:text-white/40 rounded-2xl resize-none ${errors.message ? 'border-destructive' : !formData.message.trim() ? 'border-primary/50' : ''
+                          }`}
                       />
                       {errors.message && (
                         <p className="text-destructive text-xs mt-1">{errors.message}</p>

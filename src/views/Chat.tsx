@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useParams } from "next/navigation";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient } from "@/integrations/supabase/client";
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +16,11 @@ import { ArrowLeft, Send, Image as ImageIcon, X, Loader2, Upload } from "lucide-
 import { ChatEmptyState } from "@/components/ChatEmptyState";
 import { useToast } from "@/hooks/use-toast";
 import { compressImages } from "@/utils/imageCompression";
-import { ImageViewer } from "@/components/ImageViewer";
+
+const ImageViewer = dynamic(() => import("@/components/ImageViewer").then(mod => mod.ImageViewer), {
+  ssr: false,
+  loading: () => null
+});
 import { getMessages, getConversation, getMatchForConversation, sendMessage, updateMessageMedia, Message } from "@/services/messageService";
 import { getPublicProfile } from "@/services/profileService";
 import { uploadPhotos } from "@/services/storageService";
@@ -45,7 +52,7 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -108,17 +115,17 @@ const Chat = () => {
     if (channelRef.current) {
       try {
         channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
+        getSupabaseClient().removeChannel(channelRef.current);
       } catch (err) {
         // Silently handle cleanup errors
       }
       channelRef.current = null;
     }
 
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: RealtimeChannel | null = null;
 
     try {
-      channel = supabase
+      channel = getSupabaseClient()
         .channel(`messages-${conversationId}`, {
           config: {
             broadcast: { self: false },
@@ -169,7 +176,7 @@ const Chat = () => {
 
       // Subscribe with error handling
       try {
-        channel.subscribe((status) => {
+        channel.subscribe((status: string) => {
           if (status === "SUBSCRIBED") {
             channelRef.current = channel;
           }
@@ -185,7 +192,7 @@ const Chat = () => {
       if (channelRef.current) {
         try {
           channelRef.current.unsubscribe();
-          supabase.removeChannel(channelRef.current);
+          getSupabaseClient().removeChannel(channelRef.current);
         } catch (err) {
           // Silently handle cleanup errors
         }
@@ -599,8 +606,8 @@ const Chat = () => {
                 )}
                 <div className={`flex ${isOwn ? "justify-end" : "justify-start"} ${shouldGroup ? "mt-0.5" : "mt-[80px]"}`}>
                   <div className={`max-w-[75%] sm:max-w-[65%] rounded-2xl px-4 py-2.5 shadow-sm transition-all ${isOwn
-                      ? "bg-gradient-gold text-white rounded-br-md shadow-md"
-                      : "bg-secondary text-foreground rounded-bl-md"
+                    ? "bg-gradient-gold text-white rounded-br-md shadow-md"
+                    : "bg-secondary text-foreground rounded-bl-md"
                     }`}>
                     {/* Display images */}
                     {(() => {
@@ -616,28 +623,26 @@ const Chat = () => {
                       }
                       const hasMedia = message.has_media && Array.isArray(mediaUrls) && mediaUrls.length > 0;
 
-                      return hasMedia ? (
-                        <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: mediaUrls.length === 1 ? '1fr' : mediaUrls.length === 2 ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' }}>
+                      return hasMedia && Array.isArray(mediaUrls) ? (
+                        <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: mediaUrls.length === 1 ? '1fr' : 'repeat(2, 1fr)' }}>
                           {mediaUrls.map((media: { url?: string; type?: string; size?: number } | string, idx: number) => {
-                            const imageUrl = typeof media === 'string' ? media : (media.url || '');
+                            const imageUrl = typeof media === 'string' ? media : (media?.url || '');
                             return (
                               <div
                                 key={idx}
-                                className="relative rounded-lg overflow-hidden group cursor-pointer"
+                                className="relative rounded-lg overflow-hidden group cursor-pointer aspect-square bg-muted/20"
                                 onClick={() => {
                                   setViewingImages(mediaUrls || null);
                                   setViewingImageIndex(idx);
                                 }}
                               >
-                                <img
+                                <Image
                                   src={imageUrl}
                                   alt={`Attachment ${idx + 1}`}
-                                  className="w-full h-auto max-h-64 object-cover transition-transform group-hover:scale-105"
+                                  fill
+                                  sizes="(max-width: 640px) 100vw, 400px"
+                                  className="object-cover transition-transform group-hover:scale-105"
                                   loading="lazy"
-                                  onError={(e) => {
-                                    console.error('Failed to load image:', imageUrl);
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                  }}
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                               </div>
@@ -760,15 +765,17 @@ const Chat = () => {
       </div>
 
       {/* Image Viewer */}
-      {viewingImages && (
-        <ImageViewer
-          images={viewingImages}
-          currentIndex={viewingImageIndex}
-          isOpen={!!viewingImages}
-          onClose={() => setViewingImages(null)}
-        />
-      )}
-    </div>
+      {
+        viewingImages && (
+          <ImageViewer
+            images={viewingImages}
+            currentIndex={viewingImageIndex}
+            isOpen={!!viewingImages}
+            onClose={() => setViewingImages(null)}
+          />
+        )
+      }
+    </div >
   );
 };
 

@@ -11,7 +11,7 @@ import LocalizedLink from "@/components/LocalizedLink";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { LanguageLinks } from "@/components/marketing/LanguageLinks";
 
@@ -33,7 +33,7 @@ const Auth = () => {
   const handleJoinNow = () => {
     navigate('/onboarding');
   };
-  
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -51,7 +51,7 @@ const Auth = () => {
           navigate('/dashboard', { replace: true });
         }
       }, adminLoading ? 2000 : 0);
-      
+
       if (!adminLoading) {
         clearTimeout(timeout);
         if (isAdmin) {
@@ -60,7 +60,7 @@ const Auth = () => {
           navigate('/dashboard', { replace: true });
         }
       }
-      
+
       return () => clearTimeout(timeout);
     }
   }, [user, loading, adminLoading, isAdmin, navigate]);
@@ -86,17 +86,17 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       const { error } = await signIn(formData.email, formData.password);
       if (error) {
         toast({
           title: t("auth.loginFailed"),
-          description: error.message === "Invalid login credentials" 
+          description: error.message === "Invalid login credentials"
             ? t("auth.invalidCredentials")
             : error.message,
           variant: "destructive",
@@ -106,9 +106,9 @@ const Auth = () => {
       }
 
       // After successful login, check if user is banned or suspended
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await getSupabaseClient().auth.getUser();
       if (authUser) {
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await getSupabaseClient()
           .from("profiles")
           .select("status, ban_reason")
           .eq("user_id", authUser.id)
@@ -119,10 +119,10 @@ const Auth = () => {
         } else if (profile) {
           if (profile.status === "banned") {
             // Sign out the banned user
-            await supabase.auth.signOut();
+            await getSupabaseClient().auth.signOut();
             toast({
               title: t("auth.accessDenied"),
-              description: profile.ban_reason 
+              description: profile.ban_reason
                 ? `Your account has been permanently banned. Reason: ${profile.ban_reason}. If you believe this is an error, please contact support.`
                 : "Your account has been permanently banned. If you believe this is an error, please contact our support team.",
               variant: "destructive",
@@ -131,10 +131,10 @@ const Auth = () => {
             return;
           } else if (profile.status === "suspended") {
             // Sign out the suspended user
-            await supabase.auth.signOut();
+            await getSupabaseClient().auth.signOut();
             toast({
               title: t("auth.accountSuspended"),
-              description: profile.ban_reason 
+              description: profile.ban_reason
                 ? `Your account has been temporarily suspended. Reason: ${profile.ban_reason}. Please contact support for assistance.`
                 : "Your account has been temporarily suspended. Please contact our support team for more information.",
               variant: "destructive",
@@ -198,7 +198,7 @@ const Auth = () => {
       </div>
 
       {/* Subtle grid pattern */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
@@ -206,8 +206,8 @@ const Auth = () => {
         }}
       />
 
-      {/* Back to Home + Language switcher */}
-      <div className="absolute top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 z-20 flex items-center justify-between">
+      {/* Back to Home */}
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20">
         <LocalizedLink
           to="/"
           prefetch={false}
@@ -216,7 +216,6 @@ const Auth = () => {
           <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform shrink-0" />
           <span className="text-sm font-medium hidden sm:inline">{t("auth.back")}</span>
         </LocalizedLink>
-        <LanguageLinks variant="overlay" className="shrink-0" />
       </div>
 
       {/* Main content: mobile-first padding and stacking */}
@@ -236,7 +235,7 @@ const Auth = () => {
               {t("auth.welcome")}
               <span className="block text-gradient-gold">{t("auth.backExclamation")}</span>
             </h1>
-            
+
             <p className="text-primary-foreground/70 text-base sm:text-lg mb-8 sm:mb-10 max-w-md mx-auto lg:mx-0">
               {t("auth.signInDescription")}
             </p>
@@ -244,8 +243,8 @@ const Auth = () => {
             {/* Features list */}
             <div className="space-y-4 hidden lg:block">
               {features.map((feature, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className="flex items-center gap-3 text-primary-foreground/70 animate-fade-up"
                   style={{ animationDelay: `${(i + 2) * 100}ms` }}
                 >
@@ -276,7 +275,7 @@ const Auth = () => {
                       Email Address
                     </Label>
                     <div className="relative group">
-                      <Mail className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-primary-foreground/60 group-hover:text-primary group-focus-within:text-primary transition-colors z-10" size={18} />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/60 group-hover:text-primary group-focus-within:text-primary transition-colors z-10" size={18} />
                       <Input
                         id="email"
                         name="email"
@@ -285,7 +284,7 @@ const Auth = () => {
                         placeholder={t("auth.emailPlaceholder")}
                         value={formData.email}
                         onChange={handleInputChange}
-                        className={`pl-10 sm:pl-12 min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl bg-white/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:border-primary focus:ring-primary/20 transition-all text-base ${errors.email ? 'border-destructive' : ''}`}
+                        className={`pl-12 min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl bg-transparent bg-white/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:border-primary focus:ring-primary/20 transition-all text-base ${errors.email ? 'border-destructive' : ''}`}
                         required
                       />
                     </div>
@@ -311,7 +310,7 @@ const Auth = () => {
                         placeholder="Enter your password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className={`pl-10 sm:pl-12 pr-12 min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl bg-white/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:border-primary focus:ring-primary/20 transition-all text-base ${errors.password ? 'border-destructive' : ''}`}
+                        className={`pl-12 pr-12 min-h-[48px] sm:h-14 rounded-xl sm:rounded-2xl bg-transparent bg-white/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:border-primary focus:ring-primary/20 transition-all text-base ${errors.password ? 'border-destructive' : ''}`}
                         required
                       />
                       <button

@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getUserCity, generatePlaceSuggestions } from "@/services/placeService";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient } from "@/integrations/supabase/client";
 
 interface PlaceSuggestion {
   name: string;
@@ -79,7 +79,7 @@ const PlaceSuggestions = () => {
     setSuggestions([]);
 
     try {
-      const session = await supabase.auth.getSession();
+      const session = await getSupabaseClient().auth.getSession();
       const accessToken = session.data.session?.access_token;
       
       const placeSuggestions = await generatePlaceSuggestions(city.trim(), accessToken);

@@ -43,6 +43,10 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
       className="relative min-h-[90dvh] sm:min-h-screen flex items-center pt-20 sm:pt-28 md:pt-32 pb-12 sm:pb-24 overflow-hidden bg-foreground dark:bg-background"
       aria-label="Welcome to BeyondRounds - Your next great friendship awaits"
     >
+      {/* LCP preloads relocated from root layout */}
+      <link rel="preload" href="/hero-doctors-friendship-mobile.webp" as="image" media="(max-width: 639px)" />
+      <link rel="preload" href="/hero-doctors-friendship-card.webp" as="image" media="(min-width: 640px)" />
+
       {/* No blur on mobile (LCP); subtle blur on desktop */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none [contain:strict]" aria-hidden="true">
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-primary/20 hidden sm:block sm:blur-[100px] lg:blur-[150px]" />
@@ -172,78 +176,78 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
           {/* Desktop: image card (hidden on mobile) */}
           <div className="hidden sm:block lg:col-span-5 relative order-2 lg:order-2">
             <div className="pt-4 pl-4 pr-4 pb-8 md:pt-6 md:pl-6 md:pr-6 md:pb-10">
-            <div className="relative overflow-visible max-w-none mx-auto">
-              <div
-                className="absolute -inset-2 sm:-inset-4 bg-primary-foreground/5 rounded-[1.5rem] sm:rounded-[2.5rem] opacity-40 sm:blur-2xl"
-                aria-hidden="true"
-              />
-              <div className="relative rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl border border-primary-foreground/10 aspect-[4/5] overflow-visible">
-                {/* Image + gradient – clipped to rounded corners */}
-                <div className="absolute inset-0 overflow-hidden rounded-[1.5rem] sm:rounded-[2rem]">
-                  <HeroImageServer fill />
-                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-foreground/20 to-transparent" aria-hidden="true" />
-                </div>
-                {/* Next match panel – compact format, no blur on mobile */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6">
+              <div className="relative overflow-visible max-w-none mx-auto">
+                <div
+                  className="absolute -inset-2 sm:-inset-4 bg-primary-foreground/5 rounded-[1.5rem] sm:rounded-[2.5rem] opacity-40 sm:blur-2xl"
+                  aria-hidden="true"
+                />
+                <div className="relative rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl border border-primary-foreground/10 aspect-[4/5] overflow-visible">
+                  {/* Image + gradient – clipped to rounded corners */}
+                  <div className="absolute inset-0 overflow-hidden rounded-[1.5rem] sm:rounded-[2rem]">
+                    <HeroImageServer fill />
+                    <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-foreground/20 to-transparent" aria-hidden="true" />
+                  </div>
+                  {/* Next match panel – compact format, no blur on mobile */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6">
+                    <div
+                      className="max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-xl sm:rounded-2xl p-3 sm:p-4"
+                      role="status"
+                      aria-live="polite"
+                      aria-label={`Next match: ${displayDateCompact}`}
+                    >
+                      <div className="flex items-center justify-between gap-2 sm:gap-3">
+                        <div className="min-w-0">
+                          <p className="text-primary-foreground/70 font-medium text-xs sm:text-sm">
+                            {t('home.nextMatchIn')}
+                          </p>
+                          <p className="text-primary-foreground font-bold text-sm sm:text-base truncate" title={displayDateCompact}>
+                            {displayDateCompact}
+                          </p>
+                          <p className="text-primary-foreground/50 text-[10px] sm:text-xs mt-0.5">{t('home.nextMatchInCity')}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-primary text-primary-foreground font-semibold text-xs sm:text-sm shrink-0">
+                          <div className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse" aria-hidden="true" />
+                          {t('home.live')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Meaningful meetups badge – no animation to prevent CLS */}
                   <div
-                    className="max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-xl sm:rounded-2xl p-3 sm:p-4"
-                    role="status"
-                    aria-live="polite"
-                    aria-label={`Next match: ${displayDateCompact}`}
+                    className="absolute -bottom-2 -left-2 sm:-bottom-4 sm:-left-4 md:-bottom-6 md:-left-6 max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl shadow-xl"
+                    aria-label="2 or more meaningful meetups"
                   >
-                    <div className="flex items-center justify-between gap-2 sm:gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-xl sm:rounded-2xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
+                        <span className="text-primary-foreground text-sm sm:text-lg md:text-xl">👥</span>
+                      </div>
                       <div className="min-w-0">
-                        <p className="text-primary-foreground/70 font-medium text-xs sm:text-sm">
-                          {t('home.nextMatchIn')}
+                        <p className="font-display font-bold text-primary-foreground text-xs sm:text-sm md:text-base">
+                          {t('home.meaningfulMeetups')}
                         </p>
-                        <p className="text-primary-foreground font-bold text-sm sm:text-base truncate" title={displayDateCompact}>
-                          {displayDateCompact}
+                        <p className="text-[10px] sm:text-xs md:text-sm text-primary-foreground/70 truncate">
+                          {t('home.realConnections')}
                         </p>
-                        <p className="text-primary-foreground/50 text-[10px] sm:text-xs mt-0.5">{t('home.nextMatchInCity')}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-primary text-primary-foreground font-semibold text-xs sm:text-sm shrink-0">
-                        <div className="w-2 h-2 rounded-full bg-primary-foreground animate-pulse" aria-hidden="true" />
-                        {t('home.live')}
                       </div>
                     </div>
                   </div>
-                </div>
-                {/* Meaningful meetups badge – no animation to prevent CLS */}
-                <div
-                  className="absolute -bottom-2 -left-2 sm:-bottom-4 sm:-left-4 md:-bottom-6 md:-left-6 max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl shadow-xl"
-                  aria-label="2 or more meaningful meetups"
-                >
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-xl sm:rounded-2xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
-                      <span className="text-primary-foreground text-sm sm:text-lg md:text-xl">👥</span>
+                  {/* Doctors count badge – no animation to prevent CLS */}
+                  <div
+                    className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-4 md:-right-4 max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 rounded-xl sm:rounded-2xl shadow-lg"
+                    aria-label="Over 5,000 doctors on the platform"
+                  >
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="relative shrink-0">
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500" />
+                        <div className="absolute inset-0 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500 animate-ping" />
+                      </div>
+                      <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-primary-foreground whitespace-nowrap">
+                        {t('home.doctorsOnPlatform')}
+                      </span>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-display font-bold text-primary-foreground text-xs sm:text-sm md:text-base">
-                        {t('home.meaningfulMeetups')}
-                      </p>
-                      <p className="text-[10px] sm:text-xs md:text-sm text-primary-foreground/70 truncate">
-                        {t('home.realConnections')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {/* Doctors count badge – no animation to prevent CLS */}
-                <div
-                  className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-4 md:-right-4 max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 rounded-xl sm:rounded-2xl shadow-lg"
-                  aria-label="Over 5,000 doctors on the platform"
-                >
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="relative shrink-0">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500" />
-                      <div className="absolute inset-0 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500 animate-ping" />
-                    </div>
-                    <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-primary-foreground whitespace-nowrap">
-                      {t('home.doctorsOnPlatform')}
-                    </span>
                   </div>
                 </div>
               </div>
-            </div>
             </div>
           </div>
         </div>
