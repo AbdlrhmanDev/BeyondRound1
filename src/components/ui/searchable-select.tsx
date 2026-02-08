@@ -93,7 +93,7 @@ export function SearchableSelect({
                     onValueChange(option.value);
                     setOpen(false);
                   }}
-                  className="rounded-lg py-2 pl-8 pr-3 data-[selected=true]:bg-orange-500 data-[selected=true]:text-white"
+                  className="rounded-lg py-2 pl-8 pr-3 data-[selected=true]:bg-emerald-600 data-[selected=true]:text-white"
                 >
                   <Check
                     className={cn(

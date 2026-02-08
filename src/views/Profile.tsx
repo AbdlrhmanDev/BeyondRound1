@@ -51,7 +51,6 @@ import {
   Check,
   ExternalLink,
   Loader2,
-  Sparkles,
   Crown,
   Star,
   Zap,
@@ -138,42 +137,42 @@ const SUBSCRIPTION_PLANS = {
 
 // Specialties data
 const SPECIALTIES = [
-  { id: "General Practice", label: "General Practice", icon: "🏥" },
-  { id: "Internal Medicine", label: "Internal Medicine", icon: "🩺" },
-  { id: "Surgery", label: "Surgery", icon: "⚕️" },
-  { id: "Pediatrics", label: "Pediatrics", icon: "👶" },
-  { id: "Cardiology", label: "Cardiology", icon: "❤️" },
-  { id: "Neurology", label: "Neurology", icon: "🧠" },
-  { id: "Psychiatry", label: "Psychiatry", icon: "💭" },
-  { id: "Emergency Medicine", label: "Emergency Medicine", icon: "🚑" },
-  { id: "Anesthesiology", label: "Anesthesiology", icon: "💉" },
-  { id: "Radiology", label: "Radiology", icon: "📷" },
-  { id: "Dermatology", label: "Dermatology", icon: "✨" },
-  { id: "Orthopedics", label: "Orthopedics", icon: "🦴" },
-  { id: "Ophthalmology", label: "Ophthalmology", icon: "👁️" },
-  { id: "Gynecology", label: "OB/GYN", icon: "👩‍⚕️" },
-  { id: "Oncology", label: "Oncology", icon: "🎗️" },
-  { id: "Other", label: "Other", icon: "➕" },
+  { id: "General Practice", label: "General Practice" },
+  { id: "Internal Medicine", label: "Internal Medicine" },
+  { id: "Surgery", label: "Surgery" },
+  { id: "Pediatrics", label: "Pediatrics" },
+  { id: "Cardiology", label: "Cardiology" },
+  { id: "Neurology", label: "Neurology" },
+  { id: "Psychiatry", label: "Psychiatry" },
+  { id: "Emergency Medicine", label: "Emergency Medicine" },
+  { id: "Anesthesiology", label: "Anesthesiology" },
+  { id: "Radiology", label: "Radiology" },
+  { id: "Dermatology", label: "Dermatology" },
+  { id: "Orthopedics", label: "Orthopedics" },
+  { id: "Ophthalmology", label: "Ophthalmology" },
+  { id: "Gynecology", label: "OB/GYN" },
+  { id: "Oncology", label: "Oncology" },
+  { id: "Other", label: "Other" },
 ];
 
 // Interests data
 const INTERESTS = [
-  { id: "running", label: "Running", icon: "🏃" },
-  { id: "cycling", label: "Cycling", icon: "🚴" },
-  { id: "swimming", label: "Swimming", icon: "🏊" },
-  { id: "gym", label: "Gym/Weights", icon: "🏋️" },
-  { id: "tennis", label: "Tennis/Padel", icon: "🎾" },
-  { id: "hiking", label: "Hiking", icon: "🥾" },
-  { id: "yoga", label: "Yoga/Pilates", icon: "🧘" },
-  { id: "reading", label: "Reading", icon: "📚" },
-  { id: "cooking", label: "Cooking", icon: "👨‍🍳" },
-  { id: "photography", label: "Photography", icon: "📸" },
-  { id: "travel", label: "Travel", icon: "✈️" },
-  { id: "art", label: "Art/Museums", icon: "🎨" },
-  { id: "board_games", label: "Board Games", icon: "🎲" },
-  { id: "video_games", label: "Video Games", icon: "🎮" },
-  { id: "music", label: "Music", icon: "🎵" },
-  { id: "wine", label: "Wine/Food", icon: "🍷" },
+  { id: "running", label: "Running" },
+  { id: "cycling", label: "Cycling" },
+  { id: "swimming", label: "Swimming" },
+  { id: "gym", label: "Gym/Weights" },
+  { id: "tennis", label: "Tennis/Padel" },
+  { id: "hiking", label: "Hiking" },
+  { id: "yoga", label: "Yoga/Pilates" },
+  { id: "reading", label: "Reading" },
+  { id: "cooking", label: "Cooking" },
+  { id: "photography", label: "Photography" },
+  { id: "travel", label: "Travel" },
+  { id: "art", label: "Art/Museums" },
+  { id: "board_games", label: "Board Games" },
+  { id: "video_games", label: "Video Games" },
+  { id: "music", label: "Music" },
+  { id: "wine", label: "Wine/Food" },
 ];
 
 // Languages data
@@ -559,29 +558,32 @@ const Profile = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-4 py-6 max-w-lg">
+      <main className="container mx-auto px-4 py-8 max-w-lg">
         {/* Profile Header - Centered */}
-        <div className="flex flex-col items-center text-center mb-6">
+        <div className="flex flex-col items-center text-center mb-8">
           {/* Avatar with edit button */}
-          <div className="relative mb-4">
+          <div className="relative mb-5">
             <button
               onClick={() => setAvatarModalOpen(true)}
-              className="relative group"
+              className="relative group outline-none"
               aria-label={t("profile.changePhoto")}
             >
-              <Avatar className="h-24 w-24 border-4 border-background shadow-lg transition-transform group-hover:scale-105">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+              <Avatar className="h-28 w-28 border-4 border-background shadow-md transition-transform group-hover:scale-105 ring-1 ring-border/10">
+                <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
+                <AvatarFallback className="bg-muted text-muted-foreground text-3xl font-medium">
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 rounded-full bg-black/5 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <Camera className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
               </div>
             </button>
-            <div className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md">
+            <button
+              onClick={() => setAvatarModalOpen(true)}
+              className="absolute bottom-1 right-1 h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors ring-2 ring-background border border-primary/20"
+            >
               <Camera className="h-4 w-4" />
-            </div>
+            </button>
           </div>
 
           {/* Name (clickable to edit) */}
@@ -590,57 +592,57 @@ const Profile = () => {
               setEditedName(profile?.full_name || "");
               setNameModalOpen(true);
             }}
-            className="group flex items-center gap-2 mb-1"
+            className="group flex items-center gap-2 mb-1.5 hover:opacity-70 transition-opacity px-3 py-1 -mx-3 rounded-lg hover:bg-muted/50"
           >
-            <h1 className="font-display text-xl font-bold text-foreground">
+            <h1 className="font-display text-2xl font-bold text-foreground tracking-tight">
               {displayName}
             </h1>
-            <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Pencil className="h-4 w-4 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
 
           {/* Specialty */}
           {preferences?.specialty && (
-            <p className="text-sm text-muted-foreground mb-3">
+            <p className="text-sm font-medium text-muted-foreground mb-4 bg-muted/50 px-3 py-1 rounded-full">
               {preferences.specialty}
             </p>
           )}
 
           {/* Verified Badge */}
           {isVerified && (
-            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 gap-1.5 px-3 py-1">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 shadow-sm">
+              <CheckCircle2 className="h-3.5 w-3.5 fill-primary text-primary-foreground" />
               {t("profile.verifiedDoctor")}
-            </Badge>
+            </div>
           )}
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <Card className="rounded-xl bg-card border border-border shadow-sm">
-            <CardContent className="pt-3 pb-4 px-4 flex flex-col items-center text-center">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <Card className="rounded-2xl bg-card border border-border/60 shadow-sm hover:shadow-md transition-all duration-300 group">
+            <CardContent className="pt-5 pb-5 px-4 flex flex-col items-center text-center">
+              <div className="h-10 w-10 rounded-full bg-primary/5 group-hover:bg-primary/10 flex items-center justify-center mb-3 transition-colors">
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-2xl font-bold text-foreground">{stats.meetups}</span>
-              <span className="text-xs text-muted-foreground">{t("profile.meetups")}</span>
+              <span className="text-2xl font-bold text-foreground tracking-tight">{stats.meetups}</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-1">{t("profile.meetups")}</span>
             </CardContent>
           </Card>
-          <Card className="rounded-xl bg-card border border-border shadow-sm">
-            <CardContent className="pt-3 pb-4 px-4 flex flex-col items-center text-center">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+          <Card className="rounded-2xl bg-card border border-border/60 shadow-sm hover:shadow-md transition-all duration-300 group">
+            <CardContent className="pt-5 pb-5 px-4 flex flex-col items-center text-center">
+              <div className="h-10 w-10 rounded-full bg-primary/5 group-hover:bg-primary/10 flex items-center justify-center mb-3 transition-colors">
                 <Users className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-2xl font-bold text-foreground">{stats.doctorsMet}</span>
-              <span className="text-xs text-muted-foreground">{t("profile.doctorsMet")}</span>
+              <span className="text-2xl font-bold text-foreground tracking-tight">{stats.doctorsMet}</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-1">{t("profile.doctorsMet")}</span>
             </CardContent>
           </Card>
         </div>
 
         {/* Preferences Section */}
-        <Card className="rounded-xl bg-card border border-border shadow-sm mb-4">
+        <Card className="rounded-2xl bg-card border border-border/60 shadow-sm mb-6 overflow-hidden">
           <CardContent className="p-0">
-            <div className="px-4 py-3 border-b border-border">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            <div className="px-5 py-3 border-b border-border/60 bg-muted/20">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                 {t("profile.preferences")}
               </h2>
             </div>
@@ -648,47 +650,49 @@ const Profile = () => {
             {/* City */}
             <button
               onClick={() => setCityDrawerOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-medium text-foreground">{t("profile.city")}</p>
+                  <p className="text-sm font-semibold text-foreground">{t("profile.city")}</p>
                   <p className="text-xs text-muted-foreground">{locationDisplay}</p>
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
             </button>
 
             {/* Language */}
             <button
               onClick={() => setLanguageDrawerOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
+                  <Globe className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-medium text-foreground">{t("profile.language")}</p>
+                  <p className="text-sm font-semibold text-foreground">{t("profile.language")}</p>
                   <p className="text-xs text-muted-foreground">{currentLang.flag} {currentLang.label}</p>
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
             </button>
 
             {/* Email Notifications */}
-            <EmailNotificationsToggle />
+            <div className="px-5 py-4 hover:bg-muted/30 transition-colors">
+              <EmailNotificationsToggle />
+            </div>
           </CardContent>
         </Card>
 
         {/* Account Section */}
-        <Card className="rounded-xl bg-card border border-border shadow-sm mb-4">
+        <Card className="rounded-2xl bg-card border border-border/60 shadow-sm mb-6 overflow-hidden">
           <CardContent className="p-0">
-            <div className="px-4 py-3 border-b border-border">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            <div className="px-5 py-3 border-b border-border/60 bg-muted/20">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                 {t("profile.account")}
               </h2>
             </div>
@@ -707,116 +711,116 @@ const Profile = () => {
                 });
                 setEditProfileModalOpen(true);
               }}
-              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                  <Pencil className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
+                  <Pencil className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-medium text-foreground">{t("profile.editProfile")}</p>
+                  <p className="text-sm font-semibold text-foreground">{t("profile.editProfile")}</p>
                   <p className="text-xs text-muted-foreground">{t("profile.editProfileDesc")}</p>
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
             </button>
 
             {/* Subscription & Payments */}
             <button
               onClick={() => setSubscriptionDrawerOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className={cn(
-                  "h-9 w-9 rounded-lg flex items-center justify-center",
+                  "h-10 w-10 rounded-full flex items-center justify-center transition-colors",
                   subscription.plan === 'premium' ? "bg-amber-100 dark:bg-amber-900/30" :
-                  subscription.plan !== 'free' ? "bg-primary/10" : "bg-secondary"
+                    subscription.plan !== 'free' ? "bg-primary/10" : "bg-secondary/80"
                 )}>
                   {subscription.plan === 'premium' ? (
-                    <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                   ) : subscription.plan !== 'free' ? (
-                    <Star className="h-4 w-4 text-primary" />
+                    <Star className="h-5 w-5 text-primary" />
                   ) : (
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    <CreditCard className="h-5 w-5 text-muted-foreground" />
                   )}
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-medium text-foreground">{t("profile.subscription")}</p>
+                  <p className="text-sm font-semibold text-foreground">{t("profile.subscription")}</p>
                   <p className="text-xs text-muted-foreground">
                     {subscription.plan === 'free'
                       ? t("profile.freePlan")
                       : subscription.plan === 'trial'
-                      ? t("profile.plans.trial.name")
-                      : subscription.plan === 'monthly'
-                      ? t("profile.plans.monthly.name")
-                      : t("profile.plans.premium.name")
+                        ? t("profile.plans.trial.name")
+                        : subscription.plan === 'monthly'
+                          ? t("profile.plans.monthly.name")
+                          : t("profile.plans.premium.name")
                     }
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {subscription.plan !== 'free' && (
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
+                  <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 uppercase tracking-wide">
                     {t("profile.active")}
                   </Badge>
                 )}
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
               </div>
             </button>
 
             {/* Feedback & Suggestions */}
             <button
               onClick={() => setFeedbackOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="h-4 w-4 text-primary" />
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5 text-primary" />
                 </div>
-                <p className="text-sm font-medium text-foreground">{t("profile.feedbackSuggestions")}</p>
+                <p className="text-sm font-semibold text-foreground">{t("profile.feedbackSuggestions")}</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
             </button>
 
             {/* Privacy */}
             <button
               onClick={() => window.open("/privacy", "_blank")}
-              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                  <Shield className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-medium text-foreground">{t("profile.privacy")}</p>
+                <p className="text-sm font-semibold text-foreground">{t("profile.privacy")}</p>
               </div>
-              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              <ExternalLink className="h-4 w-4 text-muted-foreground/50" />
             </button>
 
             {/* Terms of Service */}
             <button
               onClick={() => window.open("/terms", "_blank")}
-              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-secondary/50 transition-colors"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-medium text-foreground">{t("profile.termsOfService")}</p>
+                <p className="text-sm font-semibold text-foreground">{t("profile.termsOfService")}</p>
               </div>
-              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              <ExternalLink className="h-4 w-4 text-muted-foreground/50" />
             </button>
           </CardContent>
         </Card>
 
         {/* Log Out Button */}
-        <Card className="rounded-xl bg-card border border-border shadow-sm">
+        <Card className="rounded-2xl bg-card border border-border/60 shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <button
               onClick={handleSignOut}
-              className="w-full flex items-center justify-center gap-2 px-4 py-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors rounded-xl"
+              className="w-full flex items-center justify-center gap-2 px-4 py-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
             >
-              <LogOut className="h-4 w-4" />
-              <span className="font-medium">{t("common.signOut")}</span>
+              <LogOut className="h-5 w-5" />
+              <span className="font-semibold">{t("common.signOut")}</span>
             </button>
           </CardContent>
         </Card>
@@ -1037,7 +1041,7 @@ const Profile = () => {
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
+                <Pencil className="h-5 w-5 text-primary" />
                 {t("profile.editProfile")}
               </DialogTitle>
               <DialogDescription>{t("profile.editProfileModalDesc")}</DialogDescription>
@@ -1074,7 +1078,6 @@ const Profile = () => {
                           : "bg-secondary hover:bg-secondary/80 text-foreground"
                       )}
                     >
-                      <span>{spec.icon}</span>
                       <span className="truncate">{spec.label}</span>
                     </button>
                   ))}
@@ -1098,7 +1101,6 @@ const Profile = () => {
                           : "bg-secondary hover:bg-secondary/80 text-foreground"
                       )}
                     >
-                      <span>{interest.icon}</span>
                       <span>{interest.label}</span>
                     </button>
                   ))}
@@ -1331,7 +1333,7 @@ const Profile = () => {
                       </ul>
 
                       <Button
-                        className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-primary hover:from-amber-600 hover:to-primary/90"
+                        className="w-full rounded-xl"
                         disabled={subscription.plan === 'premium'}
                         onClick={() => {
                           // TODO: Start premium checkout

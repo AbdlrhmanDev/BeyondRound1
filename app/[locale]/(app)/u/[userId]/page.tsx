@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+
 import PublicProfilePageContent from '@/views/PublicProfile';
 
 export const metadata: Metadata = {

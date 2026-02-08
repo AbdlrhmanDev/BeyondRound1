@@ -14,7 +14,7 @@ export default {
     container: {
       center: true,
       padding: {
-        DEFAULT: "1rem",
+        DEFAULT: "1rem", // 16px mobile padding
         sm: "1.5rem",
         md: "2rem",
         lg: "2rem",
@@ -24,15 +24,15 @@ export default {
       screens: {
         sm: "640px",
         md: "768px",
-        lg: "1024px",
-        xl: "1280px",
-        "2xl": "1400px",
+        lg: "1024px", // Max content width constraint
+        xl: "1100px",
+        "2xl": "1100px", // Cap at 1100px as per requirements
       },
     },
     extend: {
       fontFamily: {
         sans: ['var(--font-dm-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['var(--font-space-grotesk)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['var(--font-dm-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'], // Unify fonts for cleaner look
       },
       colors: {
         border: "hsl(var(--border))",
@@ -78,26 +78,26 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // BeyondRounds custom colors
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
+        // Semantic Application Colors
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
         },
-        navy: {
-          DEFAULT: "hsl(var(--navy))",
-          light: "hsl(var(--navy-light))",
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
-        cream: {
-          DEFAULT: "hsl(var(--cream))",
-          dark: "hsl(var(--cream-dark))",
-        },
-        teal: "hsl(var(--teal))",
-        sage: "hsl(var(--sage))",
+        // Removing explicit 'gold', 'navy', etc. to enforce the new system
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius)", // 12-16px
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+      },
+      boxShadow: {
+        'subtle': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        'card': '0 4px 6px -1px rgb(0 0 0 / 0.02), 0 2px 4px -2px rgb(0 0 0 / 0.02)', // Very subtle, no glow
+        'float': '0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.02)',
       },
       keyframes: {
         "accordion-down": {
@@ -108,19 +108,14 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "fade-up": {
-          from: { opacity: "0", transform: "translateY(20px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
         "fade-in": {
-          from: { opacity: "0" },
-          to: { opacity: "1" },
+          from: { opacity: "0", transform: "translateY(5px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-up": "fade-up 0.6s ease-out forwards",
         "fade-in": "fade-in 0.4s ease-out forwards",
       },
     },

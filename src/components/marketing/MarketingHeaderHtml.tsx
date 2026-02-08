@@ -33,17 +33,17 @@ export function MarketingHeaderHtml({ dict, locale }: MarketingHeaderHtmlProps) 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)]">
       <div className="mx-3 mt-3 sm:mx-4 sm:mt-4">
-        <div className="bg-foreground/95 border border-primary-foreground/10 rounded-xl sm:rounded-2xl shadow-lg">
+        <div className="bg-white/95 border-b border-gray-100 rounded-xl sm:rounded-2xl shadow-sm backdrop-blur-sm">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between min-h-14 sm:h-16">
               <Link
                 href={`/${locale}`}
                 className="flex items-center gap-2 sm:gap-3 group min-h-[44px] items-center"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-gold flex items-center justify-center shadow-glow-sm group-hover:shadow-glow transition-shadow duration-300 shrink-0">
-                  <span className="text-primary-foreground text-xs">✦</span>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-600 flex items-center justify-center group-hover:bg-emerald-700 transition-colors duration-300 shrink-0">
+                  <span className="text-white text-xs font-bold">B</span>
                 </div>
-                <span className="font-display font-bold text-base sm:text-xl text-primary-foreground tracking-tight truncate">
+                <span className="font-display font-bold text-base sm:text-xl text-gray-900 tracking-tight truncate">
                   {t('common.brand')}
                 </span>
               </Link>
@@ -53,7 +53,7 @@ export function MarketingHeaderHtml({ dict, locale }: MarketingHeaderHtmlProps) 
                   <Link
                     key={link.href}
                     href={`/${locale}${link.href}`}
-                    className="px-4 py-2 text-primary-foreground/60 hover:text-primary-foreground transition-colors duration-200 font-medium text-sm rounded-lg hover:bg-primary-foreground/5"
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium text-sm rounded-lg hover:bg-gray-50"
                   >
                     {t(link.labelKey)}
                   </Link>
@@ -65,14 +65,14 @@ export function MarketingHeaderHtml({ dict, locale }: MarketingHeaderHtmlProps) 
                 <Link
                   href={`/${locale}/auth`}
                   prefetch={false}
-                  className="inline-flex h-9 items-center justify-center rounded-2xl px-3 font-medium text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10 transition-colors"
+                  className="inline-flex h-9 items-center justify-center rounded-2xl px-3 font-medium text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   {t('common.logIn')}
                 </Link>
                 <Link
                   href={`/${locale}/onboarding`}
                   prefetch={false}
-                  className="inline-flex h-9 items-center justify-center rounded-2xl px-4 font-medium bg-gradient-gold text-primary-foreground hover:opacity-90 transition-opacity"
+                  className="inline-flex h-9 items-center justify-center rounded-2xl px-4 font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
                 >
                   {t('common.joinNow')}
                 </Link>

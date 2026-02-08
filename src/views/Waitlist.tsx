@@ -29,7 +29,7 @@ import {
   Zap,
   Target,
   TrendingUp,
-  Sparkles
+  ArrowRight
 } from "lucide-react";
 
 const Waitlist = () => {
@@ -185,44 +185,18 @@ const Waitlist = () => {
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background">
-      {/* Animated Gradient Orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-primary/20 blur-[150px] animate-pulse-soft" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-accent/15 blur-[120px] animate-pulse-soft delay-300" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/10 blur-[200px]" />
-      </div>
-
-      {/* Subtle grid pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px'
-        }}
-      />
-
-      {/* Floating Sparkles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <Sparkles className="absolute top-20 left-10 h-4 w-4 text-primary/30 animate-float" style={{ animationDelay: '0s', animationDuration: '3s' }} />
-        <Sparkles className="absolute top-40 right-20 h-5 w-5 text-accent/30 animate-float" style={{ animationDelay: '1s', animationDuration: '4s' }} />
-        <Sparkles className="absolute top-60 left-1/4 h-3 w-3 text-primary/20 animate-float" style={{ animationDelay: '2s', animationDuration: '3.5s' }} />
-        <Sparkles className="absolute bottom-40 right-1/3 h-4 w-4 text-accent/25 animate-float" style={{ animationDelay: '0.5s', animationDuration: '4.5s' }} />
-        <Sparkles className="absolute bottom-60 left-1/3 h-5 w-5 text-primary/20 animate-float" style={{ animationDelay: '1.5s', animationDuration: '3s' }} />
-        <Sparkles className="absolute top-1/3 right-1/4 h-3 w-3 text-accent/30 animate-float" style={{ animationDelay: '2.5s', animationDuration: '4s' }} />
-      </div>
-
+    <div className="min-h-screen relative overflow-hidden bg-white">
       {/* Header */}
       <header className="relative z-20 sticky top-0">
         <div className="mx-4 mt-4">
-          <div className="bg-primary-foreground/5 backdrop-blur-2xl border border-primary-foreground/10 rounded-2xl shadow-lg">
+          <div className="bg-white/95 border-b border-gray-100 backdrop-blur-sm rounded-2xl shadow-sm">
             <div className="container mx-auto px-4 sm:px-6">
               <div className="flex items-center justify-center h-16">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-gold flex items-center justify-center shadow-glow-sm">
-                    <Heart className="h-5 w-5 text-primary-foreground" />
+                  <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center">
+                    <Heart className="h-5 w-5 text-white" />
                   </div>
-                  <span className="font-display text-xl font-bold text-primary-foreground tracking-tight">
+                  <span className="font-display text-xl font-bold text-gray-900 tracking-tight">
                     BeyondRounds
                   </span>
                 </div>
@@ -230,8 +204,8 @@ const Waitlist = () => {
                 {!authLoading && user && (
                   <div className="absolute right-4 sm:right-6">
                     <LocalizedLink to="/dashboard">
-                      <Button size="sm" variant="hero" className="h-9 px-4 text-xs font-bold">
-                        {t("common.dashboard")}
+                      <Button size="sm" className="h-9 px-4 text-xs font-bold">
+                        {t("dashboard")}
                       </Button>
                     </LocalizedLink>
                   </div>
@@ -246,13 +220,13 @@ const Waitlist = () => {
         {/* Hero Section */}
         <section className="container mx-auto px-6 py-20 md:py-32">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-primary-foreground leading-tight animate-fade-up">
+            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-gray-900 leading-tight animate-fade-up">
               {t("waitlistPage.heroTitle")}{" "}
-              <span className="text-gradient-gold">
+              <span className="text-emerald-600">
                 {t("waitlistPage.heroTitleHighlight")}
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-primary-foreground/60 mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-up delay-200">
+            <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-up delay-200">
               {t("waitlistPage.heroSubtitle")}
             </p>
 
@@ -261,37 +235,36 @@ const Waitlist = () => {
               <a href="#waitlist-form">
                 <Button
                   size="lg"
-                  variant="hero"
                   className="h-14 px-8 text-lg group"
                 >
                   {t("waitlistPage.joinWaitlist")}
-                  <Sparkles className="ml-2 h-4 w-4 group-hover:scale-110 transition-transform" />
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </a>
               <Button
                 variant="outline"
-                className="h-14 px-8 text-lg border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
+                className="h-14 px-8 text-lg"
                 asChild
               >
                 <LocalizedLink to="/survey">{t("waitlistPage.takeQuiz")}</LocalizedLink>
               </Button>
             </div>
-            <p className="mb-16 text-sm text-primary-foreground/50 animate-fade-up delay-300">
-              <LocalizedLink to="/for-doctors" className="underline hover:text-primary-foreground/70">
+            <p className="mb-16 text-sm text-gray-500 animate-fade-up delay-300">
+              <LocalizedLink to="/for-doctors" className="underline hover:text-gray-700">
                 {t("waitlistPage.whyDoctors")}
               </LocalizedLink>
             </p>
 
             {/* Social Proof with Animated Counter */}
             <div className="animate-fade-up delay-400">
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 backdrop-blur-xl">
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white border border-gray-200 shadow-sm">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  <span className="text-2xl font-display font-bold text-primary-foreground number-display">
+                  <TrendingUp className="h-4 w-4 text-emerald-600" />
+                  <span className="text-2xl font-display font-bold text-gray-900 number-display">
                     {animatedCount.toLocaleString()}+
                   </span>
                 </div>
-                <span className="text-sm text-primary-foreground/60">{t("waitlistPage.doctorsJoined")}</span>
+                <span className="text-sm text-gray-600">{t("waitlistPage.doctorsJoined")}</span>
               </div>
             </div>
           </div>
@@ -300,36 +273,36 @@ const Waitlist = () => {
         {/* Features Section */}
         <section className="container mx-auto px-4 sm:px-6 py-10 sm:py-16 md:py-24">
           <div className="max-w-6xl mx-auto">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-12 text-primary-foreground animate-fade-up">
-              {t("waitlistPage.whyTitle")} <span className="text-gradient-gold">{t("waitlistPage.whyHighlight")}</span>{t("waitlistPage.whySuffix")}
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900 animate-fade-up">
+              {t("waitlistPage.whyTitle")} <span className="text-emerald-600">{t("waitlistPage.whyHighlight")}</span>{t("waitlistPage.whySuffix")}
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
-              <Card className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-200">
-                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
-                  <Shield className="h-6 w-6 text-primary" />
+              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-200">
+                <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
+                  <Shield className="h-6 w-6 text-emerald-600" />
                 </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">{t("waitlistPage.verifiedOnly")}</h3>
-                <p className="text-sm text-primary-foreground/60">
+                <h3 className="font-display text-lg font-bold mb-2 text-gray-900">{t("waitlistPage.verifiedOnly")}</h3>
+                <p className="text-sm text-gray-600">
                   {t("waitlistPage.verifiedOnlyDesc")}
                 </p>
               </Card>
 
-              <Card className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-300">
-                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
-                  <Zap className="h-6 w-6 text-primary" />
+              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-300">
+                <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
+                  <Zap className="h-6 w-6 text-emerald-600" />
                 </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">{t("waitlistPage.smartMatching")}</h3>
-                <p className="text-sm text-primary-foreground/60">
+                <h3 className="font-display text-lg font-bold mb-2 text-gray-900">{t("waitlistPage.smartMatching")}</h3>
+                <p className="text-sm text-gray-600">
                   {t("waitlistPage.smartMatchingDesc")}
                 </p>
               </Card>
 
-              <Card className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-400">
-                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
-                  <Target className="h-6 w-6 text-primary" />
+              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-400">
+                <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
+                  <Target className="h-6 w-6 text-emerald-600" />
                 </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-primary-foreground">{t("waitlistPage.curatedGroups")}</h3>
-                <p className="text-sm text-primary-foreground/60">
+                <h3 className="font-display text-lg font-bold mb-2 text-gray-900">{t("waitlistPage.curatedGroups")}</h3>
+                <p className="text-sm text-gray-600">
                   {t("waitlistPage.curatedGroupsDesc")}
                 </p>
               </Card>
@@ -342,39 +315,39 @@ const Waitlist = () => {
           <div className="max-w-5xl mx-auto">
             <div className="grid md:grid-cols-3 gap-8">
               {/* Step 1 */}
-              <Card className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl shadow-lg shadow-foreground/5 hover:shadow-xl hover:shadow-foreground/10 transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-200">
+              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-200">
                 <CardContent className="p-8 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
-                    <UserPlus className="h-8 w-8 text-primary" />
+                  <div className="h-16 w-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
+                    <UserPlus className="h-8 w-8 text-emerald-600" />
                   </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">{t("waitlistPage.step1Title")}</h3>
-                  <p className="text-primary-foreground/60">
+                  <h3 className="font-display text-xl font-bold mb-3 text-gray-900">{t("waitlistPage.step1Title")}</h3>
+                  <p className="text-gray-600">
                     {t("waitlistPage.step1Desc")}
                   </p>
                 </CardContent>
               </Card>
 
               {/* Step 2 */}
-              <Card className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl shadow-lg shadow-foreground/5 hover:shadow-xl hover:shadow-foreground/10 transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-300">
+              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-300">
                 <CardContent className="p-8 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
-                    <Users className="h-8 w-8 text-primary" />
+                  <div className="h-16 w-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
+                    <Users className="h-8 w-8 text-emerald-600" />
                   </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">{t("waitlistPage.step2Title")}</h3>
-                  <p className="text-primary-foreground/60">
+                  <h3 className="font-display text-xl font-bold mb-3 text-gray-900">{t("waitlistPage.step2Title")}</h3>
+                  <p className="text-gray-600">
                     {t("waitlistPage.step2Desc")}
                   </p>
                 </CardContent>
               </Card>
 
               {/* Step 3 */}
-              <Card className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-2xl shadow-lg shadow-foreground/5 hover:shadow-xl hover:shadow-foreground/10 transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-400">
+              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-400">
                 <CardContent className="p-8 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
-                    <Heart className="h-8 w-8 text-primary" />
+                  <div className="h-16 w-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
+                    <Heart className="h-8 w-8 text-emerald-600" />
                   </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-primary-foreground">{t("waitlistPage.step3Title")}</h3>
-                  <p className="text-primary-foreground/60">
+                  <h3 className="font-display text-xl font-bold mb-3 text-gray-900">{t("waitlistPage.step3Title")}</h3>
+                  <p className="text-gray-600">
                     {t("waitlistPage.step3Desc")}
                   </p>
                 </CardContent>
@@ -386,37 +359,36 @@ const Waitlist = () => {
         {/* Waitlist Form */}
         <section id="waitlist-form" className="container mx-auto px-6 py-16 md:py-24">
           <div className="max-w-2xl mx-auto">
-            <Card className="bg-primary-foreground/5 backdrop-blur-xl border border-primary-foreground/10 rounded-3xl shadow-2xl shadow-foreground/10 animate-fade-up delay-500">
+            <Card className="bg-white border border-gray-200 rounded-3xl shadow-lg animate-fade-up delay-500">
               <CardContent className="p-8 md:p-12">
                 {submitted ? (
                   <div className="text-center py-8 animate-fade-in">
                     <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-6">
                       <CheckCircle2 className="h-8 w-8 text-accent" />
                     </div>
-                    <h2 className="font-display text-2xl font-bold mb-3 text-primary-foreground">{t("waitlistPage.successTitle")}</h2>
-                    <p className="text-primary-foreground/60 mb-6">
+                    <h2 className="font-display text-2xl font-bold mb-3 text-gray-900">{t("waitlistPage.successTitle")}</h2>
+                    <p className="text-gray-600 mb-6">
                       {t("waitlistPage.successDesc")}
                     </p>
                     <Button
                       variant="outline"
                       onClick={() => setSubmitted(false)}
-                      className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
                     >
                       {t("waitlistPage.addAnotherEmail")}
                     </Button>
                   </div>
                 ) : (
                   <>
-                    <h2 className="font-display text-3xl font-bold mb-2 text-center text-primary-foreground">
-                      {t("waitlistPage.formTitle")} <span className="text-gradient-gold">{t("waitlistPage.formTitleHighlight")}</span>
+                    <h2 className="font-display text-3xl font-bold mb-2 text-center text-gray-900">
+                      {t("waitlistPage.formTitle")} <span className="text-emerald-600">{t("waitlistPage.formTitleHighlight")}</span>
                     </h2>
-                    <p className="text-primary-foreground/60 text-center mb-8">
+                    <p className="text-gray-600 text-center mb-8">
                       {t("waitlistPage.formSubtitle")}
                     </p>
                     <form onSubmit={handleSubmit} className="space-y-6">
                       {/* Email */}
                       <div>
-                        <label htmlFor="email" className="flex items-center gap-2 text-sm font-medium mb-2 text-primary-foreground">
+                        <label htmlFor="email" className="flex items-center gap-2 text-sm font-medium mb-2 text-gray-900">
                           <Mail className="h-4 w-4" />
                           {t("waitlistPage.emailLabel")}
                         </label>
@@ -427,13 +399,13 @@ const Waitlist = () => {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
-                          className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground"
+                          className="h-12"
                         />
                       </div>
 
                       {/* City */}
                       <div>
-                        <label htmlFor="city" className="flex items-center gap-2 text-sm font-medium mb-2 text-primary-foreground">
+                        <label htmlFor="city" className="flex items-center gap-2 text-sm font-medium mb-2 text-gray-900">
                           <MapPin className="h-4 w-4" />
                           {t("waitlistPage.cityLabel")}
                         </label>
@@ -443,18 +415,18 @@ const Waitlist = () => {
                           placeholder={t("waitlistPage.cityPlaceholder")}
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground"
+                          className="h-12"
                         />
                       </div>
 
                       {/* Medical Specialty */}
                       <div>
-                        <label htmlFor="specialty" className="flex items-center gap-2 text-sm font-medium mb-2 text-primary-foreground">
+                        <label htmlFor="specialty" className="flex items-center gap-2 text-sm font-medium mb-2 text-gray-900">
                           <Stethoscope className="h-4 w-4" />
                           {t("waitlistPage.specialtyLabel")}
                         </label>
                         <Select value={specialty} onValueChange={setSpecialty}>
-                          <SelectTrigger id="specialty" className="h-12 bg-primary-foreground/5 border-primary-foreground/20 text-primary-foreground">
+                          <SelectTrigger id="specialty" className="h-12">
                             <SelectValue placeholder={t("waitlistPage.specialtyPlaceholder")} />
                           </SelectTrigger>
                           <SelectContent>
@@ -471,7 +443,6 @@ const Waitlist = () => {
                       <Button
                         type="submit"
                         disabled={loading}
-                        variant="hero"
                         className="w-full h-12 text-lg"
                       >
                         {loading ? t("waitlistPage.submitting") : t("waitlistPage.submitButton")}

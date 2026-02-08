@@ -10,6 +10,7 @@ import LocalizedLink from "@/components/LocalizedLink";
 import { useToast } from "@/hooks/use-toast";
 import { getSupabaseClient, supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { useTranslation } from "react-i18next";
 
 const emailSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -21,7 +22,8 @@ const ForgotPassword = () => {
   const [errors, setErrors] = useState<{ email?: string }>({});
   const { toast } = useToast();
   const navigate = useLocalizedNavigate();
-  
+  const { t } = useTranslation();
+
   const [formData, setFormData] = useState({
     email: "",
   });
@@ -47,11 +49,11 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       const { error } = await getSupabaseClient().auth.resetPasswordForEmail(formData.email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -99,197 +101,132 @@ const ForgotPassword = () => {
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-foreground dark:bg-background">
-      {/* Animated background gradient orbs */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-primary/20 blur-[150px] animate-pulse-soft" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-accent/15 blur-[120px] animate-pulse-soft delay-300" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/10 blur-[200px]" />
-      </div>
+    <div className="min-h-screen bg-[#FAFAF7] text-slate-900 font-sans selection:bg-emerald-100 selection:text-emerald-900 flex flex-col">
+      {/* Top Bar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-16 bg-[#FAFAF7]/80 backdrop-blur-md border-b border-slate-200/50 supports-[backdrop-filter]:bg-[#FAFAF7]/60">
+        <div className="w-20">
+          <LocalizedLink
+            to="/auth"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft size={20} />
+            <span className="sr-only">{t("common.back")}</span>
+          </LocalizedLink>
+        </div>
 
-      {/* Subtle grid pattern */}
-      <div 
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px'
-        }}
-      />
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-600">
+            <Sparkles size={16} />
+          </div>
+          <span className="font-bold text-slate-900 text-lg tracking-tight">BeyondRounds</span>
+        </div>
 
-      {/* Back to Login */}
-      <LocalizedLink 
-        to="/auth" 
-        className="absolute top-6 left-6 z-20 flex items-center gap-2 text-primary-foreground/60 hover:text-primary-foreground transition-colors group"
-      >
-        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-        <span className="text-sm font-medium">Back to Login</span>
-      </LocalizedLink>
+        <div className="w-20 flex justify-end">
+          {/* Placeholder for balance */}
+        </div>
+      </nav>
 
-      {/* Main content container */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-8 lg:gap-16 items-center">
-          
-          {/* Left side - Branding & Features */}
-          <div className="flex-1 text-center lg:text-left max-w-lg animate-fade-up">
-            {/* Logo */}
-            <div className="flex items-center gap-3 justify-center lg:justify-start mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow">
-                <Sparkles className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold text-2xl text-primary-foreground">BeyondRounds</span>
-            </div>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center pt-24 pb-12 px-4">
+        <div className="w-full max-w-md space-y-8">
 
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-foreground leading-[1.1] mb-6">
-              Forgot
-              <span className="block text-gradient-gold">Password?</span>
+          {/* Header Copy */}
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+              {isSuccess ? t("forgotPassword.checkEmail") : t("forgotPassword.title")}
             </h1>
-            
-            <p className="text-primary-foreground/60 text-lg mb-10 max-w-md mx-auto lg:mx-0">
-              No worries! Enter your email address and we'll send you instructions to reset your password.
+            <p className="text-slate-500 text-base md:text-lg">
+              {isSuccess ? t("forgotPassword.checkEmailDesc") : t("forgotPassword.subtitle")}
             </p>
-
-            {/* Features list */}
-            <div className="space-y-4 hidden lg:block">
-              {features.map((feature, i) => (
-                <div 
-                  key={i} 
-                  className="flex items-center gap-3 text-primary-foreground/70 animate-fade-up"
-                  style={{ animationDelay: `${(i + 2) * 100}ms` }}
-                >
-                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <Check size={12} className="text-primary" />
-                  </div>
-                  <span>{feature}</span>
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* Right side - Reset Password Card */}
-          <div className="w-full max-w-md animate-fade-up delay-200">
-            <div className="relative">
-              {/* Glow effect behind card */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-3xl blur-xl opacity-60" />
-              
-              {/* Card */}
-              <div className="relative bg-background/5 backdrop-blur-2xl border border-primary-foreground/10 rounded-3xl p-8 sm:p-10">
-                {isSuccess ? (
-                  /* Success State */
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
-                      <MailCheck className="w-8 h-8 text-primary" />
-                    </div>
-                    <h2 className="font-display text-2xl font-bold text-primary-foreground mb-2">
-                      Check Your Email
-                    </h2>
-                    <p className="text-primary-foreground/60 text-sm mb-8">
-                      We've sent password reset instructions to <span className="font-medium text-primary-foreground">{formData.email}</span>
-                    </p>
-                    <p className="text-primary-foreground/50 text-xs mb-6">
-                      Didn't receive the email? Check your spam folder or try again.
-                    </p>
-                    <div className="space-y-3">
-                      <Button 
-                        onClick={() => {
-                          setIsSuccess(false);
-                          setFormData({ email: "" });
-                        }}
-                        variant="outline"
-                        className="w-full h-14 rounded-2xl border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-semibold"
-                      >
-                        Send Another Email
-                      </Button>
-                      <LocalizedLink to="/auth">
-                        <Button 
-                          variant="ghost"
-                          className="w-full h-12 rounded-2xl text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/5"
-                        >
-                          Back to Login
-                        </Button>
-                      </LocalizedLink>
-                    </div>
+          {/* Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 md:p-8">
+              {isSuccess ? (
+                /* Success State */
+                <div className="text-center space-y-6">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-emerald-600">
+                    <MailCheck className="w-8 h-8" />
                   </div>
-                ) : (
-                  <>
-                    {/* Header */}
-                    <div className="text-center mb-8">
-                      <h2 className="font-display text-2xl font-bold text-primary-foreground mb-2">Reset Password</h2>
-                      <p className="text-primary-foreground/60 text-sm">Enter your email to receive reset instructions</p>
-                    </div>
 
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-primary-foreground/80 text-sm font-medium">
-                          Email Address
-                        </Label>
-                        <div className="relative group">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground/40 group-focus-within:text-primary transition-colors" size={18} />
-                          <Input
-                            id="email"
-                            name="email"
-                            type="email"
-                            placeholder="doctor@hospital.com"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                            className={`pl-12 h-14 rounded-2xl bg-primary-foreground/5 border-primary-foreground/10 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all ${errors.email ? 'border-red-500' : ''}`}
-                            required
-                          />
-                        </div>
-                        {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
-                      </div>
+                  <div className="space-y-2">
+                    <p className="text-slate-600">
+                      We've sent password reset instructions to <span className="font-semibold text-slate-900">{formData.email}</span>
+                    </p>
+                  </div>
 
-                      <Button 
-                        type="submit" 
-                        className="w-full h-14 rounded-2xl bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold text-base shadow-glow hover:shadow-[0_0_80px_-12px_hsl(28_100%_50%_/_0.5)] transition-all group"
-                        disabled={isLoading}
+                  <div className="space-y-3 pt-2">
+                    <Button
+                      onClick={() => {
+                        setIsSuccess(false);
+                        setFormData({ email: "" });
+                      }}
+                      variant="outline"
+                      className="w-full h-12 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-medium"
+                    >
+                      {t("forgotPassword.sendAnother")}
+                    </Button>
+                    <LocalizedLink to="/auth" className="block w-full">
+                      <Button
+                        variant="ghost"
+                        className="w-full h-12 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                       >
-                        {isLoading ? (
-                          <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            Send Reset Link
-                            <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />
-                          </>
-                        )}
-                      </Button>
-                    </form>
-
-                    {/* Divider */}
-                    <div className="relative my-8">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-primary-foreground/10" />
-                      </div>
-                      <div className="relative flex justify-center text-sm">
-                        <span className="px-4 text-primary-foreground/40 bg-transparent">Remember your password?</span>
-                      </div>
-                    </div>
-
-                    {/* Back to Login */}
-                    <LocalizedLink to="/auth">
-                      <Button 
-                        variant="outline"
-                        className="w-full h-14 rounded-2xl border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-semibold"
-                      >
-                        Back to Login
-                        <ArrowLeft className="ml-2" size={18} />
+                        {t("forgotPassword.backToLogin")}
                       </Button>
                     </LocalizedLink>
-                  </>
-                )}
-              </div>
-            </div>
+                  </div>
+                </div>
+              ) : (
+                /* Form State */
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-slate-700 font-medium">
+                      {t("auth.emailAddress")}
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="doctor@hospital.com"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className={`pl-10 h-12 rounded-xl border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:ring-emerald-500/20 hover:border-emerald-500/50 transition-all ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                        required
+                      />
+                    </div>
+                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                  </div>
 
-            {/* Terms note */}
-            <p className="text-center text-primary-foreground/40 text-xs mt-6 px-4">
-              Need help?{" "}
-              <LocalizedLink to="/faq" className="text-primary hover:underline">Visit our FAQ</LocalizedLink>
-              {" "}or{" "}
-              <LocalizedLink to="/about" className="text-primary hover:underline">Contact Support</LocalizedLink>
-            </p>
+                  <Button
+                    type="submit"
+                    className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 bg-none text-white font-semibold shadow-sm hover:shadow transition-all text-[15px]"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        {t("forgotPassword.sendResetLink")}
+                        <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
+                      </>
+                    )}
+                  </Button>
+
+                  <LocalizedLink to="/auth" className="block w-full text-center">
+                    <span className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
+                      {t("forgotPassword.backToLogin")}
+                    </span>
+                  </LocalizedLink>
+                </form>
+              )}
+            </div>
           </div>
+
         </div>
-      </div>
+      </main>
     </div>
   );
 };

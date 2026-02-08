@@ -1,0 +1,40 @@
+{
+  "membershipPlans": "Mitgliedschaftspläne",
+  "simpleTransparent": "Einfach, transparente Preise",
+  "noHiddenFees": "Keine versteckten Gebühren. Keine Langzeitverträge. Nur echte Verbindungen mit unserer 30-Tage-Freundschafts-Garantie.",
+  "mostPopular": "Am beliebtesten",
+  "oneTimeTrial": "Einmal-Test",
+  "trialPrice": "9,99 €",
+  "trialDesc": "BeyondRounds einmal testen – ohne Abo",
+  "trialFeatures": [
+    "Wöchentliche kuratierte Gruppen-Matches",
+    "Zugang zum privaten Gruppen-Chat",
+    "RoundsBot Eisbrecher-Fragen",
+    "Grundlegendes Kompatibilitäts-Matching"
+  ],
+  "startTrial": "Einmal-Test starten",
+  "monthly": "Monatlich",
+  "monthlyPrice": "14,99 €",
+  "perMonth": "/Monat",
+  "monthlyDesc": "Volles Erlebnis mit Monatsabo",
+  "monthlyFeatures": [
+    "Alles aus dem Einmal-Test",
+    "Priorität im Matching",
+    "Erweitertes Profil & Interessen",
+    "Früher Zugang zu neuen Features",
+    "Prioritäts-Support"
+  ],
+  "subscribeMonthly": "Monatlich abonnieren",
+  "premium": "Premium",
+  "premiumPrice": "29,99 €",
+  "premiumDesc": "Maximale Kontrolle & Personalisierung",
+  "premiumFeatures": [
+    "Alles aus Monatlich",
+    "Erweiterte Lifestyle-Kompatibilität",
+    "KI-gestützte Aktivitätsvorschläge",
+    "Filter nach Fachrichtung, Alter & mehr",
+    "Kleinere Gruppen (2–3)",
+    "Exklusive Mitglieder-Events"
+  ],
+  "goPremium": "Premium wählen"
+}

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 interface LanguageLinksProps {
   className?: string;
   /** Use 'overlay' when on dark translucent header (marketing) */
-  variant?: 'default' | 'overlay';
+  variant?: 'default' | 'overlay' | 'ghost';
   /** Called when any language link is clicked (e.g. to close mobile menu) */
   onLinkClick?: () => void;
 }
@@ -24,6 +24,7 @@ export function LanguageLinks({ className, variant = 'default', onLinkClick }: L
   const locales = ['de', 'en'] as const;
 
   const isOverlay = variant === 'overlay';
+  const isGhost = variant === 'ghost';
 
   return (
     <div
@@ -33,7 +34,9 @@ export function LanguageLinks({ className, variant = 'default', onLinkClick }: L
         'inline-flex items-center rounded-lg border p-0.5',
         isOverlay
           ? 'border-white/20 bg-white/5'
-          : 'border-border bg-muted/50',
+          : isGhost
+            ? 'border-transparent bg-transparent'
+            : 'border-border bg-muted/50',
         className
       )}
     >
@@ -54,9 +57,13 @@ export function LanguageLinks({ className, variant = 'default', onLinkClick }: L
                 ? isActive
                   ? 'bg-white/15 text-white shadow-sm border border-white/20'
                   : 'text-white/80 hover:text-white hover:bg-white/10'
-                : isActive
-                  ? 'bg-background text-foreground shadow-sm border border-border'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                : isGhost
+                  ? isActive
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  : isActive
+                    ? 'bg-background text-foreground shadow-sm border border-border'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
             )}
             aria-current={isActive ? 'true' : undefined}
           >

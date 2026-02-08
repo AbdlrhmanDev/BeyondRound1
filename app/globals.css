@@ -7,112 +7,112 @@
 
 @layer base {
   :root {
-    /* Warm gray background - matches reference design */
-    --background: 30 15% 96%;
-    --foreground: 240 10% 6%;
+    /* White background - matches landing page */
+    --background: 0 0% 100%;
+    --foreground: 221 39% 11%;
 
     /* Card surfaces - clean white */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 6%;
+    --card-foreground: 221 39% 11%;
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 6%;
+    --popover-foreground: 221 39% 11%;
 
-    /* Primary - Copper/orange accent */
-    --primary: 25 80% 45%;
+    /* Primary - Muted green accent */
+    --primary: 160 60% 36%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Light gray for badges/pills */
-    --secondary: 30 10% 92%;
-    --secondary-foreground: 240 10% 25%;
+    /* Secondary - Light neutral for badges/pills */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 215 14% 34%;
 
-    /* Muted */
-    --muted: 30 10% 92%;
-    --muted-foreground: 240 6% 50%;
+    /* Muted - gray-100 bg, gray-500 text */
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 14% 34%;
 
-    /* Accent - Muted medical green for calm validation */
-    --accent: 165 35% 50%;
+    /* Accent - Muted green for calm validation */
+    --accent: 160 50% 45%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders and inputs */
-    --border: 30 10% 88%;
-    --input: 30 10% 88%;
-    --ring: 25 80% 45%;
+    /* Borders and inputs (#E5E7EB) */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 160 60% 36%;
 
     --radius: 0.75rem;
 
     /* Sidebar */
-    --sidebar-background: 30 15% 97%;
-    --sidebar-foreground: 240 10% 6%;
-    --sidebar-primary: 25 80% 45%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 221 39% 11%;
+    --sidebar-primary: 160 60% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 10% 92%;
-    --sidebar-accent-foreground: 240 10% 6%;
-    --sidebar-border: 30 10% 88%;
-    --sidebar-ring: 25 80% 45%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 221 39% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 160 60% 36%;
 
     /* Custom BeyondRounds tokens */
-    --gold: 25 80% 45%;
-    --gold-light: 30 70% 55%;
+    --gold: 160 60% 36%;
+    --gold-light: 160 50% 45%;
     --navy: 220 40% 13%;
     --navy-light: 220 25% 25%;
-    --cream: 40 50% 95%;
-    --cream-dark: 40 40% 90%;
-    --teal: 172 66% 50%;
-    --sage: 145 30% 90%;
+    --cream: 0 0% 100%;
+    --cream-dark: 220 14% 96%;
+    --teal: 160 60% 36%;
+    --sage: 160 30% 90%;
     /* Medical muted green for validation */
-    --success: 165 35% 50%;
+    --success: 160 55% 42%;
     --success-foreground: 0 0% 100%;
 
-    /* Interest pill colors - dark warm gray */
-    --interest-pill: 30 8% 35%;
+    /* Interest pill colors - neutral gray */
+    --interest-pill: 220 9% 35%;
     --interest-pill-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 30 5% 8%;
+    --background: 222 20% 8%;
     --foreground: 0 0% 98%;
 
-    --card: 30 5% 10%;
+    --card: 222 15% 10%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 30 5% 10%;
+    --popover: 222 15% 10%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 25 80% 50%;
+    --primary: 160 55% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 5% 15%;
+    --secondary: 222 15% 15%;
     --secondary-foreground: 0 0% 90%;
 
-    --muted: 30 5% 15%;
-    --muted-foreground: 30 5% 60%;
+    --muted: 222 15% 15%;
+    --muted-foreground: 220 10% 60%;
 
-    --accent: 165 35% 45%;
+    --accent: 160 45% 40%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 5% 18%;
-    --input: 30 5% 18%;
-    --ring: 25 80% 50%;
+    --border: 222 15% 18%;
+    --input: 222 15% 18%;
+    --ring: 160 55% 42%;
 
-    --sidebar-background: 30 5% 7%;
+    --sidebar-background: 222 20% 7%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 25 80% 50%;
+    --sidebar-primary: 160 55% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 5% 15%;
+    --sidebar-accent: 222 15% 15%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 30 5% 18%;
-    --sidebar-ring: 25 80% 50%;
+    --sidebar-border: 222 15% 18%;
+    --sidebar-ring: 160 55% 42%;
 
-    --interest-pill: 30 5% 25%;
+    --interest-pill: 220 10% 25%;
     --interest-pill-foreground: 0 0% 95%;
   }
 }
@@ -142,7 +142,7 @@
   /* Mobile touch: remove 300ms tap delay, subtle tap highlight */
   a, button, [role="button"], input, select, textarea {
     touch-action: manipulation;
-    -webkit-tap-highlight-color: hsl(28 100% 50% / 0.15);
+    -webkit-tap-highlight-color: hsl(160 60% 36% / 0.15);
   }
 
   /* Mobile-first: minimum touch target (44px) for interactive elements */
@@ -163,7 +163,7 @@
 
   /* Input text: black in light mode, white in dark mode for clear visibility */
   input, textarea {
-    color: hsl(240 10% 6%);
+    color: hsl(221 39% 11%);
   }
   input::placeholder,
   textarea::placeholder {
@@ -178,7 +178,7 @@
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-    -webkit-text-fill-color: hsl(240 10% 6%);
+    -webkit-text-fill-color: hsl(221 39% 11%);
   }
   .dark input:-webkit-autofill,
   .dark input:-webkit-autofill:hover,
@@ -214,12 +214,17 @@
   /* Modern gradient text */
   .text-gradient-gold {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(28, 100%, 50%) 0%, hsl(35, 100%, 60%) 50%, hsl(28, 100%, 55%) 100%);
+    background-image: linear-gradient(135deg, hsl(160, 60%, 36%) 0%, hsl(160, 50%, 45%) 50%, hsl(155, 55%, 40%) 100%);
   }
 
   .text-gradient-dark {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(240, 10%, 6%) 0%, hsl(220, 25%, 25%) 100%);
+    background-image: linear-gradient(135deg, hsl(221, 39%, 11%) 0%, hsl(220, 25%, 25%) 100%);
+  }
+
+  .text-gradient-green {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(152, 60%, 36%) 0%, hsl(160, 50%, 45%) 100%);
   }
 
   /* Glass morphism */
@@ -266,31 +271,31 @@
 
   /* Gradient backgrounds */
   .bg-gradient-hero {
-    background: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(40, 40%, 97%) 100%);
+    background: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(210, 20%, 98%) 100%);
   }
 
   .bg-gradient-gold {
-    background: linear-gradient(135deg, hsl(28, 100%, 50%) 0%, hsl(35, 100%, 60%) 100%);
+    background: linear-gradient(135deg, hsl(160, 60%, 36%) 0%, hsl(160, 50%, 45%) 100%);
   }
 
   .bg-gradient-dark {
-    background: linear-gradient(180deg, hsl(240, 10%, 6%) 0%, hsl(220, 40%, 13%) 100%);
+    background: linear-gradient(180deg, hsl(222, 47%, 11%) 0%, hsl(220, 40%, 13%) 100%);
   }
 
   .bg-gradient-mesh {
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(28, 100%, 50%, 0.15) 0%, transparent 50%),
-      radial-gradient(ellipse 60% 40% at 100% 50%, hsl(172, 66%, 50%, 0.1) 0%, transparent 40%),
-      linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(40, 40%, 97%) 100%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(160, 60%, 36%, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 100% 50%, hsl(160, 50%, 45%, 0.08) 0%, transparent 40%),
+      linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(210, 20%, 98%) 100%);
   }
 
   /* Modern shadows */
   .shadow-glow {
-    box-shadow: 0 0 60px -12px hsl(28 100% 50% / 0.25);
+    box-shadow: 0 0 60px -12px hsl(160 60% 36% / 0.2);
   }
 
   .shadow-glow-sm {
-    box-shadow: 0 0 30px -8px hsl(28 100% 50% / 0.2);
+    box-shadow: 0 0 30px -8px hsl(160 60% 36% / 0.15);
   }
 
   /* Animations */

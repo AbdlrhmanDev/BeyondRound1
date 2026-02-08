@@ -22,7 +22,9 @@
       "Bash(node -e:*)",
       "Bash(wc:*)",
       "Bash(npx next build:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(tasklist:*)",
+      "Bash(cmd //c \"rmdir /s /q .next\")"
     ]
   }
 }

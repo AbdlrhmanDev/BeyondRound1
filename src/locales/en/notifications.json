@@ -1,0 +1,32 @@
+{
+  "heading": "Notifications",
+  "viewAll": "View all notifications",
+  "markAllRead": "Mark all read",
+  "loading": "Loading notifications...",
+  "empty": "No notifications yet",
+  "recently": "Recently",
+  "match": {
+    "title": "New Connection Request",
+    "message": "You have a new connection request from {{from_user_name}}."
+  },
+  "match_accepted": {
+    "title": "Connection Accepted!",
+    "message": "{{from_user_name}} accepted your connection request."
+  },
+  "group_invite": {
+    "title": "New Member Joined",
+    "message": "{{from_user_name}} joined {{group_name}}."
+  },
+  "message": {
+    "title": "New Message",
+    "message": "{{from_user_name}} sent you a message."
+  },
+  "group_message": {
+    "title": "New Group Message",
+    "message": "{{from_user_name}} sent a message in the group."
+  },
+  "welcome": {
+    "title": "Welcome to BeyondRounds!",
+    "message": "Complete your profile to start connecting with physicians who share your interests."
+  }
+}

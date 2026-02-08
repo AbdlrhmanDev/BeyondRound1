@@ -1,0 +1,32 @@
+{
+  "heading": "Benachrichtigungen",
+  "viewAll": "Alle Benachrichtigungen anzeigen",
+  "markAllRead": "Alle als gelesen markieren",
+  "loading": "Benachrichtigungen werden geladen…",
+  "empty": "Noch keine Benachrichtigungen",
+  "recently": "Kürzlich",
+  "match": {
+    "title": "Neue Verbindungsanfrage",
+    "message": "Du hast eine neue Verbindungsanfrage von {{from_user_name}}."
+  },
+  "match_accepted": {
+    "title": "Verbindung angenommen!",
+    "message": "{{from_user_name}} hat deine Verbindungsanfrage angenommen."
+  },
+  "group_invite": {
+    "title": "Neues Mitglied",
+    "message": "{{from_user_name}} ist {{group_name}} beigetreten."
+  },
+  "message": {
+    "title": "Neue Nachricht",
+    "message": "{{from_user_name}} hat dir eine Nachricht geschickt."
+  },
+  "group_message": {
+    "title": "Neue Gruppennachricht",
+    "message": "{{from_user_name}} hat eine Nachricht in die Gruppe geschickt."
+  },
+  "welcome": {
+    "title": "Willkommen bei BeyondRounds!",
+    "message": "Vervollständige dein Profil, um dich mit Ärzt:innen zu vernetzen, die deine Interessen teilen."
+  }
+}

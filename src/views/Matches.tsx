@@ -24,7 +24,6 @@ import {
   Users,
   MessageCircle,
   MapPin,
-  Sparkles,
   RefreshCw,
   Info,
   Calendar,
@@ -144,16 +143,16 @@ const Matches = () => {
             <Card className="rounded-xl bg-card border border-border">
               <CardContent className="py-10 text-center">
                 <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-secondary flex items-center justify-center">
-                  <Sparkles className="h-7 w-7 text-muted-foreground" />
+                  <Users className="h-7 w-7 text-muted-foreground" />
                 </div>
-                <h3 className="font-semibold text-lg mb-2">{t("matches.noGroupsYet")}</h3>
+                <h3 className="font-semibold text-lg mb-2 text-foreground">{t("matches.noGroupsYet")}</h3>
                 {isProfileComplete ? (
                   <>
                     <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
                       {t("matches.groupsFormedThursdayComplete")}
                     </p>
                     <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
                       <span>{t("matches.profileCompleteAllSet")}</span>
                     </div>
                   </>
@@ -162,7 +161,7 @@ const Matches = () => {
                     <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
                       {t("matches.groupsFormedThursdayIncomplete")}
                     </p>
-                    <Button onClick={() => navigate("/onboarding")}>
+                    <Button onClick={() => navigate("/onboarding")} className="rounded-xl shadow-sm">
                       {t("dashboard.completeProfile")}
                     </Button>
                   </>
@@ -183,22 +182,22 @@ const Matches = () => {
               const progressPercent = (memberCount / MAX_GROUP_SIZE) * 100;
 
               return (
-                <Card key={group.id} className="rounded-xl bg-card border border-border overflow-hidden">
+                <Card key={group.id} className="rounded-2xl bg-card border border-border overflow-hidden shadow-sm">
                   <CardContent className="p-0">
                     {/* Group Header */}
-                    <div className="px-5 py-4 border-b border-border">
+                    <div className="p-5 border-b border-border">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
-                            <Users className="h-5 w-5 text-primary" />
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center flex-shrink-0 border border-primary/10">
+                            <Users className="h-6 w-6 text-primary" />
                           </div>
                           <div className="min-w-0">
-                            <h3 className="font-semibold text-foreground truncate">
+                            <h3 className="font-semibold text-lg text-foreground truncate tracking-tight">
                               {formatGroupName(group)}
                             </h3>
                             {city && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+                                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
                                 <span className="truncate">{city}{area && ` • ${area}`}</span>
                               </p>
                             )}
@@ -206,13 +205,13 @@ const Matches = () => {
                         </div>
                         {/* Status Badge */}
                         {isGroupComplete ? (
-                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 flex-shrink-0">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                          <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 flex-shrink-0 px-2.5 py-0.5">
+                            <CheckCircle2 className="h-3 w-3 mr-1.5" />
                             {t("matches.groupReady")}
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-secondary/50 text-muted-foreground flex-shrink-0 border-none">
-                            <Lock className="h-3 w-3 mr-1" />
+                          <Badge variant="secondary" className="bg-secondary/50 text-muted-foreground flex-shrink-0 border-none px-2.5 py-0.5">
+                            <Lock className="h-3 w-3 mr-1.5" />
                             {t("matches.forming")}
                           </Badge>
                         )}
@@ -221,7 +220,7 @@ const Matches = () => {
 
                     {/* Progress Section - Only show when group is forming */}
                     {!isGroupComplete && (
-                      <div className="px-5 py-4 bg-secondary/30 border-b border-border">
+                      <div className="px-5 py-4 bg-muted/30 border-b border-border">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-foreground">
                             {t("matches.groupProgress")}
@@ -230,7 +229,7 @@ const Matches = () => {
                             {memberCount} {t("matches.ofFourJoined")}
                           </span>
                         </div>
-                        <Progress value={progressPercent} className="h-2" />
+                        <Progress value={progressPercent} className="h-2 bg-muted-foreground/20" />
                         <p className="text-xs text-muted-foreground mt-2">
                           {t("matches.waitingForMembers", { count: MIN_GROUP_SIZE - memberCount > 0 ? MIN_GROUP_SIZE - memberCount : 1 })}
                         </p>
@@ -238,19 +237,19 @@ const Matches = () => {
                     )}
 
                     {/* Members */}
-                    <div className="px-5 py-4 border-b border-border">
-                      <div className="flex items-center justify-between mb-3">
+                    <div className="p-5 border-b border-border">
+                      <div className="flex items-center justify-between mb-4">
                         <h4 className="text-sm font-medium text-foreground">
                           {t("matches.groupMembers")}
                         </h4>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                           {memberCount} {t("matches.members")}
                         </span>
                       </div>
 
                       {group.members.length === 0 ? (
                         <div className="text-center py-6">
-                          <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-secondary flex items-center justify-center">
+                          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-muted flex items-center justify-center">
                             <Users className="h-6 w-6 text-muted-foreground" />
                           </div>
                           <p className="text-sm text-muted-foreground">
@@ -258,7 +257,7 @@ const Matches = () => {
                           </p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           {group.members.map((member) => {
                             const fullName = member.profile.full_name || "Anonymous";
                             const initials = fullName !== "Anonymous"
@@ -268,20 +267,20 @@ const Matches = () => {
                             return (
                               <div
                                 key={member.user_id}
-                                className="flex flex-col items-center p-3 rounded-lg bg-secondary/50 hover:bg-secondary cursor-pointer transition-colors"
+                                className="flex flex-col items-center p-3 rounded-xl bg-card border border-border hover:border-primary/20 hover:shadow-sm cursor-pointer transition-all active:scale-[0.98]"
                                 onClick={() => navigate(`/u/${member.user_id}`)}
                               >
-                                <Avatar className="h-10 w-10 mb-2">
+                                <Avatar className="h-12 w-12 mb-2 ring-2 ring-background">
                                   <AvatarImage src={member.profile.avatar_url || undefined} alt={fullName} />
-                                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                                  <AvatarFallback className="bg-primary/5 text-primary text-xs font-semibold">
                                     {initials}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="font-medium text-xs text-center truncate w-full">
+                                <span className="font-medium text-xs text-center truncate w-full text-foreground">
                                   {fullName}
                                 </span>
                                 {member.preferences?.specialty && (
-                                  <span className="text-xs text-muted-foreground truncate w-full text-center mt-0.5">
+                                  <span className="text-[10px] text-muted-foreground truncate w-full text-center mt-0.5">
                                     {member.preferences.specialty}
                                   </span>
                                 )}
@@ -294,11 +293,11 @@ const Matches = () => {
 
                     {/* Shared interests that shaped this group */}
                     {group.matchDetails && (
-                      <div className="px-5 py-3 bg-cream dark:bg-secondary/50 border-b border-border">
-                        <p className="text-xs text-muted-foreground mb-1">{t("dashboard.interestsShapedGroup")}</p>
+                      <div className="px-5 py-3 bg-muted/10 border-b border-border">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("dashboard.interestsShapedGroup")}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {group.matchDetails.sharedInterests.slice(0, 3).map((interest) => (
-                            <span key={interest} className="text-sm font-medium text-primary">
+                            <span key={interest} className="text-xs font-medium text-foreground bg-background border border-border px-2 py-0.5 rounded-md">
                               {interest}
                             </span>
                           ))}
@@ -307,33 +306,33 @@ const Matches = () => {
                     )}
 
                     {/* Shared interests context link */}
-                    <div className="px-5 py-3.5 border-t border-border/40 group/context cursor-pointer hover:bg-secondary/20 transition-colors" onClick={() => handleFetchMatchDetails(group)}>
+                    <div className="px-5 py-3.5 border-t border-border/40 group/context cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleFetchMatchDetails(group)}>
                       <div className="flex items-center gap-2 text-muted-foreground group-hover/context:text-foreground transition-colors">
                         <Info className="h-4 w-4 shrink-0" />
                         <span className="text-sm font-medium">
                           {t("dashboard.viewGroupContext", "View what shaped this group")}
                         </span>
+                        <ChevronRight className="h-4 w-4 ml-auto opacity-50" />
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="px-5 py-4">
+                    <div className="p-5 bg-muted/10">
                       {isGroupComplete ? (
                         /* Group is ready - show Enter Group button */
                         <Button
                           onClick={() => startGroupChat(group)}
-                          className="w-full h-14 text-lg font-bold bg-[#FF8A00] hover:bg-[#FF8A00]/90 text-white rounded-2xl shadow-[0_8px_20px_rgba(255,138,0,0.25)] border-none transition-all active:scale-[0.98]"
+                          className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-sm transition-all active:scale-[0.98]"
                         >
-                          <MessageCircle className="h-6 w-6 mr-3" />
+                          <MessageCircle className="h-5 w-5 mr-2" />
                           {t("dashboard.enterGroup")}
-                          <ChevronRight className="h-5 w-5 ml-auto opacity-70" />
                         </Button>
                       ) : (
                         /* Group is forming - show locked state */
                         <div className="space-y-3">
                           <Button
                             disabled
-                            className="w-full bg-secondary text-muted-foreground cursor-not-allowed"
+                            className="w-full h-12 bg-muted text-muted-foreground cursor-not-allowed rounded-xl"
                           >
                             <Lock className="h-4 w-4 mr-2" />
                             {t("matches.groupLockedUntilComplete")}
@@ -354,131 +353,135 @@ const Matches = () => {
 
         {/* Group context Modal */}
         <Dialog open={!!selectedGroup} onOpenChange={(open) => !open && setSelectedGroup(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="font-display text-2xl">
-                {t("dashboard.whatShapedThisGroup")}
-              </DialogTitle>
-              <DialogDescription>
-                {t("matches.groupContextModalDescription")}
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-0 overflow-hidden border-none gap-0">
+            <div className="p-6 pb-0">
+              <DialogHeader>
+                <DialogTitle className="font-display text-xl">
+                  {t("dashboard.whatShapedThisGroup")}
+                </DialogTitle>
+                <DialogDescription className="text-sm mt-1">
+                  {t("matches.groupContextModalDescription")}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
 
             {loadingDetails ? (
-              <div className="py-8 flex items-center justify-center">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="py-12 flex items-center justify-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground/30" />
               </div>
             ) : (() => {
               const details = matchDetails || selectedGroup?.matchDetails;
               if (!details) {
                 return (
-                  <div className="py-8 text-center">
+                  <div className="py-12 text-center px-6">
                     <p className="text-muted-foreground">{t("matches.unableToLoadMatchDetails")}</p>
                   </div>
                 );
               }
               return (
-                <div className="space-y-6 py-4">
+                <div className="p-6 space-y-8">
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <div className="flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                         <Heart className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <h4 className="font-semibold text-foreground">{t("matches.interestsAlignment")}</h4>
-                        <p className="text-xs text-muted-foreground">{t("matches.highestWeightInMatching")}</p>
-                      </div>
-                    </div>
-                    {details.sharedInterests.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 pl-14">
-                        {details.sharedInterests.map((interest) => (
-                          <Badge key={interest} variant="secondary" className="px-3 py-1.5">
-                            {interest}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground pl-14">{t("matches.noSharedInterestsFound")}</p>
-                    )}
-                  </div>
+                        <h4 className="font-semibold text-foreground text-sm">{t("matches.interestsAlignment")}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("matches.highestWeightInMatching")}</p>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <Stethoscope className="h-5 w-5 text-accent" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-foreground">{t("dashboard.specialty")}</h4>
-                        <p className="text-xs text-muted-foreground">{t("matches.medicalSpecialtySimilarity")}</p>
-                      </div>
-                    </div>
-                    <div className="pl-14">
-                      <Badge
-                        variant={details.specialtyMatch.type === 'same' ? 'default' : 'secondary'}
-                        className="px-3 py-1.5"
-                      >
-                        {details.specialtyMatch.type === 'same' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                        {details.specialtyMatch.value}
-                        {details.specialtyMatch.type === 'same' && ` ${t("matches.same")}`}
-                        {details.specialtyMatch.type === 'related' && ` ${t("matches.related")}`}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <MapPin className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-foreground">{t("matches.location")}</h4>
-                        <p className="text-xs text-muted-foreground">{t("matches.locationDescription")}</p>
-                      </div>
-                    </div>
-                    <div className="pl-14">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="px-3 py-1.5">
-                          {details.locationMatch.city}
-                        </Badge>
-                        {details.locationMatch.neighborhood && (
-                          <>
-                            <span className="text-muted-foreground">•</span>
-                            <Badge
-                              variant={details.locationMatch.sameNeighborhood ? 'default' : 'outline'}
-                              className="px-3 py-1.5"
-                            >
-                              {details.locationMatch.neighborhood}
-                              {details.locationMatch.sameNeighborhood && (
-                                <CheckCircle2 className="h-3 w-3 ml-1" />
-                              )}
-                            </Badge>
-                          </>
+                        {details.sharedInterests.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {details.sharedInterests.map((interest) => (
+                              <Badge key={interest} variant="secondary" className="px-2.5 py-1 text-xs font-normal bg-muted text-foreground hover:bg-muted/80">
+                                {interest}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic mt-2">{t("matches.noSharedInterestsFound")}</p>
                         )}
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-10 w-10 my-4 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <Calendar className="h-5 w-5 text-accent " />
+                    <div className="flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center shrink-0 mt-0.5">
+                        <Stethoscope className="h-5 w-5 text-primary/70" />
                       </div>
                       <div>
-                        <h4 className="font-semibold text-foreground">{t("matches.availabilityOverlap")}</h4>
-                        <p className="text-xs text-muted-foreground">{t("matches.friSunTimeSlots")}</p>
+                        <h4 className="font-semibold text-foreground text-sm">{t("dashboard.specialty")}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("matches.medicalSpecialtySimilarity")}</p>
+
+                        <div className="mt-3">
+                          <Badge
+                            variant={details.specialtyMatch.type === 'same' ? 'default' : 'secondary'}
+                            className={`px-2.5 py-1 text-xs font-normal ${details.specialtyMatch.type === 'same' ? 'bg-primary/10 text-primary hover:bg-primary/20 shadow-none' : 'bg-muted text-foreground hover:bg-muted/80'}`}
+                          >
+                            {details.specialtyMatch.type === 'same' && <CheckCircle2 className="h-3 w-3 mr-1.5" />}
+                            {details.specialtyMatch.value}
+                            {details.specialtyMatch.type === 'same' && ` ${t("matches.same")}`}
+                            {details.specialtyMatch.type === 'related' && ` ${t("matches.related")}`}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
-                    {details.sharedAvailability.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 pl-14">
-                        {details.sharedAvailability.map((slot) => (
-                          <Badge key={slot} variant="secondary" className="px-3 py-1.5">
-                            {formatSlot(slot)}
-                          </Badge>
-                        ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center shrink-0 mt-0.5">
+                        <MapPin className="h-5 w-5 text-primary/70" />
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground pl-14">{t("matches.noOverlappingAvailabilityFound")}</p>
-                    )}
+                      <div>
+                        <h4 className="font-semibold text-foreground text-sm">{t("matches.location")}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("matches.locationDescription")}</p>
+
+                        <div className="flex items-center gap-2 mt-3 flex-wrap">
+                          <Badge variant="secondary" className="px-2.5 py-1 text-xs font-normal bg-muted text-foreground hover:bg-muted/80">
+                            {details.locationMatch.city}
+                          </Badge>
+                          {details.locationMatch.neighborhood && (
+                            <>
+                              <span className="text-muted-foreground text-[10px]">•</span>
+                              <Badge
+                                variant={details.locationMatch.sameNeighborhood ? 'default' : 'outline'}
+                                className={`px-2.5 py-1 text-xs font-normal ${details.locationMatch.sameNeighborhood ? 'bg-primary/10 text-primary border-transparent' : 'border-border text-muted-foreground'}`}
+                              >
+                                {details.locationMatch.neighborhood}
+                                {details.locationMatch.sameNeighborhood && (
+                                  <CheckCircle2 className="h-3 w-3 ml-1" />
+                                )}
+                              </Badge>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center shrink-0 mt-0.5">
+                        <Calendar className="h-5 w-5 text-primary/70" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-foreground text-sm">{t("matches.availabilityOverlap")}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("matches.friSunTimeSlots")}</p>
+
+                        {details.sharedAvailability.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {details.sharedAvailability.map((slot) => (
+                              <Badge key={slot} variant="secondary" className="px-2.5 py-1 text-xs font-normal bg-muted text-foreground hover:bg-muted/80">
+                                {formatSlot(slot)}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic mt-2">{t("matches.noOverlappingAvailabilityFound")}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

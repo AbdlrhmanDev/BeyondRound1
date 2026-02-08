@@ -4,8 +4,8 @@ import nextDynamic from 'next/dynamic';
 const WaitlistPageContent = nextDynamic(() => import('@/views/Waitlist'), {
   ssr: false,
   loading: () => (
-    <div className="min-h-screen bg-foreground dark:bg-background flex items-center justify-center">
-      <div className="animate-pulse rounded-xl bg-primary-foreground/10 h-12 w-48" />
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="animate-pulse rounded-xl bg-gray-100 h-12 w-48" />
     </div>
   ),
 });

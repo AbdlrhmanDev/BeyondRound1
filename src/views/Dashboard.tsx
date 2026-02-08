@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/DashboardLayout";
 import { getProfile, getPublicProfile, updateProfile } from "@/services/profileService";
@@ -20,7 +21,6 @@ import {
   ArrowRight,
   MapPin,
   Calendar,
-  Sparkles,
   Clock,
   CheckCircle2,
   Edit3,
@@ -331,179 +331,163 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-6 sm:py-8 max-w-2xl">
-        {/* Welcome Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">
-            Welcome back, {firstName}
+      <main className="container mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-6 sm:py-8 max-w-md mx-auto">
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            This week
           </h1>
-          <p className="text-muted-foreground">
-            {isProfileComplete
-              ? "Here's what's happening with your group this week."
-              : "Complete your profile to join a group of physicians near you."
-            }
-          </p>
         </div>
 
         {/* Main Content */}
-        <div className="space-y-5">
+        <div className="space-y-6">
 
           {/* Current Group Card */}
           {displayedGroup ? (
-            <Card className="rounded-xl bg-card border border-border overflow-hidden">
+            <Card className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
               {/* Group Header */}
-              <div className="px-5 pt-5 pb-4 border-b border-border">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-primary" />
+              <div className="p-5 border-b border-border">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className="rounded-full px-2.5 py-0.5 text-xs font-medium border-primary/20 bg-primary/5 text-primary">
+                        Your weekend group
+                      </Badge>
                     </div>
-                    <div>
-                      <h2 className="font-semibold text-lg text-foreground">
-                        {formatGroupName(displayedGroup)}
-                      </h2>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-sm text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {displayedGroup.allMembers?.[0]?.profile.city || "Your area"}
-                        </span>
-                        <span className="text-sm text-primary font-medium">
-                          {displayedGroup.member_count} of {GROUP_SIZE} joined
-                        </span>
-                      </div>
+                    <h2 className="font-semibold text-lg text-foreground tracking-tight">
+                      {formatGroupName(displayedGroup)}
+                    </h2>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {displayedGroup.allMembers?.[0]?.profile.city || "Your area"}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Group Members */}
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2">
-                    {displayedGroup.members.slice(0, 4).map((member) => (
-                      <Avatar key={member.user_id} className="h-9 w-9 border-2 border-card">
-                        <AvatarImage src={member.profile.avatar_url || undefined} />
-                        <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-medium">
-                          {member.profile.full_name?.split(" ").map(n => n[0]).join("").slice(0, 2) || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                    ))}
-                    {displayedGroup.member_count > 4 && (
-                      <div className="h-9 w-9 rounded-full border-2 border-card bg-secondary flex items-center justify-center text-xs font-medium">
-                        +{displayedGroup.member_count - 4}
-                      </div>
-                    )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex -space-x-3">
+                      {displayedGroup.members.slice(0, 4).map((member) => (
+                        <Avatar key={member.user_id} className="h-10 w-10 border-2 border-background ring-1 ring-border/10">
+                          <AvatarImage src={member.profile.avatar_url || undefined} />
+                          <AvatarFallback className="bg-muted text-muted-foreground text-xs font-medium">
+                            {member.profile.full_name?.split(" ").map(n => n[0]).join("").slice(0, 2) || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {displayedGroup.member_count > 4 && (
+                        <div className="h-10 w-10 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground ring-1 ring-border/10">
+                          +{displayedGroup.member_count - 4}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-sm text-muted-foreground ml-2">
-                    {displayedGroup.members.slice(0, 2).map(m => m.profile.full_name?.split(" ")[0]).filter(Boolean).join(", ")}
-                    {displayedGroup.members.length > 2 && " & others"}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-sm font-medium text-primary block">
+                      {displayedGroup.member_count}/{GROUP_SIZE} joined
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Primary Action */}
-              <div className="px-5 py-4 bg-secondary/30">
+              <div className="p-5 bg-muted/30">
                 <Button
                   onClick={() => handleEnterGroup(displayedGroup)}
-                  className="w-full h-14 text-lg font-bold bg-[#FF8A00] hover:bg-[#FF8A00]/90 text-white rounded-2xl shadow-[0_8px_20px_rgba(255,138,0,0.25)] border-none transition-all active:scale-[0.98]"
+                  className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-sm transition-all active:scale-[0.98]"
                 >
-                  <MessageCircle className="h-6 w-6 mr-3" />
-                  Enter Group
-                  <ChevronRight className="h-5 w-5 ml-auto opacity-70" />
+                  Open group
                 </Button>
               </div>
 
-              {/* How it works - Simple Steps */}
-              <div className="px-5 py-4 border-t border-border">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              {/* What happens next */}
+              <div className="p-5 border-t border-border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                   What happens next
                 </p>
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-3">
-                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">1</div>
-                    <span className="text-sm text-foreground">Join the group and say hello</span>
+                <div className="space-y-4 relative">
+                  {/* Vertical Line Line */}
+                  <div className="absolute left-[11px] top-2 bottom-2 w-[1px] bg-border/60" />
+
+                  <div className="flex gap-4 relative">
+                    <div className="h-6 w-6 rounded-full bg-background border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary z-10 shrink-0 shadow-sm">1</div>
+                    <div>
+                      <span className="text-sm font-medium text-foreground block">Join the chat</span>
+                      <span className="text-xs text-muted-foreground block mt-0.5">Say hello to your group</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">2</div>
-                    <span className="text-sm text-foreground">Introduce yourself briefly</span>
+                  <div className="flex gap-4 relative">
+                    <div className="h-6 w-6 rounded-full bg-background border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary z-10 shrink-0 shadow-sm">2</div>
+                    <div>
+                      <span className="text-sm font-medium text-foreground block">Introduce yourself</span>
+                      <span className="text-xs text-muted-foreground block mt-0.5">Share a bit about your work</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">3</div>
-                    <span className="text-sm text-foreground">Vote on a meetup idea or suggest a place</span>
+                  <div className="flex gap-4 relative">
+                    <div className="h-6 w-6 rounded-full bg-background border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary z-10 shrink-0 shadow-sm">3</div>
+                    <div>
+                      <span className="text-sm font-medium text-foreground block">Plan meeting</span>
+                      <span className="text-xs text-muted-foreground block mt-0.5">Vote on a place or time</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Interests Context */}
               {allInterests.length > 0 && (
-                <div className="px-5 py-4 border-t border-border bg-cream/50 dark:bg-secondary/20">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">
-                    These interests shaped your group
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
+                <div className="px-5 py-4 border-t border-border bg-muted/10">
+                  <div className="flex flex-wrap gap-2">
                     {allInterests.slice(0, 5).map((interest, index) => (
                       <span
                         key={`${interest}-${index}`}
-                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-secondary text-secondary-foreground"
+                        className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-background border border-border text-muted-foreground"
                       >
                         {interest}
                       </span>
                     ))}
-                    {allInterests.length > 5 && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-secondary/50 text-muted-foreground">
-                        +{allInterests.length - 5} more
-                      </span>
-                    )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate("/interests")}
-                    className="mt-2 h-8 text-xs text-muted-foreground hover:text-foreground -ml-2"
-                  >
-                    <Edit3 className="h-3 w-3 mr-1.5" />
-                    Edit for next week
-                  </Button>
                 </div>
               )}
             </Card>
           ) : (
             /* No Group Yet - Waiting State */
-            <Card className="rounded-xl bg-card border border-border">
-              <CardContent className="py-10 px-6 text-center">
+            <Card className="rounded-2xl bg-card border border-border shadow-sm">
+              <CardContent className="py-12 px-6 text-center">
                 {isProfileComplete ? (
                   <>
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
-                      <Clock className="h-8 w-8 text-primary" />
+                    <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/5 flex items-center justify-center">
+                      <Clock className="h-8 w-8 text-primary/60" />
                     </div>
-                    <h2 className="text-xl font-semibold text-foreground mb-2">
+                    <h2 className="text-xl font-bold text-foreground mb-2">
                       Your group is forming
                     </h2>
-                    <p className="text-muted-foreground max-w-sm mx-auto mb-4">
-                      We're putting together a small group of physicians in your area.
-                      Groups are finalized every Thursday.
+                    <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-6 leading-relaxed">
+                      We're curating a group of physicians in your area. Matches are finalized every Thursday.
                     </p>
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4  py-3" />
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 text-xs font-medium text-foreground">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>Next group: This Thursday</span>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary flex items-center justify-center">
-                      <Sparkles className="h-8 w-8 text-muted-foreground" />
+                    <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+                      <Users className="h-7 w-7 text-muted-foreground" />
                     </div>
-                    <h2 className="text-xl font-semibold text-foreground mb-2">
+                    <h2 className="text-xl font-bold text-foreground mb-2">
                       Get started
                     </h2>
-                    <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-                      Complete your profile and we'll place you in a small group
-                      of physicians who share your interests.
+                    <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-8 leading-relaxed">
+                      Complete your profile to join a trusted circle of local physicians.
                     </p>
                     <Button
                       onClick={() => navigate("/onboarding")}
-                      className="bg-primary hover:bg-primary/90"
+                      className="h-12 px-8 rounded-xl font-medium shadow-sm transition-all active:scale-[0.98]"
                     >
                       Complete Profile
-                      <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   </>
                 )}
@@ -513,51 +497,38 @@ const Dashboard = () => {
 
           {/* Next Group Info (when user has a group) */}
           {displayedGroup && (
-            <Card className="rounded-xl bg-card border border-border/50 shadow-sm overflow-hidden">
-              <CardContent className="py-5 px-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-                      <Calendar className="h-6 w-6 text-slate-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 leading-tight">Next group forms Thursday</p>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">New groups are created weekly</p>
-                    </div>
-                  </div>
-                  <div className="h-6 w-6 rounded-full bg-green-50 flex items-center justify-center border border-green-100 shrink-0">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-4 bg-card border border-border p-4 rounded-xl shadow-sm">
+              <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Next group forms Thursday</p>
+                <p className="text-xs text-muted-foreground">Matches refresh weekly</p>
+              </div>
+            </div>
           )}
 
           {/* Profile Status (when incomplete) */}
           {!isProfileComplete && (
-            <Card className="rounded-xl bg-card border border-border/50 shadow-sm overflow-hidden">
-              <CardContent className="py-5 px-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
-                      <Users className="h-6 w-6 text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 leading-tight">Profile incomplete</p>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">Finish to join a group</p>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => navigate("/onboarding")}
-                    className="rounded-xl border-slate-200 h-10 px-4 font-bold text-slate-900 hover:bg-slate-50 transition-colors shrink-0"
-                  >
-                    Continue
-                  </Button>
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
+                  <Users className="h-5 w-5 text-muted-foreground" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Profile incomplete</p>
+                  <p className="text-xs text-muted-foreground">Finish to join a group</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate("/onboarding")}
+                className="rounded-lg h-9 px-4 font-medium"
+              >
+                Continue
+              </Button>
+            </div>
           )}
         </div>
       </main>

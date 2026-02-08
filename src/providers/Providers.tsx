@@ -5,15 +5,12 @@ import { useState, useEffect, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { ConditionalAuthProvider } from '@/providers/ConditionalAuthProvider';
+import { LocaleProvider } from '@/contexts/LocaleContext';
 import { isAppRoute } from '@/lib/routes';
 
 // Lazy-load heavy providers only for app routes (~100KB+ savings on marketing)
 const QueryClientWrapper = dynamic(
   () => import('@/providers/QueryClientWrapper').then((m) => ({ default: m.QueryClientWrapper })),
-  { ssr: false }
-);
-const LocaleProviderWrapper = dynamic(
-  () => import('@/providers/LocaleProviderWrapper').then((m) => ({ default: m.LocaleProviderWrapper })),
   { ssr: false }
 );
 const TooltipProviderWrapper = dynamic(
@@ -53,7 +50,7 @@ export function Providers({ children }: ProvidersProps) {
   );
 
   const withTooltip = needsAppProviders ? <TooltipProviderWrapper>{inner}</TooltipProviderWrapper> : inner;
-  const withLocale = needsAppProviders ? <LocaleProviderWrapper>{withTooltip}</LocaleProviderWrapper> : withTooltip;
+  const withLocale = needsAppProviders ? <LocaleProvider>{withTooltip}</LocaleProvider> : withTooltip;
 
   const content = (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

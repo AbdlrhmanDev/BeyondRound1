@@ -7,12 +7,13 @@ import type { Locale } from "@/lib/locale";
 interface LanguageSwitcherProps {
   className?: string;
   /** Use 'overlay' when on dark translucent header */
-  variant?: 'default' | 'overlay';
+  variant?: 'default' | 'overlay' | 'ghost';
 }
 
 const LanguageSwitcher = ({ className, variant = 'default' }: LanguageSwitcherProps) => {
   const { locale, setLocaleAndNavigate } = useLocale();
   const isOverlay = variant === 'overlay';
+  const isGhost = variant === 'ghost';
 
   return (
     <div
@@ -20,7 +21,7 @@ const LanguageSwitcher = ({ className, variant = 'default' }: LanguageSwitcherPr
       aria-label="Language"
       className={cn(
         "inline-flex items-center rounded-lg border p-0.5",
-        isOverlay ? "border-white/20 bg-white/5" : "border-border bg-muted/50",
+        isOverlay ? "border-white/20 bg-white/5" : isGhost ? "border-transparent bg-transparent p-0 gap-1" : "border-border bg-muted/50",
         className
       )}
     >
@@ -37,9 +38,13 @@ const LanguageSwitcher = ({ className, variant = 'default' }: LanguageSwitcherPr
               ? locale === l
                 ? "bg-white/15 text-white shadow-sm border border-white/20"
                 : "text-white/80 hover:text-white hover:bg-white/10"
-              : locale === l
-                ? "bg-background text-foreground shadow-sm border border-border"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+              : isGhost
+                ? locale === l
+                  ? "bg-muted text-primary font-bold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                : locale === l
+                  ? "bg-background text-foreground shadow-sm border border-border"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
           )}
           onClick={() => setLocaleAndNavigate(l as Locale)}
         >

@@ -1,0 +1,40 @@
+{
+  "membershipPlans": "Membership Plans",
+  "simpleTransparent": "Simple, Transparent Pricing",
+  "noHiddenFees": "No hidden fees. No long-term contracts. Just meaningful connections backed by our 30-Day Friendship Guarantee.",
+  "mostPopular": "Most Popular",
+  "oneTimeTrial": "One-Time Trial",
+  "trialPrice": "€9.99",
+  "trialDesc": "Try BeyondRounds once — no recurring commitment",
+  "trialFeatures": [
+    "Weekly curated group matches",
+    "Access to private group chat",
+    "RoundsBot icebreaker prompts",
+    "Basic compatibility matching"
+  ],
+  "startTrial": "Start One-Time Trial",
+  "monthly": "Monthly",
+  "monthlyPrice": "€14.99",
+  "perMonth": "/month",
+  "monthlyDesc": "Full experience with monthly subscription",
+  "monthlyFeatures": [
+    "Everything in One-Time Trial",
+    "Priority in matching algorithm",
+    "Expanded profile & interests",
+    "Early access to new features",
+    "Priority customer support"
+  ],
+  "subscribeMonthly": "Subscribe Monthly",
+  "premium": "Premium",
+  "premiumPrice": "€29.99",
+  "premiumDesc": "Maximum control & personalization",
+  "premiumFeatures": [
+    "Everything in Monthly",
+    "Advanced lifestyle compatibility",
+    "AI-powered activity suggestions",
+    "Filter by specialty, age & more",
+    "Smaller group preference (2-3)",
+    "Exclusive member events"
+  ],
+  "goPremium": "Go Premium"
+}

@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getDictionary } from '@/lib/i18n/get-dictionary';
-import { I18nProvider } from '@/providers/I18nProvider';
 import { Providers } from '@/providers/Providers';
-import type { Locale } from '@/lib/i18n/settings';
+import TranslationsProvider from '@/components/TranslationsProvider';
+import initTranslations from '@/i18n';
+
+const i18nNamespaces = ['common', 'auth', 'dashboard', 'settings', 'notifications'];
 
 export default async function AppLayout({
   children,
@@ -17,12 +18,17 @@ export default async function AppLayout({
 
   if (!session) redirect(`/${locale}/auth`);
 
-  const dictionary = await getDictionary(locale as Locale);
+  const { resources } = await initTranslations(locale, i18nNamespaces);
+
   return (
-    <I18nProvider locale={locale as Locale} dictionary={dictionary}>
+    <TranslationsProvider
+      locale={locale}
+      namespaces={i18nNamespaces}
+      resources={resources}
+    >
       <Providers>
         {children}
       </Providers>
-    </I18nProvider>
+    </TranslationsProvider>
   );
 }

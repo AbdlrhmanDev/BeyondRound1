@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
-import { locales, type Locale, isValidLocale } from '@/lib/i18n/settings';
+import { locales, isValidLocale } from '@/lib/i18n/settings';
+import TranslationsProvider from '@/components/TranslationsProvider';
+import initTranslations from '@/i18n';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -10,8 +12,20 @@ interface LocaleLayoutProps {
   params: { locale: string };
 }
 
-/** Minimal layout – no I18nProvider. App routes get it from (app)/layout. Saves ~150KB on marketing. */
-export default function LocaleLayout({ children, params: { locale } }: LocaleLayoutProps) {
+const i18nNamespaces = ['common', 'auth', 'about', 'faq', 'contact', 'pricing', 'landing', 'waitlist', 'dashboard', 'onboarding', 'settings', 'notifications'];
+
+export default async function LocaleLayout({ children, params: { locale } }: LocaleLayoutProps) {
   if (!isValidLocale(locale)) notFound();
-  return <>{children}</>;
+
+  const { resources } = await initTranslations(locale, i18nNamespaces);
+
+  return (
+    <TranslationsProvider
+      locale={locale}
+      namespaces={i18nNamespaces}
+      resources={resources}
+    >
+      {children}
+    </TranslationsProvider>
+  );
 }
