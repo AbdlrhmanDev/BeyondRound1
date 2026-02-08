@@ -21,7 +21,8 @@
       "Bash(npx tsc:*)",
       "Bash(node -e:*)",
       "Bash(wc:*)",
-      "Bash(npx next build:*)"
+      "Bash(npx next build:*)",
+      "Bash(ls:*)"
     ]
   }
 }

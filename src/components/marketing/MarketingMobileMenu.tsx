@@ -61,7 +61,7 @@ export function MarketingMobileMenu({
         aria-label="Close menu"
       />
       <div
-        className="fixed left-3 right-3 mt-2 bg-zinc-900/98 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/40 p-5 animate-fade-in z-[9999] max-h-[calc(100dvh-env(safe-area-inset-top)-6rem)] overflow-y-auto"
+        className="fixed left-3 right-3 mt-2 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl shadow-black/40 p-5 animate-fade-in z-[9999] max-h-[calc(100dvh-env(safe-area-inset-top)-6rem)] overflow-y-auto"
         style={{ top: 'calc(env(safe-area-inset-top) + 5rem)' }}
       >
         <nav className="flex flex-col gap-0.5">

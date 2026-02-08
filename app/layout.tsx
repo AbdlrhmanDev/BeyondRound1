@@ -1,12 +1,20 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
-import { DM_Sans } from 'next/font/google';
+import { DM_Sans, Space_Grotesk } from 'next/font/google';
 import { DeferredSpeedInsights } from '@/components/DeferredSpeedInsights';
 import './globals.css';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
   variable: '--font-dm-sans',
+  display: 'swap',
+  preload: true,
+  adjustFontFallback: true,
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
   display: 'swap',
   preload: true,
   adjustFontFallback: true,
@@ -72,7 +80,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
-      <body className={`${dmSans.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}
         <DeferredSpeedInsights />
         <Script id="theme-init" strategy="beforeInteractive">

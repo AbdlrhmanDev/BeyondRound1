@@ -6,6 +6,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { getT } from '@/lib/i18n/t';
+import { LanguageLinks } from './LanguageLinks';
 
 const MarketingMobileMenu = dynamic(() => import('./MarketingMobileMenu').then((m) => ({ default: m.MarketingMobileMenu })), {
   ssr: true,
@@ -24,17 +25,15 @@ const navLinks = [
 interface MarketingHeaderHtmlProps {
   dict: Record<string, unknown>;
   locale: Locale;
-  pathWithoutLocale?: string;
 }
 
-export function MarketingHeaderHtml({ dict, locale, pathWithoutLocale = '' }: MarketingHeaderHtmlProps) {
+export function MarketingHeaderHtml({ dict, locale }: MarketingHeaderHtmlProps) {
   const t = getT(dict);
-  const path = pathWithoutLocale || '/';
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)]">
       <div className="mx-3 mt-3 sm:mx-4 sm:mt-4">
-        <div className="max-sm:bg-foreground/95 sm:bg-primary-foreground/5 sm:backdrop-blur-2xl border border-primary-foreground/10 rounded-xl sm:rounded-2xl shadow-lg">
+        <div className="bg-foreground/95 border border-primary-foreground/10 rounded-xl sm:rounded-2xl shadow-lg">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between min-h-14 sm:h-16">
               <Link
@@ -59,22 +58,7 @@ export function MarketingHeaderHtml({ dict, locale, pathWithoutLocale = '' }: Ma
                     {t(link.labelKey)}
                   </Link>
                 ))}
-                <div className="inline-flex ml-2 rounded-lg border border-white/20 bg-white/5 p-0.5">
-                  <Link
-                    href={`/de${path === '/' ? '' : path}`}
-                    className={`min-h-[32px] min-w-[2.25rem] inline-flex items-center justify-center rounded-md px-2.5 text-sm font-medium ${locale === 'de' ? 'bg-white/15 text-white' : 'text-white/80 hover:text-white'}`}
-                    aria-label="Deutsch"
-                  >
-                    DE
-                  </Link>
-                  <Link
-                    href={`/en${path === '/' ? '' : path}`}
-                    className={`min-h-[32px] min-w-[2.25rem] inline-flex items-center justify-center rounded-md px-2.5 text-sm font-medium ${locale === 'en' ? 'bg-white/15 text-white' : 'text-white/80 hover:text-white'}`}
-                    aria-label="English"
-                  >
-                    EN
-                  </Link>
-                </div>
+                <LanguageLinks variant="overlay" className="ml-2" />
               </nav>
 
               <div className="hidden md:flex items-center gap-3">

@@ -47,7 +47,7 @@ export function HowItWorksSectionServer({ dict }: HowItWorksSectionServerProps) 
                 </div>
               )}
 
-              <div className="max-sm:bg-white/10 sm:bg-primary-foreground/5 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-3xl p-8 h-full hover:border-primary/30 transition-all duration-300 hover:-translate-y-1">
+              <div className="bg-primary-foreground/[0.07] border border-primary-foreground/10 rounded-3xl p-8 h-full hover:border-primary/30 transition-all duration-300 hover:-translate-y-1">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/40 text-xs font-bold mb-6">
                   {t('home.stepLabel')} {step.number}
                 </div>

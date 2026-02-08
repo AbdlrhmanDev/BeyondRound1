@@ -190,7 +190,7 @@
 
 @layer components {
   .font-display {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: var(--font-space-grotesk), system-ui, sans-serif;
   }
 
   /* Performance: skip rendering below-fold until near viewport */
@@ -208,7 +208,7 @@
   }
 
   .font-sans {
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
   }
 
   /* Modern gradient text */

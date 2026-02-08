@@ -43,10 +43,6 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
       className="relative min-h-[90dvh] sm:min-h-screen flex items-center pt-20 sm:pt-28 md:pt-32 pb-12 sm:pb-24 overflow-hidden bg-foreground dark:bg-background"
       aria-label="Welcome to BeyondRounds - Your next great friendship awaits"
     >
-      {/* LCP preloads relocated from root layout */}
-      <link rel="preload" href="/hero-doctors-friendship-mobile.webp" as="image" media="(max-width: 639px)" />
-      <link rel="preload" href="/hero-doctors-friendship-card.webp" as="image" media="(min-width: 640px)" />
-
       {/* No blur on mobile (LCP); subtle blur on desktop */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none [contain:strict]" aria-hidden="true">
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-primary/20 hidden sm:block sm:blur-[100px] lg:blur-[150px]" />
@@ -67,7 +63,7 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
         <div className="grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-8 items-center">
           <div className="lg:col-span-7 text-center lg:text-left order-1 lg:order-1">
             <div
-              className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full max-sm:bg-foreground/80 sm:bg-primary-foreground/5 sm:backdrop-blur-sm border border-primary-foreground/10 text-primary-foreground/90 text-xs sm:text-sm font-semibold mb-5 sm:mb-8"
+              className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-foreground/80 border border-primary-foreground/10 text-primary-foreground/90 text-xs sm:text-sm font-semibold mb-5 sm:mb-8"
               role="status"
               aria-label="Exclusively for verified doctors"
             >
@@ -190,7 +186,7 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
                   {/* Next match panel – compact format, no blur on mobile */}
                   <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6">
                     <div
-                      className="max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-xl sm:rounded-2xl p-3 sm:p-4"
+                      className="bg-foreground/90 border border-primary-foreground/10 rounded-xl sm:rounded-2xl p-3 sm:p-4"
                       role="status"
                       aria-live="polite"
                       aria-label={`Next match: ${displayDateCompact}`}
@@ -214,7 +210,7 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
                   </div>
                   {/* Meaningful meetups badge – no animation to prevent CLS */}
                   <div
-                    className="absolute -bottom-2 -left-2 sm:-bottom-4 sm:-left-4 md:-bottom-6 md:-left-6 max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl shadow-xl"
+                    className="absolute -bottom-2 -left-2 sm:-bottom-4 sm:-left-4 md:-bottom-6 md:-left-6 bg-foreground/90 border border-primary-foreground/10 p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl shadow-xl"
                     aria-label="2 or more meaningful meetups"
                   >
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -233,13 +229,13 @@ export function HeroSectionServer({ dict, locale }: HeroSectionServerProps) {
                   </div>
                   {/* Doctors count badge – no animation to prevent CLS */}
                   <div
-                    className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-4 md:-right-4 max-sm:bg-foreground/90 sm:bg-primary-foreground/10 sm:backdrop-blur-xl border border-primary-foreground/10 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 rounded-xl sm:rounded-2xl shadow-lg"
+                    className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 md:-top-4 md:-right-4 bg-foreground/90 border border-primary-foreground/10 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 rounded-xl sm:rounded-2xl shadow-lg"
                     aria-label="Over 5,000 doctors on the platform"
                   >
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <div className="relative shrink-0">
                         <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500" />
-                        <div className="absolute inset-0 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500 animate-ping" />
+                        <div className="absolute inset-0 w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500/40 ring-2 ring-green-500/20" />
                       </div>
                       <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-primary-foreground whitespace-nowrap">
                         {t('home.doctorsOnPlatform')}

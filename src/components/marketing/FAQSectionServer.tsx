@@ -54,7 +54,7 @@ export function FAQSectionServer({
             {items.map((item, index) => (
               <details
                 key={index}
-                className="group max-sm:bg-white/10 sm:bg-primary-foreground/5 sm:backdrop-blur-xl border border-primary-foreground/10 rounded-2xl px-6 mb-4 open:border-primary/30"
+                className="group bg-primary-foreground/[0.07] border border-primary-foreground/10 rounded-2xl px-6 mb-4 open:border-primary/30"
               >
                 <summary className="font-display font-semibold text-primary-foreground py-5 text-lg cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center justify-between">
                   {item.question}
