@@ -112,6 +112,11 @@ export const getGroupMessages = async (
       return [];
     }
 
+    if (!supabase) {
+      console.warn("Supabase client not available for getGroupMessages");
+      return [];
+    }
+
     if (limit < 1 || limit > 1000) {
       console.warn("Invalid limit for getGroupMessages, using default:", limit);
       limit = 100;
@@ -331,6 +336,11 @@ export const getGroupConversation = async (conversationId: string) => {
       return null;
     }
 
+    if (!supabase) {
+      console.warn("Supabase client not available for getGroupConversation");
+      return null;
+    }
+
     const { data, error } = await supabase
       .from("group_conversations")
       .select("group_id")
@@ -393,8 +403,13 @@ export const sendGroupMessage = async (message: {
 
     console.log("[sendGroupMessage] Inserting message:", insertPayload);
 
+    if (!supabase) {
+      console.error("Supabase client not available for sendGroupMessage");
+      return null;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await supabase!
+    const { data, error } = await supabase
       .from("group_messages")
       .insert(insertPayload as any)
       .select()
@@ -449,10 +464,11 @@ export const updateGroupMessageMedia = async (
       return false;
     }
 
-    const { error } = await supabase
-      .from("messages")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from("group_messages")
       .update({
-        media_urls: mediaUrls.map((m) => m.url),
+        media_urls: mediaUrls.map((m: { url: string }) => m.url),
       })
       .eq("id", messageId);
 

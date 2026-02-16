@@ -42,6 +42,8 @@ export interface PersonalInfo {
   neighborhood?: string | null;
   gender?: string | null;
   birthYear?: string | null;
+  birthMonth?: string | null;
+  birthDay?: string | null;
   genderPreference?: string | null;
   nationality?: string | null;
 }
@@ -56,6 +58,11 @@ export const getOnboardingPreferences = async (
     // Input validation
     if (!userId?.trim()) {
       console.error("Invalid userId for getOnboardingPreferences:", userId);
+      return null;
+    }
+
+    if (!supabase) {
+      console.error("Supabase client not initialized");
       return null;
     }
 
@@ -90,6 +97,11 @@ export const getPublicPreferences = async (
       return null;
     }
 
+    if (!supabase) {
+      console.error("Supabase client not initialized");
+      return null;
+    }
+
     const { data, error } = await supabase
       .from("onboarding_preferences")
       .select("specialty, career_stage, interests, other_interests, friendship_type, sports, music_preferences, movie_preferences, social_style, culture_interests, lifestyle, availability_slots")
@@ -116,6 +128,11 @@ export const markOnboardingComplete = async (userId: string): Promise<boolean> =
     // Input validation
     if (!userId?.trim()) {
       console.error("Invalid userId for markOnboardingComplete:", userId);
+      return false;
+    }
+
+    if (!supabase) {
+      console.error("Supabase client not initialized");
       return false;
     }
 
@@ -159,6 +176,11 @@ export const saveOnboardingPreferences = async (
       return false;
     }
 
+    if (!supabase) {
+      console.error("Supabase client not initialized");
+      return false;
+    }
+
     const { error } = await supabase
       .from("onboarding_preferences")
       .upsert({
@@ -192,6 +214,11 @@ export const isOnboardingComplete = async (userId: string): Promise<boolean> => 
       return false;
     }
 
+    if (!supabase) {
+      console.error("Supabase client not initialized");
+      return false;
+    }
+
     const { data, error } = await supabase
       .from("onboarding_preferences")
       .select("completed_at")
@@ -219,6 +246,14 @@ export const saveOnboardingData = async (
   preferences: Partial<OnboardingPreferences>
 ): Promise<{ profileSuccess: boolean; preferencesSuccess: boolean }> => {
   try {
+    if (!supabase) {
+      console.error("Supabase client not initialized");
+      return {
+        profileSuccess: false,
+        preferencesSuccess: false,
+      };
+    }
+
     // Update profile
     const profileUpdate: Record<string, unknown> = {};
     if (personalInfo.name !== undefined) profileUpdate.full_name = personalInfo.name;
@@ -228,7 +263,9 @@ export const saveOnboardingData = async (
     if (personalInfo.neighborhood !== undefined) profileUpdate.neighborhood = personalInfo.neighborhood;
     if (personalInfo.gender !== undefined) profileUpdate.gender = personalInfo.gender;
     if (personalInfo.birthYear !== undefined) {
-      profileUpdate.birth_year = personalInfo.birthYear ? parseInt(personalInfo.birthYear) : null;
+      profileUpdate.date_of_birth = personalInfo.birthYear && personalInfo.birthMonth && personalInfo.birthDay
+        ? `${personalInfo.birthYear}-${personalInfo.birthMonth.padStart(2, '0')}-${personalInfo.birthDay.padStart(2, '0')}`
+        : null;
     }
     if (personalInfo.genderPreference !== undefined) profileUpdate.gender_preference = personalInfo.genderPreference;
     if (personalInfo.nationality !== undefined) profileUpdate.nationality = personalInfo.nationality;

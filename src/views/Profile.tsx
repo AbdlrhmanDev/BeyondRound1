@@ -1,25 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef } from "react";
-import { useTranslation } from "react-i18next";
-import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
-import { useAuth } from "@/hooks/useAuth";
+import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerClose,
-} from "@/components/ui/drawer";
 import {
   Dialog,
   DialogContent,
@@ -28,1342 +15,1507 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/DashboardLayout";
-import { getProfile, updateProfile } from "@/services/profileService";
-import { getOnboardingPreferences, saveOnboardingPreferences, OnboardingPreferences } from "@/services/onboardingService";
-import { uploadAvatar } from "@/services/storageService";
-import { LocationSelect } from "@/components/LocationSelect";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import DashboardLayout from "@/components/DashboardLayout";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import {
+  CheckCircle2,
   Camera,
   MapPin,
   Globe,
-  CreditCard,
+  Calendar,
+  Users,
+  Pencil,
+  ChevronRight,
   Shield,
   FileText,
   LogOut,
-  ChevronRight,
-  CheckCircle2,
-  Users,
-  Calendar,
-  Pencil,
   MessageSquare,
-  Check,
+  Bell,
   ExternalLink,
+  Trash2,
+  Clock,
+  AlertTriangle,
+  Upload,
+  X,
+  ShieldCheck,
   Loader2,
-  Crown,
-  Star,
-  Zap,
+  AlertCircle,
+  BellRing,
+  HelpCircle,
 } from "lucide-react";
-import SmartFeedback from "@/components/SmartFeedback";
-import EmailNotificationsToggle from "@/components/EmailNotificationsToggle";
-import { cn } from "@/lib/utils";
 
-interface Profile {
-  full_name: string | null;
+// ─── Types ──────────────────────────────────────────────
+type VerificationStatus = "not_started" | "pending" | "verified" | "rejected";
+
+interface ProfileData {
+  full_name: string;
+  initials: string;
   avatar_url: string | null;
-  country: string | null;
-  state: string | null;
-  city: string | null;
-  neighborhood: string | null;
-  languages: string[] | null;
-  license_url: string | null;
+  specialty: string;
+  city: string;
+  country: string;
+  verification_status: VerificationStatus;
+  bio: string;
+  languages: string[];
+  interests: string[];
+  email_notifications: boolean;
+  push_notifications: boolean;
 }
 
-interface UserStats {
-  meetups: number;
-  doctorsMet: number;
-}
+// ─── Mock Data ──────────────────────────────────────────
+const initialProfile: ProfileData = {
+  full_name: "Dr. Sarah Chen",
+  initials: "SC",
+  avatar_url: null,
+  specialty: "Internal Medicine",
+  city: "Berlin",
+  country: "Germany",
+  verification_status: "not_started",
+  bio: "Internal medicine physician. Originally from Munich, now based in Berlin.",
+  languages: ["English", "German"],
+  interests: ["Running", "Cooking", "Travel", "Photography", "Wine", "Yoga"],
+  email_notifications: true,
+  push_notifications: false,
+};
 
-// Subscription types
-type SubscriptionPlan = 'free' | 'trial' | 'monthly' | 'premium';
-
-interface SubscriptionState {
-  plan: SubscriptionPlan;
-  status: 'active' | 'canceled' | 'expired' | 'none';
-  trialUsed: boolean;
-  nextBillingDate?: string;
-  cancelAtPeriodEnd?: boolean;
-}
-
-// Plan data
-const SUBSCRIPTION_PLANS = {
-  trial: {
-    id: 'trial',
-    name: 'One-Time Trial',
-    price: 9.99,
-    period: 'one-time',
-    popular: false,
-    features: [
-      'Weekly curated group matches',
-      'Group chat access',
-      'RoundsBot icebreakers',
-      'Basic matching algorithm',
-    ],
-    cta: 'Start One-Time Trial',
-  },
-  monthly: {
-    id: 'monthly',
-    name: 'Monthly',
-    price: 14.99,
-    period: 'month',
-    popular: true,
-    features: [
-      'Everything in Trial',
-      'Priority matching algorithm',
-      'Expanded profile & interests',
-      'Early access to new features',
-      'Priority customer support',
-    ],
-    cta: 'Subscribe Monthly',
-  },
-  premium: {
-    id: 'premium',
-    name: 'Premium',
-    price: 29.99,
-    period: 'month',
-    popular: false,
-    features: [
-      'Everything in Monthly',
-      'Advanced lifestyle compatibility',
-      'AI-powered activity suggestions',
-      'Filters by specialty, age & more',
-      'Smaller group preference (2-3)',
-      'Exclusive member events',
-    ],
-    cta: 'Go Premium',
-  },
-} as const;
-
-// Specialties data
-const SPECIALTIES = [
-  { id: "General Practice", label: "General Practice" },
-  { id: "Internal Medicine", label: "Internal Medicine" },
-  { id: "Surgery", label: "Surgery" },
-  { id: "Pediatrics", label: "Pediatrics" },
-  { id: "Cardiology", label: "Cardiology" },
-  { id: "Neurology", label: "Neurology" },
-  { id: "Psychiatry", label: "Psychiatry" },
-  { id: "Emergency Medicine", label: "Emergency Medicine" },
-  { id: "Anesthesiology", label: "Anesthesiology" },
-  { id: "Radiology", label: "Radiology" },
-  { id: "Dermatology", label: "Dermatology" },
-  { id: "Orthopedics", label: "Orthopedics" },
-  { id: "Ophthalmology", label: "Ophthalmology" },
-  { id: "Gynecology", label: "OB/GYN" },
-  { id: "Oncology", label: "Oncology" },
-  { id: "Other", label: "Other" },
+// ─── Available Options ──────────────────────────────────
+const CITIES = [
+  "Berlin", "Munich", "Hamburg", "Frankfurt", "Cologne",
+  "Düsseldorf", "Stuttgart", "Leipzig", "Dresden", "Hannover",
 ];
 
-// Interests data
-const INTERESTS = [
-  { id: "running", label: "Running" },
-  { id: "cycling", label: "Cycling" },
-  { id: "swimming", label: "Swimming" },
-  { id: "gym", label: "Gym/Weights" },
-  { id: "tennis", label: "Tennis/Padel" },
-  { id: "hiking", label: "Hiking" },
-  { id: "yoga", label: "Yoga/Pilates" },
-  { id: "reading", label: "Reading" },
-  { id: "cooking", label: "Cooking" },
-  { id: "photography", label: "Photography" },
-  { id: "travel", label: "Travel" },
-  { id: "art", label: "Art/Museums" },
-  { id: "board_games", label: "Board Games" },
-  { id: "video_games", label: "Video Games" },
-  { id: "music", label: "Music" },
-  { id: "wine", label: "Wine/Food" },
-];
-
-// Languages data
 const LANGUAGES = [
-  { id: "en", label: "English", flag: "🇬🇧" },
-  { id: "de", label: "Deutsch", flag: "🇩🇪" },
+  "English", "German", "French", "Spanish", "Turkish",
+  "Arabic", "Russian", "Portuguese", "Italian", "Mandarin",
 ];
 
-const Profile = () => {
-  const { t, i18n } = useTranslation();
-  const { user, loading: authLoading, signOut } = useAuth();
-  const navigate = useLocalizedNavigate();
-  const { toast } = useToast();
+const SPECIALTIES = [
+  "Internal Medicine", "Pediatrics", "Surgery", "Neurology",
+  "Cardiology", "Dermatology", "Psychiatry", "Radiology",
+  "Orthopedics", "Anesthesiology", "Emergency Medicine",
+  "Family Medicine", "Ophthalmology", "ENT", "Urology",
+];
 
-  // Data state
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [preferences, setPreferences] = useState<OnboardingPreferences | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [stats] = useState<UserStats>({ meetups: 3, doctorsMet: 12 });
+const ALL_INTERESTS = [
+  "Running", "Cooking", "Travel", "Photography", "Wine",
+  "Yoga", "Cycling", "Board Games", "Music", "Reading",
+  "Hiking", "Coffee", "Art", "Tennis", "Swimming",
+  "Meditation", "Gardening", "Film", "Dance", "Climbing",
+];
 
-  // Subscription state (TODO: fetch from backend)
-  const [subscription, setSubscription] = useState<SubscriptionState>({
-    plan: 'free',
-    status: 'none',
-    trialUsed: false,
-    nextBillingDate: undefined,
-    cancelAtPeriodEnd: false,
-  });
+const mockStats = {
+  meetups: 3,
+  doctorsMet: 12,
+};
 
-  // Modal/Drawer states
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
-  const [nameModalOpen, setNameModalOpen] = useState(false);
-  const [cityDrawerOpen, setCityDrawerOpen] = useState(false);
-  const [languageDrawerOpen, setLanguageDrawerOpen] = useState(false);
-  const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
-  const [subscriptionDrawerOpen, setSubscriptionDrawerOpen] = useState(false);
+// ─── Edit Profile Sheet ─────────────────────────────────
+function EditProfileSheet({
+  open,
+  onOpenChange,
+  profile,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  profile: ProfileData;
+  onSave: (updates: Partial<ProfileData>) => void;
+}) {
+  const [name, setName] = useState(profile.full_name);
+  const [specialty, setSpecialty] = useState(profile.specialty);
+  const [bio, setBio] = useState(profile.bio);
+  const [selectedInterests, setSelectedInterests] = useState<string[]>(profile.interests);
+  const [saving, setSaving] = useState(false);
 
-  // Form state for edit profile modal
-  const [editForm, setEditForm] = useState({
-    name: "",
-    specialty: "",
-    interests: [] as string[],
-  });
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Location state for city picker
-  const [locationForm, setLocationForm] = useState({
-    country: "",
-    state: "",
-    city: "",
-  });
-
-  // File upload state
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [avatarError, setAvatarError] = useState<string | null>(null);
-
-  // Constants for avatar upload
-  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-  const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
-
-  // Name edit state
-  const [editedName, setEditedName] = useState("");
-
-  // Initialize form data when profile/preferences load
-  useEffect(() => {
-    if (profile) {
-      setEditedName(profile.full_name || "");
-      setLocationForm({
-        country: profile.country || "",
-        state: profile.state || "",
-        city: profile.city || "",
-      });
-    }
-    if (preferences) {
-      setEditForm({
-        name: profile?.full_name || "",
-        specialty: preferences.specialty || "",
-        interests: [
-          ...(preferences.interests || []),
-          ...(preferences.sports || []),
-          ...(preferences.other_interests || []),
-        ],
-      });
-    }
-  }, [profile, preferences]);
-
-  // Avatar file selection handler with validation
-  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Reset error state
-    setAvatarError(null);
-
-    // Validate file type
-    const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(fileExtension || '')) {
-      setAvatarError(t("profile.avatarInvalidType"));
-      toast({
-        title: t("profile.avatarInvalidType"),
-        description: t("profile.avatarAllowedTypes"),
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate file size (2MB max)
-    if (file.size > MAX_FILE_SIZE) {
-      setAvatarError(t("profile.toastFileTooLarge"));
-      toast({
-        title: t("profile.toastFileTooLarge"),
-        description: t("profile.avatarMaxSize"),
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setAvatarPreview(reader.result as string);
-    };
-    reader.onerror = () => {
-      setAvatarError(t("profile.avatarReadError"));
-      toast({
-        title: t("profile.avatarReadError"),
-        variant: "destructive"
-      });
-    };
-    reader.readAsDataURL(file);
-    setSelectedFile(file);
-  };
-
-  // Format file size for display
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  // Avatar upload handler (from modal)
-  const handleAvatarUpload = async () => {
-    if (!selectedFile || !user) return;
-
-    setAvatarUploading(true);
-    try {
-      const publicUrl = await uploadAvatar(user.id, selectedFile);
-
-      if (!publicUrl) {
-        throw new Error("Failed to upload avatar");
+  // Sync when profile changes or sheet opens
+  const handleOpen = useCallback(
+    (value: boolean) => {
+      if (value) {
+        setName(profile.full_name);
+        setSpecialty(profile.specialty);
+        setBio(profile.bio);
+        setSelectedInterests(profile.interests);
       }
+      onOpenChange(value);
+    },
+    [onOpenChange, profile]
+  );
 
-      const updatedProfile = await updateProfile(user.id, { avatar_url: publicUrl });
-
-      if (updatedProfile) {
-        // Optimistic update
-        setProfile(prev => prev ? { ...prev, avatar_url: updatedProfile.avatar_url } : null);
-      }
-
-      toast({ title: t("profile.toastProfilePhotoUpdated") });
-      setAvatarModalOpen(false);
-      setAvatarPreview(null);
-      setSelectedFile(null);
-    } catch (error) {
-      console.error("Error uploading avatar:", error);
-      toast({ title: t("profile.toastUploadFailed"), description: t("profile.toastPleaseTryAgain"), variant: "destructive" });
-    } finally {
-      setAvatarUploading(false);
-    }
-  };
-
-  // Name update handler
-  const handleNameSave = async () => {
-    if (!user || !editedName.trim()) return;
-
-    setIsSaving(true);
-    // Optimistic update
-    const previousName = profile?.full_name;
-    setProfile(prev => prev ? { ...prev, full_name: editedName.trim() } : null);
-    setNameModalOpen(false);
-
-    try {
-      const updatedProfile = await updateProfile(user.id, { full_name: editedName.trim() });
-      if (!updatedProfile) {
-        // Revert on failure
-        setProfile(prev => prev ? { ...prev, full_name: previousName || null } : null);
-        toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
-      } else {
-        toast({ title: t("profile.toastNameUpdated") });
-      }
-    } catch (error) {
-      console.error("Error updating name:", error);
-      setProfile(prev => prev ? { ...prev, full_name: previousName || null } : null);
-      toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // City update handler
-  const handleCitySave = async () => {
-    if (!user) return;
-
-    setIsSaving(true);
-    const previousLocation = {
-      country: profile?.country ?? null,
-      state: profile?.state ?? null,
-      city: profile?.city ?? null,
-    };
-
-    // Optimistic update
-    setProfile(prev => prev ? {
-      ...prev,
-      country: locationForm.country,
-      state: locationForm.state,
-      city: locationForm.city,
-    } : null);
-    setCityDrawerOpen(false);
-
-    try {
-      const updatedProfile = await updateProfile(user.id, {
-        country: locationForm.country,
-        state: locationForm.state,
-        city: locationForm.city,
-      });
-
-      if (!updatedProfile) {
-        setProfile(prev => prev ? { ...prev, ...previousLocation } : null);
-        toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
-      } else {
-        toast({ title: t("profile.toastLocationUpdated") });
-      }
-    } catch (error) {
-      console.error("Error updating location:", error);
-      setProfile(prev => prev ? { ...prev, ...previousLocation } : null);
-      toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Language change handler
-  const handleLanguageChange = async (langId: string) => {
-    // Change app language
-    i18n.changeLanguage(langId);
-    setLanguageDrawerOpen(false);
-    toast({ title: t("profile.toastLanguageUpdated") });
-  };
-
-  // Edit Profile save handler
-  const handleEditProfileSave = async () => {
-    if (!user) return;
-
-    setIsSaving(true);
-    const previousProfile = { ...profile };
-    const previousPrefs = { ...preferences };
-
-    // Optimistic update
-    setProfile(prev => prev ? { ...prev, full_name: editForm.name } : null);
-    setPreferences(prev => prev ? {
-      ...prev,
-      specialty: editForm.specialty,
-      interests: editForm.interests.filter(i => INTERESTS.map(int => int.id).includes(i)),
-    } : null);
-    setEditProfileModalOpen(false);
-
-    try {
-      // Update profile name
-      await updateProfile(user.id, { full_name: editForm.name });
-
-      // Update preferences
-      await saveOnboardingPreferences(user.id, {
-        specialty: editForm.specialty,
-        interests: editForm.interests.filter(i => INTERESTS.map(int => int.id).includes(i)),
-      });
-
-      toast({ title: t("profile.toastProfileUpdated") });
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      setProfile(previousProfile as Profile);
-      setPreferences(previousPrefs as OnboardingPreferences);
-      toast({ title: t("profile.toastUpdateFailed"), variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Interest toggle in edit form
-  const toggleInterest = (interestId: string) => {
-    setEditForm(prev => ({
-      ...prev,
-      interests: prev.interests.includes(interestId)
-        ? prev.interests.filter(i => i !== interestId)
-        : [...prev.interests, interestId],
-    }));
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-
-      try {
-        const [profileData, prefsData] = await Promise.all([
-          getProfile(user.id),
-          getOnboardingPreferences(user.id),
-        ]);
-
-        if (profileData) {
-          setProfile({
-            full_name: profileData.full_name,
-            avatar_url: profileData.avatar_url,
-            country: profileData.country || null,
-            state: profileData.state || null,
-            city: profileData.city || null,
-            neighborhood: profileData.neighborhood || null,
-            languages: profileData.languages || null,
-            license_url: profileData.license_url || null,
-          });
-        }
-        if (prefsData) {
-          setPreferences(prefsData);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
-
-  if (authLoading || loading) {
-    return (
-      <DashboardLayout>
-        <div className="container mx-auto px-4 py-6 max-w-lg">
-          <div className="flex flex-col items-center mb-6">
-            <Skeleton className="h-24 w-24 rounded-full mb-4" />
-            <Skeleton className="h-6 w-40 mb-2 rounded" />
-            <Skeleton className="h-4 w-24 mb-2 rounded" />
-            <Skeleton className="h-6 w-32 rounded-full" />
-          </div>
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <Skeleton className="h-20 rounded-xl" />
-            <Skeleton className="h-20 rounded-xl" />
-          </div>
-          <Skeleton className="h-40 rounded-xl mb-4" />
-          <Skeleton className="h-40 rounded-xl" />
-        </div>
-      </DashboardLayout>
+  const toggleInterest = useCallback((interest: string) => {
+    setSelectedInterests((prev) =>
+      prev.includes(interest)
+        ? prev.filter((i) => i !== interest)
+        : prev.length < 8
+          ? [...prev, interest]
+          : prev
     );
-  }
+  }, []);
 
-  const initials = profile?.full_name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || user?.email?.[0].toUpperCase() || "U";
+  const handleSave = useCallback(() => {
+    if (!name.trim()) return;
+    setSaving(true);
+    setTimeout(() => {
+      const words = name.trim().split(" ");
+      const initials =
+        words.length >= 2
+          ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+          : name.trim().slice(0, 2).toUpperCase();
 
-  const isVerified = !!profile?.license_url;
-  const displayName = profile?.full_name || t("profile.addYourName");
-  const locationDisplay = [profile?.city, profile?.country].filter(Boolean).join(", ") || t("profile.notSet");
-  const currentLang = LANGUAGES.find(l => l.id === i18n.language) || LANGUAGES[0];
+      onSave({
+        full_name: name.trim(),
+        initials,
+        specialty,
+        bio: bio.trim(),
+        interests: selectedInterests,
+      });
+      setSaving(false);
+      onOpenChange(false);
+    }, 800);
+  }, [name, specialty, bio, selectedInterests, onSave, onOpenChange]);
+
+  const hasChanges =
+    name !== profile.full_name ||
+    specialty !== profile.specialty ||
+    bio !== profile.bio ||
+    JSON.stringify(selectedInterests) !== JSON.stringify(profile.interests);
+
+  return (
+    <Sheet open={open} onOpenChange={handleOpen}>
+      <SheetContent side="bottom" className="rounded-t-[24px] max-h-[90vh] overflow-y-auto">
+        <SheetHeader className="text-left pb-2">
+          <SheetTitle className="font-display text-xl font-bold text-foreground">
+            Edit profile
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            Update your name, specialty, and interests.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-5 pt-4 pb-2">
+          {/* Name */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Full name
+            </label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Dr. First Last"
+              className="h-12 rounded-[14px]"
+              aria-label="Full name"
+            />
+          </div>
+
+          {/* Specialty */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Specialty
+            </label>
+            <select
+              value={specialty}
+              onChange={(e) => setSpecialty(e.target.value)}
+              className="w-full h-12 rounded-[14px] border border-input bg-background px-4 text-sm text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Medical specialty"
+            >
+              {SPECIALTIES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Bio */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              About you
+            </label>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="A few words about yourself..."
+              maxLength={200}
+              className="w-full h-24 rounded-[14px] border border-input bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Bio"
+            />
+            <p className="text-xs text-muted-foreground text-right">{bio.length}/200</p>
+          </div>
+
+          {/* Interests */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Interests ({selectedInterests.length}/8)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ALL_INTERESTS.map((interest) => {
+                const selected = selectedInterests.includes(interest);
+                return (
+                  <button
+                    key={interest}
+                    onClick={() => toggleInterest(interest)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.96] min-h-[36px] ${
+                      selected
+                        ? "bg-accent text-white"
+                        : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                    }`}
+                    aria-pressed={selected}
+                    aria-label={interest}
+                  >
+                    {interest}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Save */}
+          <Button
+            onClick={handleSave}
+            disabled={!name.trim() || !hasChanges || saving}
+            className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
+          >
+            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save changes"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Edit City Sheet ────────────────────────────────────
+function EditCitySheet({
+  open,
+  onOpenChange,
+  currentCity,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentCity: string;
+  onSave: (city: string) => void;
+}) {
+  const [selected, setSelected] = useState(currentCity);
+  const [saving, setSaving] = useState(false);
+
+  const handleOpen = useCallback(
+    (value: boolean) => {
+      if (value) setSelected(currentCity);
+      onOpenChange(value);
+    },
+    [onOpenChange, currentCity]
+  );
+
+  const handleSave = useCallback(() => {
+    setSaving(true);
+    setTimeout(() => {
+      onSave(selected);
+      setSaving(false);
+      onOpenChange(false);
+    }, 600);
+  }, [selected, onSave, onOpenChange]);
+
+  return (
+    <Sheet open={open} onOpenChange={handleOpen}>
+      <SheetContent side="bottom" className="rounded-t-[24px] max-h-[80vh] overflow-y-auto">
+        <SheetHeader className="text-left pb-2">
+          <SheetTitle className="font-display text-xl font-bold text-foreground">
+            Your city
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            Choose the city where you'd like to meet other doctors.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-3 pt-4 pb-2">
+          <div className="space-y-1">
+            {CITIES.map((city) => (
+              <button
+                key={city}
+                onClick={() => setSelected(city)}
+                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[14px] text-left transition-all min-h-[48px] active:scale-[0.99] ${
+                  selected === city
+                    ? "bg-accent/10 border border-accent/30"
+                    : "hover:bg-muted/40"
+                }`}
+                aria-pressed={selected === city}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin
+                    className={`h-4 w-4 shrink-0 ${
+                      selected === city ? "text-accent" : "text-muted-foreground"
+                    }`}
+                  />
+                  <span
+                    className={`text-sm font-medium ${
+                      selected === city ? "text-accent" : "text-foreground"
+                    }`}
+                  >
+                    {city}
+                  </span>
+                </div>
+                {selected === city && (
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          <Button
+            onClick={handleSave}
+            disabled={selected === currentCity || saving}
+            className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
+          >
+            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Update city"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Edit Language Sheet ────────────────────────────────
+function EditLanguageSheet({
+  open,
+  onOpenChange,
+  currentLanguages,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentLanguages: string[];
+  onSave: (languages: string[]) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>(currentLanguages);
+  const [saving, setSaving] = useState(false);
+
+  const handleOpen = useCallback(
+    (value: boolean) => {
+      if (value) setSelected(currentLanguages);
+      onOpenChange(value);
+    },
+    [onOpenChange, currentLanguages]
+  );
+
+  const toggleLanguage = useCallback((lang: string) => {
+    setSelected((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+    );
+  }, []);
+
+  const handleSave = useCallback(() => {
+    if (selected.length === 0) return;
+    setSaving(true);
+    setTimeout(() => {
+      onSave(selected);
+      setSaving(false);
+      onOpenChange(false);
+    }, 600);
+  }, [selected, onSave, onOpenChange]);
+
+  const hasChanges = JSON.stringify(selected.sort()) !== JSON.stringify([...currentLanguages].sort());
+
+  return (
+    <Sheet open={open} onOpenChange={handleOpen}>
+      <SheetContent side="bottom" className="rounded-t-[24px] max-h-[80vh] overflow-y-auto">
+        <SheetHeader className="text-left pb-2">
+          <SheetTitle className="font-display text-xl font-bold text-foreground">
+            Languages
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            Select the languages you speak. This helps us match you with compatible groups.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-3 pt-4 pb-2">
+          <div className="space-y-1">
+            {LANGUAGES.map((lang) => {
+              const isSelected = selected.includes(lang);
+              return (
+                <button
+                  key={lang}
+                  onClick={() => toggleLanguage(lang)}
+                  className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[14px] text-left transition-all min-h-[48px] active:scale-[0.99] ${
+                    isSelected
+                      ? "bg-accent/10 border border-accent/30"
+                      : "hover:bg-muted/40"
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  <div className="flex items-center gap-3">
+                    <Globe
+                      className={`h-4 w-4 shrink-0 ${
+                        isSelected ? "text-accent" : "text-muted-foreground"
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        isSelected ? "text-accent" : "text-foreground"
+                      }`}
+                    >
+                      {lang}
+                    </span>
+                  </div>
+                  {isSelected && (
+                    <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {selected.length === 0 && (
+            <p className="text-xs text-red-500 text-center">Select at least one language.</p>
+          )}
+
+          <Button
+            onClick={handleSave}
+            disabled={selected.length === 0 || !hasChanges || saving}
+            className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
+          >
+            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Update languages"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Verification Badge ─────────────────────────────────
+function VerificationBadge({
+  status,
+  onTap,
+}: {
+  status: VerificationStatus;
+  onTap: () => void;
+}) {
+  const config = {
+    not_started: {
+      label: "Not verified",
+      className: "bg-muted text-muted-foreground border-border",
+      icon: <Shield className="h-3.5 w-3.5" />,
+    },
+    pending: {
+      label: "Verification pending",
+      className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+      icon: <Clock className="h-3.5 w-3.5" />,
+    },
+    verified: {
+      label: "Verified doctor",
+      className: "bg-primary/10 text-primary border-primary/20",
+      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+    },
+    rejected: {
+      label: "Verification needed",
+      className: "bg-red-500/10 text-red-600 border-red-500/20",
+      icon: <AlertCircle className="h-3.5 w-3.5" />,
+    },
+  };
+
+  const { label, className, icon } = config[status];
+
+  return (
+    <button
+      onClick={onTap}
+      className="min-h-[44px] flex items-center justify-center"
+      aria-label={`Verification status: ${label}. Tap to manage verification.`}
+    >
+      <Badge className={`gap-1.5 px-3 py-1 cursor-pointer ${className}`}>
+        {icon}
+        {label}
+      </Badge>
+    </button>
+  );
+}
+
+// ─── Verification Sheet ─────────────────────────────────
+function VerificationSheet({
+  open,
+  onOpenChange,
+  status,
+  onSubmit,
+  onRetry,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  status: VerificationStatus;
+  onSubmit: () => void;
+  onRetry: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileSelect = useCallback(() => {
+    setUploadError(null);
+    setUploading(true);
+    // Simulate file upload
+    setTimeout(() => {
+      setFileName("medical_license.pdf");
+      setUploading(false);
+    }, 1500);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (!fileName) return;
+    onSubmit();
+    setFileName(null);
+  }, [fileName, onSubmit]);
+
+  const handleRetry = useCallback(() => {
+    setFileName(null);
+    setUploadError(null);
+    onRetry();
+  }, [onRetry]);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="rounded-t-[24px] max-h-[85vh] overflow-y-auto">
+        <SheetHeader className="text-left pb-2">
+          <SheetTitle className="font-display text-xl font-bold text-foreground">
+            {status === "rejected" ? "Resubmit verification" : "Doctor verification"}
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground leading-relaxed">
+            {status === "rejected"
+              ? "Your previous submission couldn't be verified. Please upload a clearer document."
+              : "Verify your medical credentials to join meetups and connect with other doctors."}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-6 pt-4">
+          {/* Not started / Rejected: show upload form */}
+          {(status === "not_started" || status === "rejected") && (
+            <>
+              {/* What we accept */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Accepted documents
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1.5">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    Medical license (Approbationsurkunde)
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    Hospital ID or official letter
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    Medical chamber registration
+                  </li>
+                </ul>
+              </div>
+
+              {/* Upload area */}
+              <div className="space-y-3">
+                {!fileName ? (
+                  <button
+                    onClick={handleFileSelect}
+                    disabled={uploading}
+                    className="w-full flex flex-col items-center justify-center gap-3 py-8 px-4 rounded-[18px] border-2 border-dashed border-border hover:border-primary/40 bg-muted/30 transition-colors min-h-[120px] active:scale-[0.99]"
+                    aria-label="Upload verification document"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                        <span className="text-sm text-muted-foreground">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">
+                          Upload document
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          PDF, JPG, or PNG · Max 10 MB
+                        </span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3 p-4 rounded-[14px] bg-primary/5 border border-primary/20">
+                    <FileText className="h-5 w-5 text-primary shrink-0" />
+                    <span className="text-sm font-medium text-foreground flex-1 truncate">
+                      {fileName}
+                    </span>
+                    <button
+                      onClick={() => setFileName(null)}
+                      className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+                      aria-label="Remove uploaded file"
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="flex items-start gap-2 p-3 rounded-[12px] bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900" role="alert" aria-live="assertive">
+                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-600">{uploadError}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Privacy note */}
+              <div className="flex items-start gap-2 p-3 rounded-[12px] bg-muted/40">
+                <Shield className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Your document is encrypted and only used for verification. It will not be
+                  shared or stored after review.
+                </p>
+              </div>
+
+              {/* Submit CTA */}
+              <Button
+                onClick={status === "rejected" ? handleRetry : handleSubmit}
+                disabled={!fileName}
+                className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
+              >
+                {status === "rejected" ? "Resubmit for review" : "Submit for review"}
+              </Button>
+
+              {/* Timeline note */}
+              <p className="text-center text-xs text-muted-foreground">
+                Reviews typically take 1–2 business days.
+              </p>
+            </>
+          )}
+
+          {/* Pending state */}
+          {status === "pending" && (
+            <div className="text-center space-y-4 py-6">
+              <div className="mx-auto h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <Clock className="h-7 w-7 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-display text-lg font-semibold text-foreground mb-1">
+                  Under review
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">
+                  We're reviewing your document. This usually takes 1–2 business days. We'll
+                  notify you once it's complete.
+                </p>
+              </div>
+              <div className="flex items-start gap-2 p-3 rounded-[12px] bg-muted/40 text-left">
+                <BellRing className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  You'll receive a notification when your verification is approved.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Verified state */}
+          {status === "verified" && (
+            <div className="text-center space-y-4 py-6">
+              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <ShieldCheck className="h-7 w-7 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-display text-lg font-semibold text-foreground mb-1">
+                  You're verified
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">
+                  Your doctor status has been confirmed. You have full access to all
+                  BeyondRounds features.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Delete Account Dialog ──────────────────────────────
+function DeleteAccountFlow({
+  open,
+  onOpenChange,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+}) {
+  const [step, setStep] = useState<"warning" | "confirm" | "success">("warning");
+  const [confirmText, setConfirmText] = useState("");
+  const [reason, setReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useLocalizedNavigate();
+
+  const handleClose = useCallback(
+    (value: boolean) => {
+      if (!value) {
+        // Reset state when closing
+        setTimeout(() => {
+          setStep("warning");
+          setConfirmText("");
+          setReason("");
+          setDeleting(false);
+        }, 300);
+      }
+      onOpenChange(value);
+    },
+    [onOpenChange]
+  );
+
+  const handleDelete = useCallback(() => {
+    setDeleting(true);
+    // Simulate deletion
+    setTimeout(() => {
+      setDeleting(false);
+      setStep("success");
+    }, 2000);
+  }, []);
+
+  const handleDone = useCallback(() => {
+    handleClose(false);
+    onConfirm();
+  }, [handleClose, onConfirm]);
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="rounded-[24px] max-w-[400px] mx-4 p-0 overflow-hidden">
+        {/* Warning step */}
+        {step === "warning" && (
+          <div className="p-6 space-y-5">
+            <DialogHeader className="space-y-3">
+              <div className="mx-auto h-14 w-14 rounded-full bg-red-500/10 flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <DialogTitle className="font-display text-xl font-bold text-foreground text-center">
+                Delete your account?
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground text-center leading-relaxed">
+                This action is permanent and cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                What happens when you delete
+              </p>
+              <ul className="space-y-2.5">
+                {[
+                  "Your profile and personal data will be permanently removed",
+                  "Your chat history will no longer be visible to group members",
+                  "Any active meetup reservations will be cancelled",
+                  "Your verification status will be revoked",
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0 mt-2" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Need help instead? */}
+            <div className="flex items-center justify-center gap-1.5 py-1">
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              <button
+                onClick={() => {
+                  handleClose(false);
+                  navigate("/contact");
+                }}
+                className="text-xs text-accent font-medium underline underline-offset-2 min-h-[44px] flex items-center"
+              >
+                Need help instead? Contact us
+              </button>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => handleClose(false)}
+                className="flex-1 h-12 rounded-full font-semibold"
+              >
+                Keep my account
+              </Button>
+              <Button
+                onClick={() => setStep("confirm")}
+                className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold active:scale-[0.98] transition-all"
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm step */}
+        {step === "confirm" && (
+          <div className="p-6 space-y-5">
+            <DialogHeader className="space-y-2">
+              <DialogTitle className="font-display text-lg font-bold text-foreground text-center">
+                Confirm deletion
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground text-center leading-relaxed">
+                Type <span className="font-mono font-semibold text-foreground">DELETE</span> below
+                to confirm.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder='Type "DELETE" to confirm'
+                className="h-12 rounded-[14px] text-center font-mono tracking-wider"
+                aria-label="Type DELETE to confirm account deletion"
+                autoComplete="off"
+              />
+
+              {/* Optional reason */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Reason for leaving (optional)
+                </label>
+                <select
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="w-full h-12 rounded-[14px] border border-input bg-background px-4 text-sm text-foreground appearance-none cursor-pointer"
+                  aria-label="Reason for deleting account"
+                >
+                  <option value="">Select a reason...</option>
+                  <option value="not_useful">Not finding it useful</option>
+                  <option value="no_time">Don't have time</option>
+                  <option value="privacy">Privacy concerns</option>
+                  <option value="moving">Moving to a different city</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setStep("warning")}
+                className="flex-1 h-12 rounded-full font-semibold"
+              >
+                Go back
+              </Button>
+              <Button
+                onClick={handleDelete}
+                disabled={confirmText !== "DELETE" || deleting}
+                className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold disabled:opacity-40 active:scale-[0.98] transition-all"
+              >
+                {deleting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  "Delete my account"
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Success step */}
+        {step === "success" && (
+          <div className="p-6 space-y-5 text-center">
+            <div className="mx-auto h-14 w-14 rounded-full bg-muted flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="font-display text-lg font-bold text-foreground mb-2">
+                Account scheduled for deletion
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Your account has been scheduled for deletion. All data will be removed within
+                30 days. You'll receive a confirmation email.
+              </p>
+            </div>
+            <Button
+              onClick={handleDone}
+              className="w-full h-12 rounded-full font-semibold active:scale-[0.98] transition-all"
+            >
+              Done
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Feedback Sheet ─────────────────────────────────────
+function FeedbackSheet({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [feedback, setFeedback] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = useCallback(() => {
+    if (!feedback.trim()) return;
+    setSubmitting(true);
+    setTimeout(() => {
+      setSubmitting(false);
+      setSubmitted(true);
+    }, 1000);
+  }, [feedback]);
+
+  const handleClose = useCallback(
+    (value: boolean) => {
+      if (!value) {
+        setTimeout(() => {
+          setFeedback("");
+          setSubmitted(false);
+        }, 300);
+      }
+      onOpenChange(value);
+    },
+    [onOpenChange]
+  );
+
+  return (
+    <Sheet open={open} onOpenChange={handleClose}>
+      <SheetContent side="bottom" className="rounded-t-[24px]">
+        <SheetHeader className="text-left pb-2">
+          <SheetTitle className="font-display text-xl font-bold text-foreground">
+            Feedback & suggestions
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            Help us make BeyondRounds better for you.
+          </SheetDescription>
+        </SheetHeader>
+
+        {!submitted ? (
+          <div className="space-y-4 pt-4">
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="What's on your mind? Share ideas, report issues, or suggest improvements..."
+              className="w-full h-32 rounded-[14px] border border-input bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Your feedback"
+            />
+            <Button
+              onClick={handleSubmit}
+              disabled={!feedback.trim() || submitting}
+              className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
+            >
+              {submitting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                "Send feedback"
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center space-y-4 py-8">
+            <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-display text-lg font-semibold text-foreground mb-1">
+                Thank you
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Your feedback helps us build a better experience for doctors.
+              </p>
+            </div>
+            <Button
+              onClick={() => handleClose(false)}
+              variant="outline"
+              className="h-11 rounded-full px-8 font-semibold"
+            >
+              Close
+            </Button>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Sign Out Confirmation ──────────────────────────────
+function SignOutDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  loading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+  loading: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-[24px] max-w-[360px] mx-4">
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="font-display text-lg font-bold text-foreground text-center">
+            Sign out?
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground text-center">
+            You can sign back in anytime with your email.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex gap-3 pt-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="flex-1 h-12 rounded-full font-semibold"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold active:scale-[0.98] transition-all"
+          >
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign out"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Settings Row ───────────────────────────────────────
+function SettingsRow({
+  icon: Icon,
+  label,
+  description,
+  onClick,
+  external,
+  danger,
+  trailing,
+}: {
+  icon: React.ElementType;
+  label: string;
+  description?: string;
+  onClick?: () => void;
+  external?: boolean;
+  danger?: boolean;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left min-h-[56px] active:bg-muted/50"
+      aria-label={description ? `${label}: ${description}` : label}
+    >
+      <div className="flex items-center gap-4">
+        <div
+          className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
+            danger ? "bg-red-500/10" : "bg-muted/80"
+          }`}
+        >
+          <Icon
+            className={`h-5 w-5 ${danger ? "text-red-600" : "text-muted-foreground"}`}
+          />
+        </div>
+        <div>
+          <p
+            className={`text-sm font-semibold ${
+              danger ? "text-red-600" : "text-foreground"
+            }`}
+          >
+            {label}
+          </p>
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
+        </div>
+      </div>
+      {trailing || (
+        <>
+          {external ? (
+            <ExternalLink className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+          )}
+        </>
+      )}
+    </button>
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────
+export default function Profile() {
+  const { signOut } = useAuth();
+  const navigate = useLocalizedNavigate();
+
+  // Profile state
+  const [profile, setProfile] = useState<ProfileData>(initialProfile);
+
+  // UI state
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editCityOpen, setEditCityOpen] = useState(false);
+  const [editLanguageOpen, setEditLanguageOpen] = useState(false);
+  const [verificationSheetOpen, setVerificationSheetOpen] = useState(false);
+  const [feedbackSheetOpen, setFeedbackSheetOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [emailNotifLoading, setEmailNotifLoading] = useState(false);
+  const [pushNotifLoading, setPushNotifLoading] = useState(false);
+
+  // ── Handlers ────────────────────────────────────────
+  const handleSignOut = useCallback(async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      navigate("/");
+    } catch {
+      setSigningOut(false);
+    }
+  }, [signOut, navigate]);
+
+  const handleVerificationSubmit = useCallback(() => {
+    setProfile((prev) => ({ ...prev, verification_status: "pending" as VerificationStatus }));
+  }, []);
+
+  const handleVerificationRetry = useCallback(() => {
+    // Reset to not_started so user can re-upload
+    setProfile((prev) => ({ ...prev, verification_status: "not_started" as VerificationStatus }));
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    // After deletion animation, sign out
+    setTimeout(async () => {
+      await signOut();
+      navigate("/");
+    }, 500);
+  }, [signOut, navigate]);
+
+  const handleProfileSave = useCallback((updates: Partial<ProfileData>) => {
+    setProfile((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleCitySave = useCallback((city: string) => {
+    setProfile((prev) => ({ ...prev, city }));
+  }, []);
+
+  const handleLanguageSave = useCallback((languages: string[]) => {
+    setProfile((prev) => ({ ...prev, languages }));
+  }, []);
+
+  const handleToggleEmailNotif = useCallback(() => {
+    setEmailNotifLoading(true);
+    setTimeout(() => {
+      setProfile((prev) => ({
+        ...prev,
+        email_notifications: !prev.email_notifications,
+      }));
+      setEmailNotifLoading(false);
+    }, 600);
+  }, []);
+
+  const handleTogglePushNotif = useCallback(() => {
+    setPushNotifLoading(true);
+    setTimeout(() => {
+      setProfile((prev) => ({
+        ...prev,
+        push_notifications: !prev.push_notifications,
+      }));
+      setPushNotifLoading(false);
+    }, 600);
+  }, []);
+
+  const handleAvatarEdit = useCallback(() => {
+    // In production: open file picker → upload → update profile
+    alert("Avatar upload would open here");
+  }, []);
+
+  // ── Verification helper text for account row ──────
+  const verificationHelper: Record<VerificationStatus, string> = {
+    not_started: "Verify to join meetups",
+    pending: "Review in progress",
+    verified: "Your status is confirmed",
+    rejected: "Resubmit your document",
+  };
 
   return (
     <DashboardLayout>
-      <main className="container mx-auto px-4 py-8 max-w-lg">
-        {/* Profile Header - Centered */}
-        <div className="flex flex-col items-center text-center mb-8">
-          {/* Avatar with edit button */}
-          <div className="relative mb-5">
+      <main className="container mx-auto px-4 py-6 max-w-lg space-y-6">
+        {/* ── Profile Header ──────────────────────────── */}
+        <div className="flex flex-col items-center text-center">
+          <div className="relative mb-4">
+            <Avatar className="h-28 w-28 border-4 border-background shadow-md">
+              <AvatarFallback className="bg-primary/10 text-primary text-3xl font-semibold">
+                {profile.initials}
+              </AvatarFallback>
+            </Avatar>
             <button
-              onClick={() => setAvatarModalOpen(true)}
-              className="relative group outline-none"
-              aria-label={t("profile.changePhoto")}
-            >
-              <Avatar className="h-28 w-28 border-4 border-background shadow-md transition-transform group-hover:scale-105 ring-1 ring-border/10">
-                <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
-                <AvatarFallback className="bg-muted text-muted-foreground text-3xl font-medium">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute inset-0 rounded-full bg-black/5 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                <Camera className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
-              </div>
-            </button>
-            <button
-              onClick={() => setAvatarModalOpen(true)}
-              className="absolute bottom-1 right-1 h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors ring-2 ring-background border border-primary/20"
+              onClick={handleAvatarEdit}
+              className="absolute bottom-1 right-1 h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md ring-2 ring-background active:scale-[0.95] transition-transform"
+              aria-label="Change profile photo"
             >
               <Camera className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Name (clickable to edit) */}
-          <button
-            onClick={() => {
-              setEditedName(profile?.full_name || "");
-              setNameModalOpen(true);
-            }}
-            className="group flex items-center gap-2 mb-1.5 hover:opacity-70 transition-opacity px-3 py-1 -mx-3 rounded-lg hover:bg-muted/50"
-          >
-            <h1 className="font-display text-2xl font-bold text-foreground tracking-tight">
-              {displayName}
-            </h1>
-            <Pencil className="h-4 w-4 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
+          <h1 className="font-display text-2xl font-bold text-foreground tracking-tight mb-1">
+            {profile.full_name}
+          </h1>
 
-          {/* Specialty */}
-          {preferences?.specialty && (
-            <p className="text-sm font-medium text-muted-foreground mb-4 bg-muted/50 px-3 py-1 rounded-full">
-              {preferences.specialty}
+          {profile.specialty && (
+            <p className="text-sm text-muted-foreground mb-3 bg-muted/50 px-3 py-1 rounded-full">
+              {profile.specialty}
             </p>
           )}
 
-          {/* Verified Badge */}
-          {isVerified && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 shadow-sm">
-              <CheckCircle2 className="h-3.5 w-3.5 fill-primary text-primary-foreground" />
-              {t("profile.verifiedDoctor")}
-            </div>
-          )}
+          <VerificationBadge
+            status={profile.verification_status}
+            onTap={() => setVerificationSheetOpen(true)}
+          />
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <Card className="rounded-2xl bg-card border border-border/60 shadow-sm hover:shadow-md transition-all duration-300 group">
-            <CardContent className="pt-5 pb-5 px-4 flex flex-col items-center text-center">
-              <div className="h-10 w-10 rounded-full bg-primary/5 group-hover:bg-primary/10 flex items-center justify-center mb-3 transition-colors">
+        {/* ── Stats ───────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="rounded-[18px] bg-card border border-border shadow-sm">
+            <CardContent className="p-4 flex flex-col items-center text-center">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-2xl font-bold text-foreground tracking-tight">{stats.meetups}</span>
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-1">{t("profile.meetups")}</span>
+              <span className="text-2xl font-bold text-foreground">
+                {mockStats.meetups}
+              </span>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
+                Meetups
+              </span>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl bg-card border border-border/60 shadow-sm hover:shadow-md transition-all duration-300 group">
-            <CardContent className="pt-5 pb-5 px-4 flex flex-col items-center text-center">
-              <div className="h-10 w-10 rounded-full bg-primary/5 group-hover:bg-primary/10 flex items-center justify-center mb-3 transition-colors">
+          <Card className="rounded-[18px] bg-card border border-border shadow-sm">
+            <CardContent className="p-4 flex flex-col items-center text-center">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                 <Users className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-2xl font-bold text-foreground tracking-tight">{stats.doctorsMet}</span>
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-1">{t("profile.doctorsMet")}</span>
+              <span className="text-2xl font-bold text-foreground">
+                {mockStats.doctorsMet}
+              </span>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
+                Doctors met
+              </span>
             </CardContent>
           </Card>
         </div>
 
-        {/* Preferences Section */}
-        <Card className="rounded-2xl bg-card border border-border/60 shadow-sm mb-6 overflow-hidden">
+        {/* ── Preferences ─────────────────────────────── */}
+        <Card className="rounded-[20px] bg-card border border-border shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="px-5 py-3 border-b border-border/60 bg-muted/20">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                {t("profile.preferences")}
+                Preferences
               </h2>
             </div>
 
-            {/* City */}
-            <button
-              onClick={() => setCityDrawerOpen(true)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
+            <div className="divide-y divide-border/60">
+              {/* City */}
+              <button
+                onClick={() => setEditCityOpen(true)}
+                className="w-full flex items-center gap-4 px-5 py-4 min-h-[56px] hover:bg-muted/30 active:bg-muted/50 transition-colors text-left"
+                aria-label={`City: ${profile.city}. Tap to change.`}
+              >
+                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-foreground">{t("profile.city")}</p>
-                  <p className="text-xs text-muted-foreground">{locationDisplay}</p>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">City</p>
+                  <p className="text-xs text-muted-foreground">
+                    {profile.city}, {profile.country}
+                  </p>
                 </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-            </button>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+              </button>
 
-            {/* Language */}
-            <button
-              onClick={() => setLanguageDrawerOpen(true)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
+              {/* Language */}
+              <button
+                onClick={() => setEditLanguageOpen(true)}
+                className="w-full flex items-center gap-4 px-5 py-4 min-h-[56px] hover:bg-muted/30 active:bg-muted/50 transition-colors text-left"
+                aria-label={`Languages: ${profile.languages.join(", ")}. Tap to change.`}
+              >
+                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0">
                   <Globe className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-foreground">{t("profile.language")}</p>
-                  <p className="text-xs text-muted-foreground">{currentLang.flag} {currentLang.label}</p>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">Language</p>
+                  <p className="text-xs text-muted-foreground">
+                    {profile.languages.join(", ")}
+                  </p>
                 </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-            </button>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+              </button>
 
-            {/* Email Notifications */}
-            <div className="px-5 py-4 hover:bg-muted/30 transition-colors">
-              <EmailNotificationsToggle />
+              {/* Email notifications */}
+              <div className="flex items-center gap-4 px-5 py-4 min-h-[56px]">
+                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0">
+                  <Bell className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Email notifications
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Meetup reminders and updates
+                  </p>
+                </div>
+                <Switch
+                  checked={profile.email_notifications}
+                  onCheckedChange={handleToggleEmailNotif}
+                  loading={emailNotifLoading}
+                  aria-label="Toggle email notifications"
+                />
+              </div>
+
+              {/* Push notifications */}
+              <div className="flex items-center gap-4 px-5 py-4 min-h-[56px]">
+                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0">
+                  <BellRing className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Push notifications
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Chat messages and match alerts
+                  </p>
+                </div>
+                <Switch
+                  checked={profile.push_notifications}
+                  onCheckedChange={handleTogglePushNotif}
+                  loading={pushNotifLoading}
+                  aria-label="Toggle push notifications"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Account Section */}
-        <Card className="rounded-2xl bg-card border border-border/60 shadow-sm mb-6 overflow-hidden">
+        {/* ── Account ─────────────────────────────────── */}
+        <Card className="rounded-[20px] bg-card border border-border shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="px-5 py-3 border-b border-border/60 bg-muted/20">
               <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                {t("profile.account")}
+                Account
               </h2>
             </div>
 
-            {/* Edit Profile */}
-            <button
-              onClick={() => {
-                setEditForm({
-                  name: profile?.full_name || "",
-                  specialty: preferences?.specialty || "",
-                  interests: [
-                    ...(preferences?.interests || []),
-                    ...(preferences?.sports || []),
-                    ...(preferences?.other_interests || []),
-                  ],
-                });
-                setEditProfileModalOpen(true);
-              }}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
-                  <Pencil className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-foreground">{t("profile.editProfile")}</p>
-                  <p className="text-xs text-muted-foreground">{t("profile.editProfileDesc")}</p>
-                </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-            </button>
+            <div className="divide-y divide-border/60">
+              <SettingsRow
+                icon={Pencil}
+                label="Edit profile"
+                description="Name, specialty, interests"
+                onClick={() => setEditProfileOpen(true)}
+              />
 
-            {/* Subscription & Payments */}
-            <button
-              onClick={() => setSubscriptionDrawerOpen(true)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
-            >
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                  "h-10 w-10 rounded-full flex items-center justify-center transition-colors",
-                  subscription.plan === 'premium' ? "bg-amber-100 dark:bg-amber-900/30" :
-                    subscription.plan !== 'free' ? "bg-primary/10" : "bg-secondary/80"
-                )}>
-                  {subscription.plan === 'premium' ? (
-                    <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  ) : subscription.plan !== 'free' ? (
-                    <Star className="h-5 w-5 text-primary" />
-                  ) : (
-                    <CreditCard className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-foreground">{t("profile.subscription")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {subscription.plan === 'free'
-                      ? t("profile.freePlan")
-                      : subscription.plan === 'trial'
-                        ? t("profile.plans.trial.name")
-                        : subscription.plan === 'monthly'
-                          ? t("profile.plans.monthly.name")
-                          : t("profile.plans.premium.name")
-                    }
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {subscription.plan !== 'free' && (
-                  <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 uppercase tracking-wide">
-                    {t("profile.active")}
-                  </Badge>
-                )}
-                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-              </div>
-            </button>
+              <SettingsRow
+                icon={ShieldCheck}
+                label="Doctor verification"
+                description={verificationHelper[profile.verification_status]}
+                onClick={() => setVerificationSheetOpen(true)}
+              />
 
-            {/* Feedback & Suggestions */}
-            <button
-              onClick={() => setFeedbackOpen(true)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
-                <p className="text-sm font-semibold text-foreground">{t("profile.feedbackSuggestions")}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-            </button>
+              <SettingsRow
+                icon={MessageSquare}
+                label="Feedback & suggestions"
+                description="Help us improve BeyondRounds"
+                onClick={() => setFeedbackSheetOpen(true)}
+              />
 
-            {/* Privacy */}
-            <button
-              onClick={() => window.open("/privacy", "_blank")}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors border-b border-border/60"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-semibold text-foreground">{t("profile.privacy")}</p>
-              </div>
-              <ExternalLink className="h-4 w-4 text-muted-foreground/50" />
-            </button>
+              <SettingsRow
+                icon={Shield}
+                label="Privacy policy"
+                onClick={() => navigate("/privacy")}
+                external
+              />
 
-            {/* Terms of Service */}
-            <button
-              onClick={() => window.open("/terms", "_blank")}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-secondary/80 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-semibold text-foreground">{t("profile.termsOfService")}</p>
-              </div>
-              <ExternalLink className="h-4 w-4 text-muted-foreground/50" />
-            </button>
+              <SettingsRow
+                icon={FileText}
+                label="Terms of service"
+                onClick={() => navigate("/terms")}
+                external
+              />
+
+              <SettingsRow
+                icon={Trash2}
+                label="Delete account"
+                description="Permanently remove your data"
+                onClick={() => setDeleteDialogOpen(true)}
+                danger
+              />
+            </div>
           </CardContent>
         </Card>
 
-        {/* Log Out Button */}
-        <Card className="rounded-2xl bg-card border border-border/60 shadow-sm overflow-hidden">
+        {/* ── Sign Out ────────────────────────────────── */}
+        <Card className="rounded-[20px] bg-card border border-border shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <button
-              onClick={handleSignOut}
-              className="w-full flex items-center justify-center gap-2 px-4 py-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+              onClick={() => setSignOutDialogOpen(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-4 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors min-h-[56px] active:bg-red-100 dark:active:bg-red-950/50"
+              aria-label="Sign out of your account"
             >
               <LogOut className="h-5 w-5" />
-              <span className="font-semibold">{t("common.signOut")}</span>
+              <span className="font-semibold">Sign out</span>
             </button>
           </CardContent>
         </Card>
 
-        {/* Bottom spacing for mobile nav */}
+        {/* Bottom spacing for nav */}
         <div className="h-4" />
-
-        {/* ========== MODALS & DRAWERS ========== */}
-
-        {/* Avatar Upload Modal */}
-        <Dialog open={avatarModalOpen} onOpenChange={(open) => {
-          setAvatarModalOpen(open);
-          if (!open) {
-            setAvatarPreview(null);
-            setSelectedFile(null);
-            setAvatarError(null);
-          }
-        }}>
-          <DialogContent className="sm:max-w-md rounded-xl">
-            <DialogHeader>
-              <DialogTitle>{t("profile.changePhoto")}</DialogTitle>
-              <DialogDescription>{t("profile.changePhotoDesc")}</DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col items-center gap-4 py-4">
-              {/* Circular Avatar Preview */}
-              <div className="relative">
-                <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
-                  <AvatarImage src={avatarPreview || profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-3xl font-semibold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                {avatarPreview && (
-                  <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
-                    <Check className="h-3.5 w-3.5 text-white" />
-                  </div>
-                )}
-              </div>
-
-              {/* File Info */}
-              {selectedFile && (
-                <div className="text-center">
-                  <p className="text-sm font-medium text-foreground truncate max-w-[200px]">
-                    {selectedFile.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(selectedFile.size)}
-                  </p>
-                </div>
-              )}
-
-              {/* Error Message */}
-              {avatarError && (
-                <p className="text-sm text-red-500 text-center">{avatarError}</p>
-              )}
-
-              {/* File Input */}
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                onChange={handleAvatarSelect}
-                className="hidden"
-              />
-
-              {/* Select Photo Button */}
-              <Button
-                variant="outline"
-                onClick={() => avatarInputRef.current?.click()}
-                className="rounded-xl"
-              >
-                <Camera className="h-4 w-4 mr-2" />
-                {selectedFile ? t("profile.changePhoto") : t("profile.selectPhoto")}
-              </Button>
-
-              {/* File Type Hint */}
-              <p className="text-xs text-muted-foreground text-center">
-                {t("profile.avatarHint")}
-              </p>
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => {
-                setAvatarModalOpen(false);
-                setAvatarPreview(null);
-                setSelectedFile(null);
-                setAvatarError(null);
-              }} className="rounded-xl">
-                {t("common.cancel")}
-              </Button>
-              <Button
-                onClick={handleAvatarUpload}
-                disabled={!selectedFile || avatarUploading || !!avatarError}
-                className="rounded-xl"
-              >
-                {avatarUploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {t("profile.uploading")}
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    {t("common.save")}
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Name Edit Modal */}
-        <Dialog open={nameModalOpen} onOpenChange={setNameModalOpen}>
-          <DialogContent className="sm:max-w-md rounded-xl">
-            <DialogHeader>
-              <DialogTitle>{t("profile.editName")}</DialogTitle>
-              <DialogDescription>{t("profile.editNameDesc")}</DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <Label htmlFor="name" className="text-sm font-medium">
-                {t("profile.fullName")}
-              </Label>
-              <Input
-                id="name"
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                placeholder={t("profile.enterYourName")}
-                className="mt-2 rounded-xl"
-              />
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setNameModalOpen(false)} className="rounded-xl">
-                {t("common.cancel")}
-              </Button>
-              <Button
-                onClick={handleNameSave}
-                disabled={!editedName.trim() || isSaving}
-                className="rounded-xl"
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  t("common.save")
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* City Picker Drawer */}
-        <Drawer open={cityDrawerOpen} onOpenChange={setCityDrawerOpen}>
-          <DrawerContent className="max-h-[85vh]">
-            <div className="mx-auto w-full max-w-lg">
-              <DrawerHeader>
-                <DrawerTitle>{t("profile.selectCity")}</DrawerTitle>
-                <DrawerDescription>{t("profile.selectCityDesc")}</DrawerDescription>
-              </DrawerHeader>
-              <div className="px-4 pb-4 space-y-4">
-                <LocationSelect
-                  country={locationForm.country}
-                  state={locationForm.state}
-                  city={locationForm.city}
-                  onCountryChange={(country) => setLocationForm(prev => ({ ...prev, country, state: "", city: "" }))}
-                  onStateChange={(state) => setLocationForm(prev => ({ ...prev, state, city: "" }))}
-                  onCityChange={(city) => setLocationForm(prev => ({ ...prev, city }))}
-                  showNationality={false}
-                  variant="profile"
-                />
-              </div>
-              <DrawerFooter>
-                <Button onClick={handleCitySave} disabled={isSaving} className="rounded-xl">
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {t("common.save")}
-                </Button>
-                <DrawerClose asChild>
-                  <Button variant="outline" className="rounded-xl">{t("common.cancel")}</Button>
-                </DrawerClose>
-              </DrawerFooter>
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Language Picker Drawer */}
-        <Drawer open={languageDrawerOpen} onOpenChange={setLanguageDrawerOpen}>
-          <DrawerContent className="max-h-[50vh]">
-            <div className="mx-auto w-full max-w-lg">
-              <DrawerHeader>
-                <DrawerTitle>{t("profile.selectLanguage")}</DrawerTitle>
-                <DrawerDescription>{t("profile.selectLanguageDesc")}</DrawerDescription>
-              </DrawerHeader>
-              <div className="px-4 pb-6 space-y-2">
-                {LANGUAGES.map((lang) => (
-                  <button
-                    key={lang.id}
-                    onClick={() => handleLanguageChange(lang.id)}
-                    className={cn(
-                      "w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-colors",
-                      i18n.language === lang.id
-                        ? "bg-primary/10 border-2 border-primary"
-                        : "bg-secondary hover:bg-secondary/80 border-2 border-transparent"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{lang.flag}</span>
-                      <span className="font-medium text-foreground">{lang.label}</span>
-                    </div>
-                    {i18n.language === lang.id && (
-                      <Check className="h-5 w-5 text-primary" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Edit Profile Full-Screen Modal */}
-        <Dialog open={editProfileModalOpen} onOpenChange={setEditProfileModalOpen}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Pencil className="h-5 w-5 text-primary" />
-                {t("profile.editProfile")}
-              </DialogTitle>
-              <DialogDescription>{t("profile.editProfileModalDesc")}</DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-6 py-4">
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="editName" className="text-sm font-medium">
-                  {t("profile.fullName")}
-                </Label>
-                <Input
-                  id="editName"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder={t("profile.enterYourName")}
-                  className="rounded-xl"
-                />
-              </div>
-
-              {/* Specialty */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("profile.specialty")}</Label>
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                  {SPECIALTIES.map((spec) => (
-                    <button
-                      key={spec.id}
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, specialty: spec.id }))}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all",
-                        editForm.specialty === spec.id
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary hover:bg-secondary/80 text-foreground"
-                      )}
-                    >
-                      <span className="truncate">{spec.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Interests */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("profile.interests")}</Label>
-                <p className="text-xs text-muted-foreground">{t("profile.selectInterests")}</p>
-                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                  {INTERESTS.map((interest) => (
-                    <button
-                      key={interest.id}
-                      type="button"
-                      onClick={() => toggleInterest(interest.id)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all",
-                        editForm.interests.includes(interest.id)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary hover:bg-secondary/80 text-foreground"
-                      )}
-                    >
-                      <span>{interest.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setEditProfileModalOpen(false)} className="rounded-xl">
-                {t("common.cancel")}
-              </Button>
-              <Button
-                onClick={handleEditProfileSave}
-                disabled={isSaving || !editForm.name.trim()}
-                className="rounded-xl"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {t("common.loading")}
-                  </>
-                ) : (
-                  t("common.save")
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Subscription Drawer */}
-        <Drawer open={subscriptionDrawerOpen} onOpenChange={setSubscriptionDrawerOpen}>
-          <DrawerContent className="max-h-[90vh]">
-            <div className="mx-auto w-full max-w-lg overflow-y-auto">
-              <DrawerHeader className="text-center">
-                <DrawerTitle className="flex items-center justify-center gap-2">
-                  <Crown className="h-5 w-5 text-primary" />
-                  {t("profile.subscriptionPayments")}
-                </DrawerTitle>
-                <DrawerDescription>{t("profile.choosePlan")}</DrawerDescription>
-              </DrawerHeader>
-
-              <div className="px-4 pb-6 space-y-4">
-                {/* If user has active subscription - show current plan info */}
-                {subscription.status === 'active' && subscription.plan !== 'free' && (
-                  <Card className="rounded-xl border-2 border-primary bg-primary/5">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-primary text-primary-foreground">
-                            {t("profile.currentPlan")}
-                          </Badge>
-                          <span className="font-bold text-foreground">
-                            {SUBSCRIPTION_PLANS[subscription.plan as keyof typeof SUBSCRIPTION_PLANS]?.name || 'Free'}
-                          </span>
-                        </div>
-                        {subscription.plan !== 'trial' && (
-                          <span className="text-lg font-bold text-primary">
-                            €{SUBSCRIPTION_PLANS[subscription.plan as keyof typeof SUBSCRIPTION_PLANS]?.price}
-                            <span className="text-xs font-normal text-muted-foreground">/mo</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {subscription.nextBillingDate && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {t("profile.nextBilling")}: <span className="font-medium">{subscription.nextBillingDate}</span>
-                        </p>
-                      )}
-
-                      {subscription.cancelAtPeriodEnd && (
-                        <p className="text-sm text-amber-600 dark:text-amber-400 mb-3">
-                          {t("profile.canceledAtPeriodEnd")}
-                        </p>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 rounded-xl"
-                          onClick={() => {
-                            // TODO: Redirect to Stripe Customer Portal
-                            toast({ title: t("profile.stripePortalComingSoon") });
-                          }}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          {t("profile.manageInStripe")}
-                        </Button>
-                        {!subscription.cancelAtPeriodEnd && subscription.plan !== 'trial' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl"
-                            onClick={() => {
-                              // TODO: Cancel subscription
-                              toast({ title: t("profile.cancelConfirm"), variant: "destructive" });
-                            }}
-                          >
-                            {t("profile.cancelSubscription")}
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Plans Grid */}
-                <div className="space-y-3">
-                  {/* Trial Plan - Show only if trial not used and user is on free plan */}
-                  {!subscription.trialUsed && subscription.plan === 'free' && (
-                    <Card className="rounded-xl border-2 border-border hover:border-primary/50 transition-all">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <Zap className="h-4 w-4 text-amber-500" />
-                              <h3 className="font-bold text-foreground">{t("profile.plans.trial.name")}</h3>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{t("profile.plans.trial.desc")}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-xl font-bold text-foreground">€9.99</span>
-                            <p className="text-xs text-muted-foreground">{t("profile.oneTime")}</p>
-                          </div>
-                        </div>
-
-                        <ul className="space-y-1.5 mb-4">
-                          {['weeklyMatches', 'groupChat', 'roundsBot', 'basicMatching'].map((feature) => (
-                            <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                              {t(`profile.plans.trial.features.${feature}`)}
-                            </li>
-                          ))}
-                        </ul>
-
-                        <Button
-                          className="w-full rounded-xl"
-                          variant="outline"
-                          onClick={() => {
-                            // TODO: Start trial checkout
-                            toast({ title: t("profile.startingCheckout") });
-                          }}
-                        >
-                          {t("profile.plans.trial.cta")}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Monthly Plan - Most Popular */}
-                  <Card className={cn(
-                    "rounded-xl border-2 transition-all relative overflow-hidden",
-                    subscription.plan === 'monthly'
-                      ? "border-primary bg-primary/5"
-                      : "border-primary/50 hover:border-primary"
-                  )}>
-                    {/* Popular Badge */}
-                    <div className="absolute top-0 right-0">
-                      <div className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-xl">
-                        {t("profile.mostPopular")}
-                      </div>
-                    </div>
-
-                    <CardContent className="p-4 pt-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Star className="h-4 w-4 text-primary" />
-                            <h3 className="font-bold text-foreground">{t("profile.plans.monthly.name")}</h3>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{t("profile.plans.monthly.desc")}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xl font-bold text-primary">€14.99</span>
-                          <p className="text-xs text-muted-foreground">/{t("profile.perMonth")}</p>
-                        </div>
-                      </div>
-
-                      <ul className="space-y-1.5 mb-4">
-                        {['everythingTrial', 'priorityMatching', 'expandedProfile', 'earlyAccess', 'prioritySupport'].map((feature) => (
-                          <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                            {t(`profile.plans.monthly.features.${feature}`)}
-                          </li>
-                        ))}
-                      </ul>
-
-                      <Button
-                        className="w-full rounded-xl"
-                        disabled={subscription.plan === 'monthly' || subscription.plan === 'premium'}
-                        onClick={() => {
-                          // TODO: Start monthly checkout
-                          toast({ title: t("profile.startingCheckout") });
-                        }}
-                      >
-                        {subscription.plan === 'monthly' ? t("profile.currentPlan") : t("profile.plans.monthly.cta")}
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {/* Premium Plan */}
-                  <Card className={cn(
-                    "rounded-xl border-2 transition-all",
-                    subscription.plan === 'premium'
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Crown className="h-4 w-4 text-amber-500" />
-                            <h3 className="font-bold text-foreground">{t("profile.plans.premium.name")}</h3>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{t("profile.plans.premium.desc")}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xl font-bold text-foreground">€29.99</span>
-                          <p className="text-xs text-muted-foreground">/{t("profile.perMonth")}</p>
-                        </div>
-                      </div>
-
-                      <ul className="space-y-1.5 mb-4">
-                        {['everythingMonthly', 'advancedCompatibility', 'aiSuggestions', 'advancedFilters', 'smallerGroups', 'exclusiveEvents'].map((feature) => (
-                          <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                            {t(`profile.plans.premium.features.${feature}`)}
-                          </li>
-                        ))}
-                      </ul>
-
-                      <Button
-                        className="w-full rounded-xl"
-                        disabled={subscription.plan === 'premium'}
-                        onClick={() => {
-                          // TODO: Start premium checkout
-                          toast({ title: t("profile.startingCheckout") });
-                        }}
-                      >
-                        {subscription.plan === 'premium' ? t("profile.currentPlan") : t("profile.plans.premium.cta")}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Money-back guarantee note */}
-                <p className="text-center text-xs text-muted-foreground pt-2">
-                  {t("profile.moneyBackGuarantee")}
-                </p>
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Smart Feedback Drawer */}
-        <SmartFeedback
-          open={feedbackOpen}
-          onOpenChange={setFeedbackOpen}
-          context="profile_suggestion"
-        />
       </main>
+
+      {/* ── Modals & Sheets ──────────────────────────── */}
+      <EditProfileSheet
+        open={editProfileOpen}
+        onOpenChange={setEditProfileOpen}
+        profile={profile}
+        onSave={handleProfileSave}
+      />
+
+      <EditCitySheet
+        open={editCityOpen}
+        onOpenChange={setEditCityOpen}
+        currentCity={profile.city}
+        onSave={handleCitySave}
+      />
+
+      <EditLanguageSheet
+        open={editLanguageOpen}
+        onOpenChange={setEditLanguageOpen}
+        currentLanguages={profile.languages}
+        onSave={handleLanguageSave}
+      />
+
+      <VerificationSheet
+        open={verificationSheetOpen}
+        onOpenChange={setVerificationSheetOpen}
+        status={profile.verification_status}
+        onSubmit={handleVerificationSubmit}
+        onRetry={handleVerificationRetry}
+      />
+
+      <FeedbackSheet
+        open={feedbackSheetOpen}
+        onOpenChange={setFeedbackSheetOpen}
+      />
+
+      <DeleteAccountFlow
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteConfirm}
+      />
+
+      <SignOutDialog
+        open={signOutDialogOpen}
+        onOpenChange={setSignOutDialogOpen}
+        onConfirm={handleSignOut}
+        loading={signingOut}
+      />
     </DashboardLayout>
   );
-};
-
-export default Profile;
+}

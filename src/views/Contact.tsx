@@ -1,20 +1,17 @@
 'use client';
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Phone, MapPin, Send, CheckCircle, Loader2 } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { Mail, Clock, MapPin, Send, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { submitContactForm, validateContactForm } from "@/services/contactService";
 import { EMAILS } from "@/constants/emails";
 import { handleError } from "@/utils/errorHandler";
-import LocalizedLink from "@/components/LocalizedLink";
+import Link from "next/link";
 
 const Contact = () => {
-  const { t } = useTranslation('contact');
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -28,63 +25,36 @@ const Contact = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name as keyof typeof errors]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
+      setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const validation = validateContactForm(formData);
     if (!validation.valid) {
       setErrors(validation.errors);
-      toast({
-        title: t("validationError"),
-        description: t("fixErrors"),
-        variant: "destructive",
-      });
       return;
     }
-
     setIsSubmitting(true);
     setErrors({});
-
     try {
       const result = await submitContactForm(formData);
-
       if (result.success) {
         setIsSubmitted(true);
-        toast({
-          title: t("messageSent"),
-          description: t("replyWithin"),
-        });
-
+        toast({ title: "Message sent", description: "We'll get back to you within 24 hours." });
         setTimeout(() => {
           setFormData({ name: "", email: "", subject: "", message: "" });
           setIsSubmitted(false);
         }, 3000);
       } else {
-        toast({
-          title: t("failedToSend"),
-          description: result.error || t("tryAgain"),
-          variant: "destructive",
-        });
+        toast({ title: "Failed to send", description: result.error || "Please try again.", variant: "destructive" });
       }
     } catch (error) {
       const errorMessage = handleError(error, 'Contact Form');
-      toast({
-        title: t("error", { ns: "common" }),
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -93,219 +63,110 @@ const Contact = () => {
   const canSubmit = formData.name.trim() && formData.email.trim() && formData.subject.trim() && formData.message.trim() && !isSubmitting;
 
   return (
-    <div className="min-h-screen bg-white">
-      <main className="pt-32">
-        <section className="py-20">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-sm font-semibold mb-6">
-                <Mail size={14} />
-                {t("getInTouch")}
-              </span>
-              <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight mb-6">
-                {t("contactUs")} <span className="text-emerald-600">Us</span>
-              </h1>
-              <p className="text-xl text-gray-600">
-                {t("subtitle")}
-              </p>
+    <div className="min-h-screen bg-[#F6F1EC]">
+      {/* Hero */}
+      <section className="relative pt-32 pb-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#3A0B22]/5 to-transparent" />
+        <div className="container mx-auto px-5 sm:px-8 max-w-3xl relative z-10 text-center">
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#F27C5C] mb-4">Contact</p>
+          <h1 className="font-display text-4xl sm:text-5xl font-bold text-[#3A0B22] tracking-tight leading-[1.15] mb-6">
+            We'd love to hear from you.
+          </h1>
+          <p className="text-lg text-[#5E555B] max-w-xl mx-auto leading-relaxed">
+            Questions, feedback, or just want to say hello? Drop us a line and we'll get back to you within 24 hours.
+          </p>
+        </div>
+      </section>
+
+      {/* Content */}
+      <section className="container mx-auto px-5 sm:px-8 max-w-4xl pb-20">
+        <div className="grid lg:grid-cols-5 gap-8">
+          {/* Contact Info */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
+              <h2 className="font-display text-xl font-bold text-[#3A0B22] mb-6">Get in touch</h2>
+              <div className="space-y-5">
+                <div className="flex gap-3 items-start">
+                  <div className="h-10 w-10 rounded-xl bg-[#F27C5C]/10 flex items-center justify-center shrink-0">
+                    <Mail className="h-5 w-5 text-[#F27C5C]" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#3A0B22] text-sm mb-1">Email</p>
+                    <a href={`mailto:${EMAILS.contact}`} className="text-sm text-[#5E555B] hover:text-[#F27C5C] transition-colors">{EMAILS.contact}</a>
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <div className="h-10 w-10 rounded-xl bg-[#F27C5C]/10 flex items-center justify-center shrink-0">
+                    <Clock className="h-5 w-5 text-[#F27C5C]" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#3A0B22] text-sm mb-1">Response time</p>
+                    <p className="text-sm text-[#5E555B]">Within 24 hours, Mon–Fri</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <div className="h-10 w-10 rounded-xl bg-[#F27C5C]/10 flex items-center justify-center shrink-0">
+                    <MapPin className="h-5 w-5 text-[#F27C5C]" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#3A0B22] text-sm mb-1">Location</p>
+                    <p className="text-sm text-[#5E555B]">Berlin, Germany</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
-              {/* Contact Information */}
-              <div className="space-y-8">
-                <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-8">
-                  <h2 className="font-display text-2xl font-bold text-gray-900 mb-6">
-                    {t("letsConnect")}
-                  </h2>
-                  <p className="text-gray-600 mb-8 leading-relaxed">
-                    {t("intro")}
-                  </p>
-
-                  <div className="space-y-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                        <Mail className="w-6 h-6 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-display font-semibold text-gray-900 mb-2">{t("email")}</h3>
-                        <div className="space-y-1.5 text-sm">
-                          <p><span className="text-gray-500">General:</span>{" "}
-                            <a href={`mailto:${EMAILS.info}`} className="text-gray-600 hover:text-emerald-600 transition-colors">{EMAILS.info}</a>
-                          </p>
-                          <p><span className="text-gray-500">Support:</span>{" "}
-                            <a href={`mailto:${EMAILS.support}`} className="text-gray-600 hover:text-emerald-600 transition-colors">{EMAILS.support}</a>
-                          </p>
-                          <p><span className="text-gray-500">Contact:</span>{" "}
-                            <a href={`mailto:${EMAILS.contact}`} className="text-gray-600 hover:text-emerald-600 transition-colors">{EMAILS.contact}</a>
-                          </p>
-                          <p><span className="text-gray-500">Team:</span>{" "}
-                            <a href={`mailto:${EMAILS.team}`} className="text-gray-600 hover:text-emerald-600 transition-colors">{EMAILS.team}</a>
-                          </p>
-                          <p><span className="text-gray-500">Billing:</span>{" "}
-                            <a href={`mailto:${EMAILS.billing}`} className="text-gray-600 hover:text-emerald-600 transition-colors">{EMAILS.billing}</a>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                        <Phone className="w-6 h-6 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-display font-semibold text-gray-900 mb-1">{t("responseTime")}</h3>
-                        <p className="text-gray-600">
-                          {t("responseTimeDesc")}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                        <MapPin className="w-6 h-6 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-display font-semibold text-gray-900 mb-1">{t("location")}</h3>
-                        <p className="text-gray-600">
-                          {t("locationDesc")}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* FAQ Link */}
-                <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-                  <h3 className="font-display font-semibold text-gray-900 mb-2">
-                    {t("beforeReachOut")}
-                  </h3>
-                  <p className="text-gray-600 text-sm mb-4">
-                    {t("checkFaq")}
-                  </p>
-                  <LocalizedLink to="/faq">
-                    <Button variant="outline" className="w-full">
-                      {t("visitFaq")}
-                    </Button>
-                  </LocalizedLink>
-                </div>
-              </div>
-
-              {/* Contact Form */}
-              <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-8 lg:p-10">
-                {isSubmitted ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-emerald-50 flex items-center justify-center">
-                      <CheckCircle className="w-8 h-8 text-emerald-600" />
-                    </div>
-                    <h3 className="font-display text-2xl font-bold text-gray-900 mb-3">
-                      Message Sent!
-                    </h3>
-                    <p className="text-gray-600">
-                      We've received your message and will get back to you within 24 hours.
-                    </p>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                      <Label htmlFor="name" className="text-base font-medium text-gray-900 mb-2 block">
-                        {t("fullName")}
-                      </Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        type="text"
-                        value={formData.name}
-                        onChange={handleChange}
-                        placeholder="Dr. Jane Smith"
-                        required
-                        className={`h-14 rounded-xl ${errors.name ? 'border-destructive' : ''}`}
-                      />
-                      {errors.name && (
-                        <p className="text-destructive text-xs mt-1">{errors.name}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="email" className="text-base font-medium text-gray-900 mb-2 block">
-                        Email Address *
-                      </Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="doctor@hospital.com"
-                        required
-                        className={`h-14 rounded-xl ${errors.email ? 'border-destructive' : ''}`}
-                      />
-                      {errors.email && (
-                        <p className="text-destructive text-xs mt-1">{errors.email}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="subject" className="text-base font-medium text-gray-900 mb-2 block">
-                        {t("subjectRequired")}
-                      </Label>
-                      <Input
-                        id="subject"
-                        name="subject"
-                        type="text"
-                        value={formData.subject}
-                        onChange={handleChange}
-                        placeholder="How can we help?"
-                        required
-                        className={`h-14 rounded-xl ${errors.subject ? 'border-destructive' : ''}`}
-                      />
-                      {errors.subject && (
-                        <p className="text-destructive text-xs mt-1">{errors.subject}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="message" className="text-base font-medium text-gray-900 mb-2 block">
-                        {t("messageRequired")}
-                      </Label>
-                      <Textarea
-                        id="message"
-                        name="message"
-                        value={formData.message}
-                        onChange={handleChange}
-                        placeholder="Tell us more about your question or feedback..."
-                        required
-                        rows={6}
-                        className={`rounded-xl resize-none ${errors.message ? 'border-destructive' : ''}`}
-                      />
-                      {errors.message && (
-                        <p className="text-destructive text-xs mt-1">{errors.message}</p>
-                      )}
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={!canSubmit || isSubmitting}
-                      className="w-full h-14 font-semibold group disabled:opacity-50 transition-all"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                          {t("sending")}
-                        </>
-                      ) : (
-                        <>
-                          {t("sendMessage")}
-                          <Send className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                )}
-              </div>
+            {/* FAQ Link */}
+            <div className="bg-[#3A0B22] rounded-[20px] p-6 text-center">
+              <p className="text-white/80 text-sm mb-3">Have a common question?</p>
+              <Link href="/en/faq" className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-[#F27C5C] hover:bg-[#e06d4d] text-white text-sm font-semibold transition-all active:scale-[0.98]">
+                Visit our FAQ
+              </Link>
             </div>
           </div>
-        </section>
-      </main>
+
+          {/* Form */}
+          <div className="lg:col-span-3">
+            <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
+              {isSubmitted ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#F27C5C]/10 flex items-center justify-center">
+                    <CheckCircle className="w-8 h-8 text-[#F27C5C]" />
+                  </div>
+                  <h3 className="font-display text-2xl font-bold text-[#3A0B22] mb-3">Message sent!</h3>
+                  <p className="text-[#5E555B]">We've received your message and will get back to you within 24 hours.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <Label htmlFor="name" className="text-sm font-medium text-[#3A0B22] mb-2 block">Full name</Label>
+                    <Input id="name" name="name" type="text" value={formData.name} onChange={handleChange} placeholder="Dr. Jane Smith" required className={`h-12 rounded-xl bg-white border-[#E8DED5] ${errors.name ? 'border-red-400' : ''}`} />
+                    {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="email" className="text-sm font-medium text-[#3A0B22] mb-2 block">Email address</Label>
+                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="doctor@hospital.com" required className={`h-12 rounded-xl bg-white border-[#E8DED5] ${errors.email ? 'border-red-400' : ''}`} />
+                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="subject" className="text-sm font-medium text-[#3A0B22] mb-2 block">Subject</Label>
+                    <Input id="subject" name="subject" type="text" value={formData.subject} onChange={handleChange} placeholder="How can we help?" required className={`h-12 rounded-xl bg-white border-[#E8DED5] ${errors.subject ? 'border-red-400' : ''}`} />
+                    {errors.subject && <p className="text-red-500 text-xs mt-1">{errors.subject}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="message" className="text-sm font-medium text-[#3A0B22] mb-2 block">Message</Label>
+                    <Textarea id="message" name="message" value={formData.message} onChange={handleChange} placeholder="Tell us more..." required rows={5} className={`rounded-xl bg-white border-[#E8DED5] resize-none ${errors.message ? 'border-red-400' : ''}`} />
+                    {errors.message && <p className="text-red-500 text-xs mt-1">{errors.message}</p>}
+                  </div>
+                  <button type="submit" disabled={!canSubmit} className="w-full h-14 rounded-full bg-[#F27C5C] hover:bg-[#e06d4d] disabled:opacity-50 text-white font-display font-semibold text-base transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2">
+                    {isSubmitting ? (<><Loader2 className="h-5 w-5 animate-spin" /> Sending...</>) : (<><Send className="h-4 w-4" /> Send message</>)}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

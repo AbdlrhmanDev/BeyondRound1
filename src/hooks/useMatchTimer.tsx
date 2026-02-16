@@ -87,7 +87,7 @@ export const useMatchTimer = () => {
                   type: "system",
                   title: "🎉 YOUR MATCH IS READY!",
                   message: "🎉 YOUR MATCH IS READY!",
-                  link: `/group-chat/${conversation.id}`,
+                  link: `/chat/${conversation.id}`,
                   metadata: { group_id: groupId },
                 });
 
@@ -97,7 +97,7 @@ export const useMatchTimer = () => {
                   description: "You've been matched with a group! Let's start chatting.",
                 });
 
-                navigate(`/group-chat/${conversation.id}`);
+                navigate(`/chat/${conversation.id}`);
               }
             }
           }

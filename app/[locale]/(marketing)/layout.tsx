@@ -19,7 +19,7 @@ export default async function MarketingLayout({
   const dict = await getDictionary(locale as Locale);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#F6F1EC]">
       <MarketingHeaderHtml dict={dict} locale={locale as Locale} />
       <main>{children}</main>
       <FooterSmall dict={dict} locale={locale as Locale} />

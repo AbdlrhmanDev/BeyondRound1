@@ -12,13 +12,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Send, Users, MapPin, Sparkles, Loader2, Image as ImageIcon, X, Upload, Circle, Stethoscope, MapPin as MapPinIcon, MoreVertical, Pencil, Trash2, Check, Vote, Coffee, Calendar, Clock, BarChart3, Plus, PenLine } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  ArrowLeft, Send, Users, MapPin, Sparkles, Loader2,
+  Image as ImageIcon, X, Upload, MoreVertical, Pencil,
+  Trash2, Check, Calendar, Clock, Coffee, BarChart3,
+  Plus, PenLine, Lock, Vote, ChevronDown, ChevronUp,
+  MessageCircle, AlertCircle, Flag, Shield, Copy, Reply,
+} from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { compressImages } from "@/utils/imageCompression";
@@ -27,19 +36,21 @@ const ImageViewer = dynamic(() => import("@/components/ImageViewer").then(mod =>
   ssr: false,
   loading: () => null
 });
-import { getGroupMessages, getGroupConversation, sendGroupMessage, updateGroupMessageMedia, deleteGroupMessage, editGroupMessage, Message } from "@/services/messageService";
+import {
+  getGroupMessages, getGroupConversation, sendGroupMessage,
+  updateGroupMessageMedia, deleteGroupMessage, editGroupMessage,
+  Message,
+} from "@/services/messageService";
 import { getGroupInfo, getGroupMembers } from "@/services/matchService";
 import { getPublicProfile } from "@/services/profileService";
 import { getPublicPreferences } from "@/services/onboardingService";
 import { uploadPhotos } from "@/services/storageService";
-import { GroupChatEmptyState } from "@/components/GroupChatEmptyState";
+import {
+  createPoll, getPolls, getPollTemplates, PollWithVotes,
+  votePoll, unvotePoll, closePoll, deletePoll,
+} from "@/services/pollService";
 
-const Poll = dynamic(() => import("@/components/Poll").then(mod => mod.Poll), {
-  ssr: false,
-  loading: () => <div className="h-40 animate-pulse bg-muted rounded-xl mb-4" />
-});
-import { createPoll, getPolls, getPollTemplates, PollWithVotes } from "@/services/pollService";
-
+// ─── Types ────────────────────────────────────────────────
 interface Member {
   user_id: string;
   full_name: string | null;
@@ -49,23 +60,208 @@ interface Member {
   interests?: string[];
 }
 
+// ─── Helpers ──────────────────────────────────────────────
+/** "Dr. L." style display name */
+function drName(fullName: string | null): string {
+  if (!fullName) return "Dr.";
+  const parts = fullName.split(" ").filter(Boolean);
+  if (parts.length === 0) return "Dr.";
+  return `Dr. ${parts[parts.length - 1].charAt(0)}.`;
+}
+
+function getInitials(name: string | null): string {
+  if (!name) return "?";
+  return name.split(" ").filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDateLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  if (isToday) return "Today";
+  if (isYesterday) return "Yesterday";
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+}
+
+function shouldShowDateSeparator(current: string, previous: string | null): boolean {
+  if (!previous) return true;
+  return new Date(current).toDateString() !== new Date(previous).toDateString();
+}
+
+// ─── Inline Poll Card ─────────────────────────────────────
+const PollCard = memo(({
+  poll, userId, onVoteChange, isOwn,
+}: {
+  poll: PollWithVotes;
+  userId: string;
+  onVoteChange: () => void;
+  isOwn: boolean;
+}) => {
+  const { t } = useTranslation();
+  const [isVoting, setIsVoting] = useState(false);
+  const [localVotes, setLocalVotes] = useState<number[]>(poll.user_votes);
+  const [localVoteCounts, setLocalVoteCounts] = useState<number[]>(poll.vote_counts);
+
+  const handleVote = async (optionIndex: number) => {
+    if (poll.is_closed || isVoting) return;
+    setIsVoting(true);
+    const isAlreadyVoted = localVotes.includes(optionIndex);
+
+    // Optimistic update
+    if (isAlreadyVoted) {
+      setLocalVotes(localVotes.filter(v => v !== optionIndex));
+      setLocalVoteCounts(localVoteCounts.map((c, i) => i === optionIndex ? Math.max(0, c - 1) : c));
+    } else {
+      if (!poll.is_multiple_choice && localVotes.length > 0) {
+        const prev = localVotes[0];
+        setLocalVoteCounts(localVoteCounts.map((c, i) => i === prev ? Math.max(0, c - 1) : c));
+        await unvotePoll(poll.id, userId, prev);
+      }
+      setLocalVotes(poll.is_multiple_choice ? [...localVotes, optionIndex] : [optionIndex]);
+      setLocalVoteCounts(localVoteCounts.map((c, i) => i === optionIndex ? c + 1 : c));
+    }
+
+    try {
+      if (isAlreadyVoted) await unvotePoll(poll.id, userId, optionIndex);
+      else await votePoll(poll.id, userId, optionIndex);
+      onVoteChange();
+    } catch {
+      setLocalVotes(poll.user_votes);
+      setLocalVoteCounts(poll.vote_counts);
+    } finally {
+      setIsVoting(false);
+    }
+  };
+
+  const handleClose = async () => {
+    if (await closePoll(poll.id, userId)) onVoteChange();
+  };
+
+  const handleDelete = async () => {
+    if (await deletePoll(poll.id, userId)) onVoteChange();
+  };
+
+  const totalVotes = localVoteCounts.reduce((s, c) => s + c, 0);
+
+  const typeIcon: Record<string, string> = {
+    day: "📅", time: "⏰", activity: "☕", place: "📍", custom: "📊",
+  };
+
+  return (
+    <div className="max-w-[320px] mx-auto my-4 rounded-[22px] border border-[#E8DDD4] bg-[#FDFAF7] shadow-[0_2px_16px_rgba(58,11,34,0.06)] overflow-hidden">
+      {/* Header */}
+      <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-lg flex-shrink-0">{typeIcon[poll.poll_type] || "📊"}</span>
+          <h4 className="font-heading text-[15px] font-semibold text-[#3A0B22] leading-snug">
+            {poll.question}
+          </h4>
+        </div>
+        {poll.creator_id === userId && !poll.is_closed && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-[#F6F1EC] transition-colors flex-shrink-0">
+                <MoreVertical className="h-4 w-4 text-[#3A0B22]/40" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36 rounded-xl">
+              <DropdownMenuItem onClick={handleClose} className="gap-2 text-[#3A0B22]">
+                <Lock className="h-3.5 w-3.5" /> Close poll
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDelete} className="gap-2 text-red-600">
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {poll.is_closed && (
+        <div className="mx-5 mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F6F1EC] w-fit">
+          <Lock className="h-3 w-3 text-[#3A0B22]/50" />
+          <span className="text-[11px] font-medium text-[#3A0B22]/60">Poll closed</span>
+        </div>
+      )}
+
+      {/* Options */}
+      <div className="px-4 pb-2 space-y-2">
+        {poll.options.map((option, idx) => {
+          const isSelected = localVotes.includes(idx);
+          const count = localVoteCounts[idx] || 0;
+          const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+
+          return (
+            <button
+              key={idx}
+              onClick={() => handleVote(idx)}
+              disabled={poll.is_closed || isVoting}
+              className={`w-full relative rounded-2xl p-3.5 text-left transition-all border ${
+                isSelected
+                  ? "bg-[#F27C5C]/8 border-[#F27C5C]/30 ring-1 ring-[#F27C5C]/15"
+                  : "bg-white border-[#E8DDD4]/60 hover:border-[#F27C5C]/25"
+              } ${poll.is_closed ? "cursor-default" : "active:scale-[0.98]"}`}
+            >
+              {/* Progress fill */}
+              <div
+                className={`absolute inset-0 rounded-2xl transition-all duration-500 ${
+                  isSelected ? "bg-[#F27C5C]/8" : "bg-[#F6F1EC]/40"
+                }`}
+                style={{ width: `${pct}%` }}
+              />
+              <div className="relative flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                    isSelected
+                      ? "bg-[#F27C5C] border-[#F27C5C] text-white"
+                      : "border-[#C9BBB0] bg-white"
+                  }`}>
+                    {isSelected && <Check className="h-2.5 w-2.5" />}
+                  </div>
+                  <span className="text-[13px] font-medium text-[#3A0B22]">
+                    {option.emoji && <span className="mr-1">{option.emoji}</span>}
+                    {option.text}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-[#3A0B22]/50 flex-shrink-0">
+                  <span className="font-semibold">{count}</span>
+                  {totalVotes > 0 && <span>({pct}%)</span>}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-3 border-t border-[#E8DDD4]/50 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[11px] text-[#3A0B22]/45">
+          <Users className="h-3 w-3" />
+          <span>{poll.total_votes} {poll.total_votes === 1 ? "vote" : "votes"}</span>
+        </div>
+        {poll.is_multiple_choice && (
+          <span className="text-[11px] text-[#3A0B22]/40">Multiple choice</span>
+        )}
+      </div>
+    </div>
+  );
+});
+PollCard.displayName = "PollCard";
+
+// ─── Message Bubble ───────────────────────────────────────
 const MessageItem = memo(({
-  message,
-  isOwn,
-  sender,
-  isConsecutive,
-  editingMessageId,
-  editContent,
-  setEditContent,
-  handleStartEdit,
-  handleSaveEdit,
-  handleCancelEdit,
-  handleDeleteMessage,
-  handleEditKeyPress,
-  editInputRef,
-  setViewingImages,
-  setViewingImageIndex,
-  t
+  message, isOwn, sender, isConsecutive,
+  editingMessageId, editContent, setEditContent,
+  handleStartEdit, handleSaveEdit, handleCancelEdit,
+  handleDeleteMessage, handleEditKeyPress, editInputRef,
+  setViewingImages, setViewingImageIndex,
+  onLongPress,
 }: {
   message: Message;
   isOwn: boolean;
@@ -73,36 +269,28 @@ const MessageItem = memo(({
   isConsecutive: boolean;
   editingMessageId: string | null;
   editContent: string;
-  setEditContent: (val: string) => void;
-  handleStartEdit: (msg: Message) => void;
+  setEditContent: (v: string) => void;
+  handleStartEdit: (m: Message) => void;
   handleSaveEdit: () => void;
   handleCancelEdit: () => void;
   handleDeleteMessage: (id: string) => void;
   handleEditKeyPress: (e: React.KeyboardEvent) => void;
   editInputRef: React.RefObject<HTMLInputElement>;
-  setViewingImages: (images: any[] | null) => void;
+  setViewingImages: (imgs: any[] | null) => void;
   setViewingImageIndex: (idx: number) => void;
-  t: any;
+  onLongPress?: (msg: Message) => void;
 }) => {
-  const isAI = message.content.startsWith("🤖 AI");
-  const initials = sender.full_name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase() || "U";
+  const isSystem = message.is_ai || message.content.startsWith("🤖");
+  const isDeleted = message.is_deleted;
+  const initials = getInitials(sender.full_name);
+  const showAvatar = !isOwn && !isConsecutive && !isSystem;
+  const showName = !isOwn && !isConsecutive && !isSystem;
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showAvatar = !isOwn && !isConsecutive;
-  const showName = !isOwn && !isConsecutive;
-
-  // Handle media parsing efficiently
   const parsedMedia = useMemo(() => {
     if (!message.media_urls) return [];
     if (typeof message.media_urls === 'string') {
-      try {
-        return JSON.parse(message.media_urls);
-      } catch (e) {
-        return [];
-      }
+      try { return JSON.parse(message.media_urls); } catch { return []; }
     }
     if (Array.isArray(message.media_urls)) {
       return message.media_urls.map(m =>
@@ -114,110 +302,149 @@ const MessageItem = memo(({
 
   const hasMedia = message.has_media && parsedMedia.length > 0;
 
+  const handleTouchStart = () => {
+    if (isOwn && onLongPress) {
+      longPressTimer.current = setTimeout(() => onLongPress(message), 500);
+    }
+  };
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
+  // ── System message (bot/AI) ──
+  if (isSystem) {
+    return (
+      <div className="flex justify-center my-3">
+        <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-[#F6F1EC] border border-[#E8DDD4]/60 text-center">
+          <p className="text-[12px] text-[#3A0B22]/60 leading-relaxed whitespace-pre-wrap">
+            {message.content}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Deleted message ──
+  if (isDeleted) {
+    return (
+      <div className={`flex gap-2 ${isOwn ? "flex-row-reverse" : "flex-row"} ${isConsecutive ? "mt-0.5" : "mt-5"}`}>
+        {!isOwn && (showAvatar ? (
+          <Avatar className="h-8 w-8 flex-shrink-0 border border-[#E8DDD4]">
+            <AvatarImage src={sender.avatar_url || undefined} />
+            <AvatarFallback className="bg-[#4B0F2D] text-white text-[10px] font-semibold">{initials}</AvatarFallback>
+          </Avatar>
+        ) : <div className="w-8 flex-shrink-0" />)}
+        <div className="px-4 py-2.5 rounded-[18px] bg-[#F6F1EC]/60 border border-[#E8DDD4]/40">
+          <p className="text-[12px] text-[#3A0B22]/35 italic">Message removed</p>
+          <span className="text-[10px] text-[#3A0B22]/25 mt-0.5 block">{formatTime(message.created_at)}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`flex gap-2 sm:gap-3 ${isOwn ? "flex-row-reverse" : "flex-row"} ${isConsecutive ? "mt-1" : "mt-6"} w-full`}>
+    <div
+      className={`flex gap-2 ${isOwn ? "flex-row-reverse" : "flex-row"} ${isConsecutive ? "mt-0.5" : "mt-5"} w-full`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
+      {/* Avatar (others only) */}
       {!isOwn && (
         showAvatar ? (
-          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 ring-2 ring-background shadow-md border-2 border-background">
+          <Avatar className="h-8 w-8 flex-shrink-0 border border-[#E8DDD4] shadow-sm">
             <AvatarImage src={sender.avatar_url || undefined} />
-            <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white text-xs font-semibold">
-              {initials}
-            </AvatarFallback>
+            <AvatarFallback className="bg-[#4B0F2D] text-white text-[10px] font-semibold">{initials}</AvatarFallback>
           </Avatar>
-        ) : (
-          <div className="w-8 sm:w-10 flex-shrink-0" />
-        )
+        ) : <div className="w-8 flex-shrink-0" />
       )}
 
-      <div className={`flex-1 ${isOwn ? "items-end" : "items-start"} flex flex-col max-w-[85%] sm:max-w-[75%]`}>
+      <div className={`flex-1 flex flex-col ${isOwn ? "items-end" : "items-start"} max-w-[80%]`}>
+        {/* Sender name */}
         {showName && (
-          <div className="flex items-center gap-2 mb-2 px-1">
-            <span className="text-sm font-semibold text-foreground">
-              {sender.full_name || "Anonymous"}
+          <div className="flex items-center gap-1.5 mb-1 px-1">
+            <span className="text-[12px] font-semibold text-[#3A0B22]/70">
+              {drName(sender.full_name)}
             </span>
             {sender.specialty && (
-              <span className="text-xs text-muted-foreground font-medium">• {sender.specialty}</span>
+              <span className="text-[11px] text-[#3A0B22]/40">{sender.specialty}</span>
             )}
           </div>
         )}
+
         <div className="relative group flex items-start gap-1">
-          <div
-            className={`rounded-2xl px-4 py-3 shadow-md transition-all hover:shadow-lg backdrop-blur-sm ${isAI
-              ? "bg-accent/10 border border-accent/20 text-foreground"
-              : isOwn
-                ? "bg-gradient-to-br from-primary via-orange-500 to-orange-600 text-white rounded-br-md shadow-[0_4px_12px_rgba(255,152,0,0.25)] border border-white/10"
-                : "bg-card/95 text-foreground border border-border/80 rounded-bl-md shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
-              } ${isConsecutive && !isOwn ? "rounded-tl-md" : ""} ${isConsecutive && isOwn ? "rounded-tr-md" : ""}`}
-          >
+          {/* Message bubble */}
+          <div className={`rounded-[18px] px-4 py-2.5 transition-all ${
+            isOwn
+              ? "bg-gradient-to-br from-[#F27C5C] to-[#E8654A] text-white shadow-[0_2px_12px_rgba(242,124,92,0.25)]"
+              : "bg-white border border-[#E8DDD4]/80 text-[#3A0B22] shadow-[0_1px_4px_rgba(58,11,34,0.04)]"
+          } ${isConsecutive && !isOwn ? "rounded-tl-md" : ""} ${isConsecutive && isOwn ? "rounded-tr-md" : ""}`}>
+
+            {/* Media */}
             {hasMedia && (
-              <div className={`grid gap-2.5 mb-2 ${message.content ? 'mb-3' : ''}`} style={{ gridTemplateColumns: parsedMedia.length === 1 ? '1fr' : 'repeat(2, 1fr)' }}>
+              <div className={`grid gap-2 ${message.content ? 'mb-2' : ''}`} style={{ gridTemplateColumns: parsedMedia.length === 1 ? '1fr' : 'repeat(2, 1fr)' }}>
                 {parsedMedia.map((media: any, idx: number) => (
                   <div
                     key={idx}
-                    className="relative rounded-2xl overflow-hidden group/image cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] bg-card border border-border/30 aspect-square"
-                    onClick={() => {
-                      setViewingImages(parsedMedia);
-                      setViewingImageIndex(idx);
-                    }}
+                    className="relative rounded-xl overflow-hidden cursor-pointer aspect-square bg-[#F6F1EC]"
+                    onClick={() => { setViewingImages(parsedMedia); setViewingImageIndex(idx); }}
                   >
-                    <Image
-                      src={media.url}
-                      alt={`Attachment ${idx + 1}`}
-                      fill
-                      sizes="(max-width: 640px) 100vw, 400px"
-                      className="object-cover"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity" />
+                    <Image src={media.url} alt={`Photo ${idx + 1}`} fill sizes="200px" className="object-cover" loading="lazy" />
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Edit mode */}
             {editingMessageId === message.id ? (
               <div className="flex items-center gap-2">
                 <Input
                   ref={editInputRef}
                   value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
+                  onChange={e => setEditContent(e.target.value)}
                   onKeyDown={handleEditKeyPress}
-                  className="flex-1 h-8 text-sm bg-background/90 border-white/30 text-foreground"
+                  className="flex-1 h-8 text-[13px] bg-white/90 border-white/30 text-[#3A0B22] rounded-xl"
                   autoFocus
                 />
-                <Button size="icon" variant="ghost" onClick={handleSaveEdit} className="h-7 w-7 hover:bg-white/20">
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={handleCancelEdit} className="h-7 w-7 hover:bg-white/20">
-                  <X className="h-4 w-4" />
-                </Button>
+                <button onClick={handleSaveEdit} className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-white/20"><Check className="h-3.5 w-3.5" /></button>
+                <button onClick={handleCancelEdit} className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-white/20"><X className="h-3.5 w-3.5" /></button>
               </div>
             ) : message.content ? (
-              <p className={`text-sm whitespace-pre-wrap leading-relaxed ${isOwn ? 'text-white' : 'text-foreground'}`}>
+              <p className={`text-[14px] whitespace-pre-wrap leading-[1.5] ${isOwn ? 'text-white' : 'text-[#3A0B22]'}`}>
                 {message.content}
               </p>
             ) : null}
-            <div className="flex items-center justify-end gap-1.5 mt-1.5 -mb-1 opacity-70">
+
+            {/* Timestamp + edited */}
+            <div className={`flex items-center justify-end gap-1 mt-1 ${isOwn ? 'opacity-80' : 'opacity-50'}`}>
               {message.edited_at && !editingMessageId && (
-                <span className={`text-[9px] ${isOwn ? 'text-white/80' : 'text-muted-foreground'}`}>{t("chat.edited")}</span>
+                <span className={`text-[9px] ${isOwn ? 'text-white/70' : 'text-[#3A0B22]/40'}`}>Edited</span>
               )}
-              <span className={`text-[10px] font-medium ${isOwn ? 'text-white/90' : 'text-muted-foreground'}`}>
-                {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              <span className={`text-[10px] font-medium ${isOwn ? 'text-white/80' : 'text-[#3A0B22]/40'}`}>
+                {formatTime(message.created_at)}
               </span>
             </div>
           </div>
-          {isOwn && !isAI && (
+
+          {/* Actions (own messages, hover) */}
+          {isOwn && (
             <div className="order-first">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                  </Button>
+                  <button className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-[#F6F1EC]">
+                    <MoreVertical className="h-3.5 w-3.5 text-[#3A0B22]/40" />
+                  </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-36">
-                  <DropdownMenuItem onClick={() => handleStartEdit(message)} className="gap-2">
-                    <Pencil className="h-4 w-4" /> {t("chat.edit")}
+                <DropdownMenuContent align="end" className="w-40 rounded-xl border-[#E8DDD4]">
+                  <DropdownMenuItem onClick={() => handleStartEdit(message)} className="gap-2 text-[13px]">
+                    <Pencil className="h-3.5 w-3.5" /> Edit
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDeleteMessage(message.id)} className="gap-2 text-destructive focus:text-destructive">
-                    <Trash2 className="h-4 w-4" /> {t("chat.delete")}
+                  <DropdownMenuItem onClick={() => navigator.clipboard.writeText(message.content)} className="gap-2 text-[13px]">
+                    <Copy className="h-3.5 w-3.5" /> Copy
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleDeleteMessage(message.id)} className="gap-2 text-[13px] text-red-600 focus:text-red-600">
+                    <Trash2 className="h-3.5 w-3.5" /> Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -228,21 +455,39 @@ const MessageItem = memo(({
     </div>
   );
 });
-
 MessageItem.displayName = "MessageItem";
 
-const GroupChat = () => {
+// ─── Date Separator ───────────────────────────────────────
+function DateSeparator({ date }: { date: string }) {
+  return (
+    <div className="flex items-center gap-3 my-5">
+      <div className="flex-1 h-px bg-[#E8DDD4]/60" />
+      <span className="text-[11px] font-medium text-[#3A0B22]/35 tracking-wide">{formatDateLabel(date)}</span>
+      <div className="flex-1 h-px bg-[#E8DDD4]/60" />
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────
+interface GroupChatProps {
+  conversationIdProp?: string;
+}
+
+const GroupChat = ({ conversationIdProp }: GroupChatProps = {}) => {
   const params = useParams();
-  const conversationId = params.conversationId as string | undefined;
+  const conversationId = conversationIdProp || (params.conversationId as string | undefined);
   const navigate = useLocalizedNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
 
+  // ── State ──
   const [messages, setMessages] = useState<Message[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [groupName, setGroupName] = useState<string>("");
-  const [groupId, setGroupId] = useState<string>("");
+  const [groupName, setGroupName] = useState("");
+  const [groupCity, setGroupCity] = useState("");
+  const [matchWeek, setMatchWeek] = useState("");
+  const [groupId, setGroupId] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
@@ -252,1508 +497,776 @@ const GroupChat = () => {
   const [viewingImages, setViewingImages] = useState<Array<{ url: string; type: string; size?: number }> | null>(null);
   const [viewingImageIndex, setViewingImageIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
-  const [showQuickActions, setShowQuickActions] = useState(false);
+  const [showPlanPanel, setShowPlanPanel] = useState(false);
   const [polls, setPolls] = useState<PollWithVotes[]>([]);
   const [showCustomPoll, setShowCustomPoll] = useState(false);
   const [customQuestion, setCustomQuestion] = useState("");
   const [customOptions, setCustomOptions] = useState(["", ""]);
   const [customMultipleChoice, setCustomMultipleChoice] = useState(false);
+  const [pollsExpanded, setPollsExpanded] = useState(true);
+  const [groupDetailsOpen, setGroupDetailsOpen] = useState(false);
+  const [actionSheetMsg, setActionSheetMsg] = useState<Message | null>(null);
 
+  // ── Refs ──
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const pollChannelRef = useRef<RealtimeChannel | null>(null);
 
+  // ── Auth guard ──
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
+    if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
+  // ── Fetch chat data ──
   const fetchChatData = useCallback(async () => {
     if (!conversationId || !user) return;
-
     try {
       setLoading(true);
-
-      // Fetch conversation and messages in parallel
-      const [conversation, messagesData] = await Promise.all([
-        getGroupConversation(conversationId),
-        getGroupMessages(conversationId, 100),
-      ]);
-
+      let conversation = await getGroupConversation(conversationId);
       if (!conversation) {
-        navigate("/matches");
-        return;
+        await new Promise(r => setTimeout(r, 1000));
+        conversation = await getGroupConversation(conversationId);
       }
+      if (!conversation) { navigate("/matches"); return; }
 
-      if (messagesData) {
-        setMessages(messagesData);
-      }
-
+      const messagesData = await getGroupMessages(conversationId, 100);
+      if (messagesData) setMessages(messagesData);
       setGroupId(conversation.group_id);
 
-      // Fetch group info and members in parallel
       const [groupData, membersData] = await Promise.all([
         getGroupInfo(conversation.group_id),
         getGroupMembers(conversation.group_id),
       ]);
 
       if (membersData && (membersData as any[]).length > 0) {
-        const memberUserIds = (membersData as any[]).map(m => m.user_id);
-
-        // Fetch all profiles and preferences in batch using services
-        const [profilesPromises, prefsPromises] = await Promise.all([
-          Promise.all(memberUserIds.map(id => getPublicProfile(id))),
-          Promise.all(memberUserIds.map(id => getPublicPreferences(id))),
+        const memberUserIds = (membersData as any[]).map((m: any) => m.user_id);
+        const [profiles, prefs] = await Promise.all([
+          Promise.all(memberUserIds.map((id: string) => getPublicProfile(id))),
+          Promise.all(memberUserIds.map((id: string) => getPublicPreferences(id))),
         ]);
 
-        // Build member profiles array
-        const memberProfiles = memberUserIds.map((userId, index) => {
-          const profile = profilesPromises[index];
-          const prefs = prefsPromises[index] as {
-            specialty?: string | null;
-            interests?: string[] | null;
-            other_interests?: string[] | null;
-            sports?: string[] | null;
-            music_preferences?: string[] | null;
-            movie_preferences?: string[] | null;
-            social_style?: string[] | null;
-            culture_interests?: string[] | null;
-            lifestyle?: string[] | null;
-          } | null;
-
-          // Combine all available interests from public preferences
-          const allInterests = [
-            ...(prefs?.interests || []),
-            ...(prefs?.other_interests || []),
-            ...(prefs?.sports || []),
-            ...(prefs?.music_preferences || []),
-            ...(prefs?.movie_preferences || []),
-            ...(prefs?.social_style || []),
-            ...(prefs?.culture_interests || []),
-            ...(prefs?.lifestyle || []),
-          ].filter(Boolean).slice(0, 8) as string[];
-
-          const memberData = {
-            user_id: userId,
-            full_name: profile?.full_name || null,
-            avatar_url: profile?.avatar_url || null,
-            city: profile?.city || null,
-            specialty: prefs?.specialty || null,
-            interests: allInterests.length > 0 ? allInterests : undefined,
+        const memberProfiles = memberUserIds.map((uid: string, i: number) => {
+          const p = profiles[i];
+          const pr = prefs[i] as any;
+          const interests = [
+            ...(pr?.interests || []), ...(pr?.other_interests || []),
+            ...(pr?.sports || []), ...(pr?.social_style || []),
+            ...(pr?.culture_interests || []), ...(pr?.lifestyle || []),
+          ].filter(Boolean).slice(0, 6) as string[];
+          return {
+            user_id: uid,
+            full_name: p?.full_name || null,
+            avatar_url: p?.avatar_url || null,
+            city: p?.city || null,
+            specialty: pr?.specialty || null,
+            interests: interests.length > 0 ? interests : undefined,
           };
-
-          // Debug logging
-          if (!memberData.full_name || !memberData.specialty) {
-            console.log(`Member ${userId} data:`, {
-              profile,
-              prefs,
-              memberData
-            });
-          }
-
-          return memberData;
         });
-
         setMembers(memberProfiles);
 
-        // Format group name with date and city
         if (groupData) {
-          const cities = Array.from(new Set(memberProfiles.map(m => m.city).filter(Boolean)));
-          const city = cities[0] || "Unknown";
-
-          let dateStr = "";
+          const cities = [...new Set(memberProfiles.map((m: any) => m.city).filter(Boolean))];
+          setGroupCity(cities[0] || "Berlin");
           if (groupData.match_week) {
             try {
-              const matchDate = new Date(groupData.match_week);
-              const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-              const month = monthNames[matchDate.getMonth()];
-              const day = matchDate.getDate();
-              dateStr = `${month} ${day}`;
-            } catch (e) {
-              dateStr = "Unknown";
-            }
+              const d = new Date(groupData.match_week);
+              const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+              setMatchWeek(days[d.getDay()]);
+              setGroupName(groupData.name || `${days[d.getDay()]} Group`);
+            } catch { setGroupName("Your Group"); }
           } else {
-            dateStr = "Unknown";
+            setGroupName(groupData.name || "Your Group");
           }
-
-          setGroupName(`${dateStr} - ${city}`);
         }
       } else if (groupData) {
-        setGroupName(groupData.name || `Group ${groupData.id.slice(0, 6)}`);
+        setGroupName(groupData.name || "Your Group");
       }
-    } catch (error) {
-      console.error("Error fetching chat data:", error);
+    } catch (err) {
+      console.error("Error fetching chat data:", err);
     } finally {
       setLoading(false);
     }
   }, [conversationId, user, navigate]);
 
-  useEffect(() => {
-    fetchChatData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, user]);
+  useEffect(() => { fetchChatData(); }, [conversationId, user]); // eslint-disable-line
 
-  // Subscribe to new messages
+  // ── Realtime: messages ──
   useEffect(() => {
     if (!conversationId) return;
-
-    // Clean up existing channel before creating a new one
     if (channelRef.current) {
-      try {
-        channelRef.current.unsubscribe();
-        getSupabaseClient().removeChannel(channelRef.current);
-      } catch (err) {
-        // Silently handle cleanup errors
-      }
+      try { channelRef.current.unsubscribe(); getSupabaseClient().removeChannel(channelRef.current); } catch {}
       channelRef.current = null;
     }
-
-    let channel: RealtimeChannel | null = null;
-
     try {
-      channel = getSupabaseClient()
-        .channel(`group_messages:${conversationId}`, {
-          config: {
-            broadcast: { self: false },
-          },
+      const ch = getSupabaseClient()
+        .channel(`group_messages:${conversationId}`, { config: { broadcast: { self: false } } })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages", filter: `conversation_id=eq.${conversationId}` }, (payload) => {
+          setMessages(prev => {
+            if (prev.some(m => m.id === (payload.new as Message).id)) return prev;
+            return [...prev, payload.new as Message];
+          });
         })
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "group_messages",
-            filter: `conversation_id=eq.${conversationId}`,
-          },
-          (payload) => {
-            try {
-              setMessages((prev) => {
-                // Avoid duplicates
-                const exists = prev.some(m => m.id === (payload.new as Message).id);
-                if (exists) return prev;
-                return [...prev, payload.new as Message];
-              });
-            } catch (err) {
-              // Silently handle errors in message handler
-            }
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "group_messages",
-            filter: `conversation_id=eq.${conversationId}`,
-          },
-          (payload) => {
-            try {
-              // Update the message in the list when media URLs are added
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === payload.new.id ? (payload.new as Message) : msg
-                )
-              );
-            } catch (err) {
-              // Silently handle errors in message handler
-            }
-          }
-        );
-
-      // Subscribe with error handling
-      try {
-        channel.subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            channelRef.current = channel;
-          }
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "group_messages", filter: `conversation_id=eq.${conversationId}` }, (payload) => {
+          setMessages(prev => prev.map(m => m.id === payload.new.id ? (payload.new as Message) : m));
         });
-      } catch (subscribeError) {
-        // Silently catch subscription errors - they're often from browser extensions
-      }
-    } catch (err) {
-      // Silently handle channel creation errors
-    }
-
+      ch.subscribe(s => { if (s === "SUBSCRIBED") channelRef.current = ch; });
+    } catch {}
     return () => {
-      if (channelRef.current) {
-        try {
-          channelRef.current.unsubscribe();
-          getSupabaseClient().removeChannel(channelRef.current);
-        } catch (err) {
-          // Silently handle cleanup errors
-        }
-        channelRef.current = null;
-      }
+      if (channelRef.current) { try { channelRef.current.unsubscribe(); getSupabaseClient().removeChannel(channelRef.current); } catch {} channelRef.current = null; }
     };
   }, [conversationId]);
 
+  // ── Scroll to bottom ──
   useEffect(() => {
     if (messagesEndRef.current) {
-      // Use 'auto' for mass updates or large history, 'smooth' for single new messages
-      const isInitialLoad = messages.length > 0 && messages.length < 15;
-      const behavior = isInitialLoad ? "auto" : "smooth";
-
-      requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior });
-      });
+      requestAnimationFrame(() => messagesEndRef.current?.scrollIntoView({ behavior: messages.length < 15 ? "auto" : "smooth" }));
     }
-  }, [messages.length]); // Only scroll when message count changes, not on every content update
+  }, [messages.length]);
 
+  // ── Polls ──
+  const fetchPolls = useCallback(async () => {
+    if (!conversationId || !user) return;
+    try { setPolls(await getPolls(conversationId, user.id)); } catch {}
+  }, [conversationId, user]);
+
+  useEffect(() => { fetchPolls(); }, [fetchPolls]);
+
+  useEffect(() => {
+    if (!conversationId || !user) return;
+    if (pollChannelRef.current) { try { pollChannelRef.current.unsubscribe(); getSupabaseClient().removeChannel(pollChannelRef.current); } catch {} pollChannelRef.current = null; }
+    try {
+      const ch = getSupabaseClient()
+        .channel(`polls:${conversationId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "polls", filter: `conversation_id=eq.${conversationId}` }, () => fetchPolls())
+        .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, () => fetchPolls());
+      ch.subscribe(s => { if (s === "SUBSCRIBED") pollChannelRef.current = ch; });
+    } catch {}
+    return () => {
+      if (pollChannelRef.current) { try { pollChannelRef.current.unsubscribe(); getSupabaseClient().removeChannel(pollChannelRef.current); } catch {} pollChannelRef.current = null; }
+    };
+  }, [conversationId, user, fetchPolls]);
+
+  // ── Image handling ──
   const processImageFiles = (files: File[]) => {
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-
-    if (imageFiles.length === 0) {
-      toast({
-        title: "Invalid file",
-        description: "Please select an image file",
-        variant: "destructive",
-      });
-      return [];
-    }
-
-    // Limit to 5 images
-    const filesToAdd = imageFiles.slice(0, 5 - selectedImages.length);
-
-    if (filesToAdd.length < imageFiles.length) {
-      toast({
-        title: "Too many images",
-        description: "You can only send up to 5 images at once",
-        variant: "destructive",
-      });
-    }
-
-    // Check file sizes (max 10MB each)
-    const validFiles = filesToAdd.filter(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: `${file.name} is larger than 10MB`,
-          variant: "destructive",
-        });
-        return false;
-      }
+    const imgs = files.filter(f => f.type.startsWith('image/')).slice(0, 5 - selectedImages.length);
+    return imgs.filter(f => {
+      if (f.size > 10 * 1024 * 1024) { toast({ title: "File too large", description: `${f.name} exceeds 10 MB`, variant: "destructive" }); return false; }
       return true;
     });
-
-    return validFiles;
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles = processImageFiles(files);
-
-    if (validFiles.length === 0) return;
-
-    setSelectedImages([...selectedImages, ...validFiles]);
-
-    // Create previews
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviews(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    const valid = processImageFiles(Array.from(e.target.files || []));
+    if (!valid.length) return;
+    setSelectedImages(prev => [...prev, ...valid]);
+    valid.forEach(f => { const r = new FileReader(); r.onloadend = () => setImagePreviews(p => [...p, r.result as string]); r.readAsDataURL(f); });
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Drag and drop handlers
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
+  const handleDragEnter = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); };
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    const validFiles = processImageFiles(files);
-
-    if (validFiles.length === 0) return;
-
-    setSelectedImages([...selectedImages, ...validFiles]);
-
-    // Create previews
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviews(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+    const valid = processImageFiles(Array.from(e.dataTransfer.files));
+    if (!valid.length) return;
+    setSelectedImages(prev => [...prev, ...valid]);
+    valid.forEach(f => { const r = new FileReader(); r.onloadend = () => setImagePreviews(p => [...p, r.result as string]); r.readAsDataURL(f); });
   };
 
-  const removeImage = (index: number) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
-  };
+  const removeImage = (i: number) => { setSelectedImages(p => p.filter((_, x) => x !== i)); setImagePreviews(p => p.filter((_, x) => x !== i)); };
 
+  // ── Send message ──
   const handleSend = async (directMessage?: string) => {
-    const messageToSend = directMessage ?? input;
-    if ((!messageToSend.trim() && selectedImages.length === 0) || !user || !conversationId) return;
+    const text = (directMessage ?? input).trim();
+    if (!text && selectedImages.length === 0) return;
+    if (!user || !conversationId) return;
 
-    const messageContent = messageToSend.trim();
-    const hasImages = selectedImages.length > 0;
-
-    // Clear form immediately for better UX
     setInput("");
-    const imagesToUpload = [...selectedImages];
-    const previewsToKeep = [...imagePreviews];
-    setSelectedImages([]);
-    setImagePreviews([]);
-
+    const imgs = [...selectedImages]; const previews = [...imagePreviews];
+    setSelectedImages([]); setImagePreviews([]);
     setUploadingImages(true);
 
     try {
-      // Create temporary message with local previews for INSTANT display
-      let tempMessageId: string | null = null;
+      const hasImages = imgs.length > 0;
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      const tempMediaUrls = hasImages ? previews.map((p, i) => ({ url: p, type: imgs[i]?.type || 'image/jpeg', size: imgs[i]?.size || 0 })) : undefined;
 
-      if (hasImages) {
-        // Create temporary media URLs from local previews (instant display!)
-        const tempMediaUrls = previewsToKeep.map((preview, index) => ({
-          url: preview, // Use base64 preview for instant display
-          type: imagesToUpload[index]?.type || 'image/jpeg',
-          size: imagesToUpload[index]?.size || 0,
-        }));
+      const optimistic: Message = {
+        id: tempId, sender_id: user.id, content: text || '', created_at: new Date().toISOString(),
+        read_at: null, is_deleted: false,
+        ...(hasImages ? { media_urls: tempMediaUrls, has_media: true, media_type: 'image' } : {}),
+      };
+      setMessages(prev => [...prev, optimistic]);
 
-        // Add optimistic message to UI IMMEDIATELY (before DB)
-        const optimisticMessage: Message = {
-          id: `temp-${Date.now()}-${Math.random()}`,
-          sender_id: user.id,
-          content: messageContent || '',
-          created_at: new Date().toISOString(),
-          read_at: null,
-          media_urls: tempMediaUrls,
-          has_media: true,
-          media_type: 'image',
-          is_deleted: false,
-        };
+      const real = await sendGroupMessage({
+        group_conversation_id: conversationId, sender_id: user.id, content: text || '',
+        ...(hasImages ? { media_urls: tempMediaUrls, has_media: true, media_type: 'image' } : {}),
+      });
 
-        // Show message immediately in UI
-        setMessages((prev) => [...prev, optimisticMessage]);
+      if (!real) { setMessages(prev => prev.filter(m => m.id !== tempId)); throw new Error("Send failed"); }
+      setMessages(prev => prev.map(m => m.id === tempId ? real : m));
 
-        // Send to database in background using service
-        const messageData = await sendGroupMessage({
-          group_conversation_id: conversationId,
-          sender_id: user.id,
-          content: messageContent || '',
-          media_urls: tempMediaUrls,
-          has_media: true,
-          media_type: 'image',
-        });
-
-        if (!messageData) {
-          // Remove optimistic message on error
-          setMessages((prev) => prev.filter(msg => msg.id !== optimisticMessage.id));
-          throw new Error("Failed to send message");
-        }
-
-        tempMessageId = messageData.id;
-
-        // Replace optimistic message with real one
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === optimisticMessage.id ? messageData : msg
-          )
-        );
-
-      } else {
-        // Text-only message - add optimistic update for instant display
-        const optimisticMessage: Message = {
-          id: `temp-${Date.now()}-${Math.random()}`,
-          sender_id: user.id,
-          content: messageContent,
-          created_at: new Date().toISOString(),
-          read_at: null,
-          is_deleted: false,
-        };
-
-        // Show message immediately in UI
-        setMessages((prev) => [...prev, optimisticMessage]);
-
-        // Send to database
-        const messageData = await sendGroupMessage({
-          group_conversation_id: conversationId,
-          sender_id: user.id,
-          content: messageContent,
-        });
-
-        if (!messageData) {
-          // Remove optimistic message on error
-          setMessages((prev) => prev.filter(msg => msg.id !== optimisticMessage.id));
-          throw new Error("Failed to send message");
-        }
-
-        // Replace optimistic message with real one from database
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === optimisticMessage.id ? messageData : msg
-          )
-        );
-      }
-
-      // Upload images in background and replace temporary previews (non-blocking)
-      if (hasImages && tempMessageId) {
-        setUploadProgress({});
-
-        // Upload in background without blocking UI
+      // Background image upload
+      if (hasImages && real.id) {
         (async () => {
           try {
-            // Compress images in parallel (very fast, skips small images)
-            const compressedImages = await compressImages(imagesToUpload);
-
-            // Upload compressed images using storage service
-            const basePath = `${user.id}`;
-            const uploadedUrls = await uploadPhotos('message-media', compressedImages, basePath);
-
-            // Map to media URL objects with fallback to temp previews
-            const finalMediaUrls = compressedImages.map((file, index) => {
-              const uploadedUrl = uploadedUrls[index];
-              return {
-                url: uploadedUrl || previewsToKeep[index] || '',
-                type: file.type || 'image/jpeg',
-                size: file.size || 0,
-              };
-            });
-
-            // Replace temporary previews with real URLs using service
-            await updateGroupMessageMedia(tempMessageId, finalMediaUrls);
-
-            // Update local state immediately
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === tempMessageId
-                  ? { ...msg, media_urls: finalMediaUrls }
-                  : msg
-              )
-            );
-
-            setUploadProgress({});
-          } catch (error) {
-            console.error("Background upload error:", error);
-            // Don't show error to user, images already visible
-          } finally {
-            setUploadingImages(false);
-          }
+            const compressed = await compressImages(imgs);
+            const urls = await uploadPhotos('message-media', compressed, user.id);
+            const final = compressed.map((f, i) => ({ url: urls[i] || previews[i] || '', type: f.type || 'image/jpeg', size: f.size || 0 }));
+            await updateGroupMessageMedia(real.id, final);
+            setMessages(prev => prev.map(m => m.id === real.id ? { ...m, media_urls: final } : m));
+          } catch {} finally { setUploadingImages(false); }
         })();
       }
-
-    } catch (error) {
-      console.error("Error sending message:", error);
-      // Restore form on error
-      setInput(messageContent);
-      setSelectedImages(imagesToUpload);
-      setImagePreviews(previewsToKeep);
-      toast({
-        title: "Error",
-        description: "Could not send message",
-        variant: "destructive",
-      });
+    } catch (err) {
+      setInput(text); setSelectedImages(imgs); setImagePreviews(previews);
+      toast({ title: "Couldn't send", description: "Please try again.", variant: "destructive" });
     } finally {
-      // Don't set uploadingImages to false here if images are uploading in background
-      if (!hasImages) {
-        setUploadingImages(false);
-      }
+      if (imgs.length === 0) setUploadingImages(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const handleKeyPress = (e: React.KeyboardEvent) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } };
 
-  const handleAIPlaceSuggestion = async () => {
-    if (!conversationId || !user || aiLoading) return;
-
-    setAiLoading(true);
-
-    try {
-      // Get recent messages for context
-      const recentMessages = messages.slice(-5).map(m => m.content).join(" ");
-
-      // Get member info
-      const memberNames = members
-        .filter(m => m.full_name)
-        .map(m => m.full_name);
-
-      const specialties = members
-        .filter(m => m.specialty)
-        .map(m => m.specialty);
-
-      // Get a city from members
-      const city = members.find(m => m.city)?.city || "your city";
-
-      const response = await getSupabaseClient().functions.invoke("generate-place-suggestions", {
-        body: {
-          city,
-          memberNames,
-          specialties,
-          chatContext: recentMessages.slice(0, 500),
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Failed to get suggestions");
-      }
-
-      const aiMessage = response.data?.message;
-      if (!aiMessage) throw new Error("No response from AI");
-
-      // Post AI message to the chat using service
-      const aiMessageData = await sendGroupMessage({
-        group_conversation_id: conversationId,
-        sender_id: user.id,
-        content: `🤖 AI Place Recommendations:\n\n${aiMessage}`,
-      });
-
-      if (!aiMessageData) {
-        throw new Error("Failed to send AI message");
-      }
-
-    } catch (error) {
-      console.error("Error getting AI suggestions:", error);
-      toast({
-        title: "Couldn't get suggestions",
-        description: error instanceof Error ? error.message : "Please try again",
-        variant: "destructive",
-      });
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const getMemberInfo = (userId: string): Member => {
-    return members.find((m) => m.user_id === userId) || {
-      user_id: userId,
-      full_name: null,
-      avatar_url: null
-    };
-  };
-
-  const handleStartEdit = (message: Message) => {
-    setEditingMessageId(message.id);
-    setEditContent(message.content);
-    // Focus input after state update
-    setTimeout(() => editInputRef.current?.focus(), 0);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingMessageId(null);
-    setEditContent("");
-  };
+  // ── Edit / Delete ──
+  const handleStartEdit = (msg: Message) => { setEditingMessageId(msg.id); setEditContent(msg.content); setTimeout(() => editInputRef.current?.focus(), 0); };
+  const handleCancelEdit = () => { setEditingMessageId(null); setEditContent(""); };
 
   const handleSaveEdit = async () => {
     if (!editingMessageId || !user || !editContent.trim()) return;
-
-    const originalMessage = messages.find(m => m.id === editingMessageId);
-    if (!originalMessage) return;
-
-    // Optimistic update
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.id === editingMessageId
-          ? { ...msg, content: editContent.trim(), edited_at: new Date().toISOString() }
-          : msg
-      )
-    );
-    setEditingMessageId(null);
-    setEditContent("");
-
+    const orig = messages.find(m => m.id === editingMessageId);
+    if (!orig) return;
+    setMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, content: editContent.trim(), edited_at: new Date().toISOString() } : m));
+    setEditingMessageId(null); setEditContent("");
     try {
-      const result = await editGroupMessage(editingMessageId, user.id, editContent.trim());
-      if (!result) {
-        // Rollback on error
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === editingMessageId ? originalMessage : msg
-          )
-        );
-        toast({
-          title: t("common.error"),
-          description: t("chat.couldNotEdit"),
-          variant: "destructive",
-        });
+      if (!await editGroupMessage(editingMessageId, user.id, editContent.trim())) {
+        setMessages(prev => prev.map(m => m.id === editingMessageId ? orig : m));
+        toast({ title: "Error", description: "Could not edit message", variant: "destructive" });
       }
-    } catch (error) {
-      console.error("Error editing message:", error);
-      // Rollback on error
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === editingMessageId ? originalMessage : msg
-        )
-      );
-      toast({
-        title: t("common.error"),
-        description: t("chat.couldNotEdit"),
-        variant: "destructive",
-      });
-    }
+    } catch { setMessages(prev => prev.map(m => m.id === editingMessageId ? orig : m)); }
   };
 
   const handleDeleteMessage = async (messageId: string) => {
     if (!user) return;
-
-    const originalMessage = messages.find(m => m.id === messageId);
-    if (!originalMessage) return;
-
-    // Optimistic update - mark as deleted
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.id === messageId ? { ...msg, is_deleted: true } : msg
-      )
-    );
-
+    const orig = messages.find(m => m.id === messageId);
+    if (!orig) return;
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, is_deleted: true } : m));
     try {
-      const success = await deleteGroupMessage(messageId, user.id);
-      if (!success) {
-        // Rollback on error
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === messageId ? originalMessage : msg
-          )
-        );
-        toast({
-          title: t("common.error"),
-          description: t("chat.couldNotDelete"),
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: t("chat.messageDeleted"),
-        });
+      if (!await deleteGroupMessage(messageId, user.id)) {
+        setMessages(prev => prev.map(m => m.id === messageId ? orig : m));
+        toast({ title: "Error", description: "Could not delete message", variant: "destructive" });
       }
-    } catch (error) {
-      console.error("Error deleting message:", error);
-      // Rollback on error
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === messageId ? originalMessage : msg
-        )
-      );
-      toast({
-        title: t("common.error"),
-        description: t("chat.couldNotDelete"),
-        variant: "destructive",
-      });
-    }
+    } catch { setMessages(prev => prev.map(m => m.id === messageId ? orig : m)); }
   };
 
   const handleEditKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSaveEdit();
-    } else if (e.key === "Escape") {
-      handleCancelEdit();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); }
+    else if (e.key === "Escape") handleCancelEdit();
   };
 
-  // Fetch polls for the conversation
-  const fetchPolls = useCallback(async () => {
-    if (!conversationId || !user) return;
-    try {
-      const pollsData = await getPolls(conversationId, user.id);
-      setPolls(pollsData);
-    } catch (error) {
-      console.error("Error fetching polls:", error);
-    }
-  }, [conversationId, user]);
-
-  // Fetch polls on mount and when conversation changes
-  useEffect(() => {
-    fetchPolls();
-  }, [fetchPolls]);
-
-  // Real-time subscription for polls & poll_votes
-  const pollChannelRef = useRef<RealtimeChannel | null>(null);
-
-  useEffect(() => {
-    if (!conversationId || !user) return;
-
-    // Clean up existing poll channel
-    if (pollChannelRef.current) {
-      try {
-        pollChannelRef.current.unsubscribe();
-        getSupabaseClient().removeChannel(pollChannelRef.current);
-      } catch (err) { /* ignore */ }
-      pollChannelRef.current = null;
-    }
-
-    try {
-      const pollChannel = getSupabaseClient()
-        .channel(`polls:${conversationId}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "polls", filter: `conversation_id=eq.${conversationId}` },
-          () => { fetchPolls(); }
-        )
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "poll_votes" },
-          () => { fetchPolls(); }
-        );
-
-      pollChannel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          pollChannelRef.current = pollChannel;
-        }
-      });
-    } catch (err) {
-      console.error("Error subscribing to poll changes:", err);
-    }
-
-    return () => {
-      if (pollChannelRef.current) {
-        try {
-          pollChannelRef.current.unsubscribe();
-          getSupabaseClient().removeChannel(pollChannelRef.current);
-        } catch (err) { /* ignore */ }
-        pollChannelRef.current = null;
-      }
-    };
-  }, [conversationId, user, fetchPolls]);
-
-  // Quick action handlers for voting and suggesting places
+  // ── Poll creation ──
   const handleCreatePoll = async (pollType: 'day' | 'time' | 'activity') => {
     if (!conversationId || !user) return;
-
-    const templates = getPollTemplates(t as (key: string, fallback?: string) => string);
-    const template = templates[pollType];
-
+    const templates = getPollTemplates(t as any);
+    const tpl = templates[pollType];
     try {
-      const poll = await createPoll({
-        conversation_id: conversationId,
-        creator_id: user.id,
-        poll_type: pollType,
-        question: template.question,
-        options: template.options,
-        is_multiple_choice: false,
-      });
-
+      const poll = await createPoll({ conversation_id: conversationId, creator_id: user.id, poll_type: pollType, question: tpl.question, options: tpl.options, is_multiple_choice: false });
       if (poll) {
-        // Send a chat message announcing the poll
-        const pollEmoji = pollType === 'day' ? '📅' : pollType === 'time' ? '⏰' : '☕';
-        const announceMsg = `${pollEmoji} ${t("chat.pollAnnounce", "I created a poll:")} "${template.question}"`;
-        await sendGroupMessage({
-          group_conversation_id: conversationId,
-          sender_id: user.id,
-          content: announceMsg,
-        });
-
-        // Refresh polls
-        fetchPolls();
-        setShowQuickActions(false);
-        toast({
-          title: t("chat.pollCreated", "Poll created!"),
-          description: t("chat.pollCreatedDesc", "Your group can now vote."),
-        });
-      } else {
-        toast({
-          title: t("common.error"),
-          description: t("chat.couldNotCreatePoll", "Could not create poll"),
-          variant: "destructive",
-        });
+        const emoji = pollType === 'day' ? '📅' : pollType === 'time' ? '⏰' : '☕';
+        await sendGroupMessage({ group_conversation_id: conversationId, sender_id: user.id, content: `${emoji} Poll created: "${tpl.question}"` });
+        fetchPolls(); setShowPlanPanel(false);
+        toast({ title: "Poll created", description: "Your group can now vote." });
       }
-    } catch (error) {
-      console.error("Error creating poll:", error);
-      toast({
-        title: t("common.error"),
-        description: t("chat.couldNotCreatePoll", "Could not create poll"),
-        variant: "destructive",
-      });
-    }
+    } catch { toast({ title: "Error", description: "Could not create poll", variant: "destructive" }); }
   };
 
   const handleCreateCustomPoll = async () => {
     if (!conversationId || !user) return;
-
-    const question = customQuestion.trim();
-    const options = customOptions.map(o => o.trim()).filter(o => o.length > 0);
-
-    if (!question) {
-      toast({
-        title: t("common.error"),
-        description: t("chat.pollNeedsQuestion", "Please enter a question"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (options.length < 2) {
-      toast({
-        title: t("common.error"),
-        description: t("chat.pollNeedsOptions", "Please add at least 2 options"),
-        variant: "destructive",
-      });
-      return;
-    }
-
+    const q = customQuestion.trim();
+    const opts = customOptions.map(o => o.trim()).filter(Boolean);
+    if (!q) { toast({ title: "Enter a question", variant: "destructive" }); return; }
+    if (opts.length < 2) { toast({ title: "Add at least 2 options", variant: "destructive" }); return; }
     try {
-      const poll = await createPoll({
-        conversation_id: conversationId,
-        creator_id: user.id,
-        poll_type: 'custom',
-        question,
-        options: options.map(text => ({ text })),
-        is_multiple_choice: customMultipleChoice,
-      });
-
+      const poll = await createPoll({ conversation_id: conversationId, creator_id: user.id, poll_type: 'custom', question: q, options: opts.map(t => ({ text: t })), is_multiple_choice: customMultipleChoice });
       if (poll) {
-        const announceMsg = `📊 ${t("chat.pollAnnounce", "I created a poll:")} "${question}"`;
-        await sendGroupMessage({
-          group_conversation_id: conversationId,
-          sender_id: user.id,
-          content: announceMsg,
-        });
-
-        fetchPolls();
-        setShowCustomPoll(false);
-        setShowQuickActions(false);
-        setCustomQuestion("");
-        setCustomOptions(["", ""]);
-        setCustomMultipleChoice(false);
-        toast({
-          title: t("chat.pollCreated", "Poll created!"),
-          description: t("chat.pollCreatedDesc", "Your group can now vote."),
-        });
-      } else {
-        toast({
-          title: t("common.error"),
-          description: t("chat.couldNotCreatePoll", "Could not create poll"),
-          variant: "destructive",
-        });
+        await sendGroupMessage({ group_conversation_id: conversationId, sender_id: user.id, content: `📊 Poll created: "${q}"` });
+        fetchPolls(); setShowCustomPoll(false); setShowPlanPanel(false);
+        setCustomQuestion(""); setCustomOptions(["", ""]); setCustomMultipleChoice(false);
       }
-    } catch (error) {
-      console.error("Error creating custom poll:", error);
-      toast({
-        title: t("common.error"),
-        description: t("chat.couldNotCreatePoll", "Could not create poll"),
-        variant: "destructive",
+    } catch { toast({ title: "Error", description: "Could not create poll", variant: "destructive" }); }
+  };
+
+  // ── AI suggestion ──
+  const handleAIPlace = async () => {
+    if (!conversationId || !user || aiLoading) return;
+    setAiLoading(true);
+    try {
+      const city = members.find(m => m.city)?.city || "Berlin";
+      const res = await getSupabaseClient().functions.invoke("generate-place-suggestions", {
+        body: { city, memberNames: members.filter(m => m.full_name).map(m => m.full_name), specialties: members.filter(m => m.specialty).map(m => m.specialty), chatContext: messages.slice(-5).map(m => m.content).join(" ").slice(0, 500) },
       });
-    }
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.message) {
+        await sendGroupMessage({ group_conversation_id: conversationId, sender_id: user.id, content: `🤖 AI Place Recommendations:\n\n${res.data.message}` });
+      }
+    } catch (err) {
+      toast({ title: "Couldn't get suggestions", description: err instanceof Error ? err.message : "Please try again", variant: "destructive" });
+    } finally { setAiLoading(false); }
   };
 
-  const handleSuggestPlace = () => {
-    const city = members.find(m => m.city)?.city || t("chat.yourCity", "your city");
-    const message = `📍 ${t("chat.suggestPlace", "I'd like to suggest a place!")}\n\n${t("chat.placePrompt", "What about meeting at")} [${t("chat.placeName", "place name")}] ${t("chat.in", "in")} ${city}?\n\n${t("chat.thoughts", "What do you think?")} 👍👎`;
-    setInput(message);
-    setShowQuickActions(false);
-  };
+  const getMemberInfo = (uid: string): Member => members.find(m => m.user_id === uid) || { user_id: uid, full_name: null, avatar_url: null };
 
+  // ── Computed ──
+  const activePolls = polls.filter(p => !p.is_closed);
+  const closedPolls = polls.filter(p => p.is_closed);
+  const visibleMessages = messages.filter(m => !m.is_deleted || m.sender_id === user?.id);
+
+  // ── Meetup status text ──
+  const statusText = useMemo(() => {
+    if (!matchWeek) return "Group chat";
+    const now = new Date();
+    const weekStart = new Date(matchWeek);
+    const diff = Math.ceil((weekStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff > 0 && diff <= 7) return `Meetup in ${diff} day${diff > 1 ? 's' : ''}`;
+    if (diff === 0) return "Meetup today";
+    return "Match revealed";
+  }, [matchWeek]);
+
+  // ─── Loading ──────────────────────────────────────────────
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <div className="border-b border-border p-4">
-          <Skeleton className="h-10 w-48" />
+      <div className="min-h-screen bg-[#F7F2EE] flex flex-col">
+        <div className="border-b border-[#E8DDD4] p-4 bg-white/80">
+          <Skeleton className="h-10 w-48 bg-[#E8DDD4]" />
         </div>
-        <div className="flex-1 p-4 space-y-4">
-          <Skeleton className="h-16 w-2/3" />
-          <Skeleton className="h-16 w-1/2 ml-auto" />
+        <div className="flex-1 p-5 space-y-5">
+          <Skeleton className="h-14 w-2/3 rounded-[18px] bg-[#E8DDD4]/60" />
+          <Skeleton className="h-14 w-1/2 ml-auto rounded-[18px] bg-[#E8DDD4]/60" />
+          <Skeleton className="h-14 w-3/4 rounded-[18px] bg-[#E8DDD4]/60" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex flex-col relative">
-      {/* Subtle pattern overlay */}
-      <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(circle_at_1px_1px,rgb(255,152,0)_1px,transparent_0)] [background-size:24px_24px] pointer-events-none" />
-
-      {/* Header */}
-      <header className="border-b border-border/50 bg-card/90 backdrop-blur-md sticky top-0 z-10 shadow-sm pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto px-2 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
+    <div className="min-h-screen bg-[#F7F2EE] flex flex-col relative">
+      {/* ─── Header ─── */}
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#E8DDD4]/60 shadow-[0_1px_8px_rgba(58,11,34,0.04)] pt-[env(safe-area-inset-top)]">
+        <div className="px-4 py-3 flex items-center gap-3">
+          {/* Back */}
+          <button
             onClick={() => navigate("/matches")}
-            className="rounded-full bg-[#FF8A00] hover:bg-[#FF8A00]/90 text-white shadow-md transition-all active:scale-95"
+            className="h-10 w-10 rounded-full flex items-center justify-center bg-[#F6F1EC] hover:bg-[#EDE5DD] transition-colors active:scale-95"
           >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+            <ArrowLeft className="h-5 w-5 text-[#3A0B22]" />
+          </button>
 
-          <div className="flex items-center gap-3 flex-1">
-            <div className="w-10 h-10 rounded-full bg-gradient-gold flex items-center justify-center">
-              <Users className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-display font-semibold">{groupName}</h1>
-              <p className="text-xs text-muted-foreground">
-                {members.length} members
-              </p>
-            </div>
+          {/* Title block */}
+          <div className="flex-1 min-w-0" onClick={() => setGroupDetailsOpen(true)}>
+            <h1 className="font-heading text-[16px] font-semibold text-[#3A0B22] truncate">
+              {groupCity} · {groupName}
+            </h1>
+            <p className="text-[11px] text-[#3A0B22]/45 font-medium">{statusText}</p>
           </div>
 
-          {/* AI Suggest Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAIPlaceSuggestion}
-            disabled={aiLoading}
-            className="gap-2 rounded-full"
-          >
-            {aiLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">Suggest Places</span>
-          </Button>
-
-          {/* Member Avatars - Premium Display with Profile Cards */}
-          <TooltipProvider delayDuration={200}>
-            <div className="flex items-center gap-2">
-              <div className="flex -space-x-2.5">
-                {members.slice(0, 5).map((member) => {
-                  const initials = member.full_name
-                    ?.split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase() || "U";
-
-                  return (
-                    <HoverCard key={member.user_id} openDelay={200} closeDelay={100}>
-                      <HoverCardTrigger asChild>
-                        <div className="relative group cursor-pointer">
-                          <Avatar
-                            className="h-10 w-10 border-2 border-background shadow-[0_2px_8px_rgba(0,0,0,0.12)] ring-2 ring-background hover:ring-primary/40 transition-all hover:scale-110 hover:shadow-[0_4px_12px_rgba(0,0,0,0.16)]"
-                            onClick={() => navigate(`/u/${member.user_id}`)}
-                          >
-                            <AvatarImage src={member.avatar_url || undefined} className="object-cover" />
-                            <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white text-xs font-semibold">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          {/* Online status indicator */}
-                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full shadow-sm ring-1 ring-green-500/30" />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent side="bottom" align="center" className="w-80 p-0 shadow-xl border-border/50">
-                        <div className="p-5 space-y-4">
-                          {/* Header with Avatar */}
-                          <div className="flex items-start gap-4">
-                            <Avatar className="h-16 w-16 border-2 border-border shadow-lg ring-2 ring-background">
-                              <AvatarImage src={member.avatar_url || undefined} />
-                              <AvatarFallback className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white text-lg font-semibold">
-                                {initials}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0 pt-1">
-                              <h3 className="font-semibold text-base text-foreground mb-1 truncate">
-                                {member.full_name || "Anonymous"}
-                              </h3>
-                              {member.specialty ? (
-                                <div className="flex items-center gap-1.5 mb-2">
-                                  <Stethoscope className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span className="text-sm text-muted-foreground font-medium">{member.specialty}</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1.5 mb-2">
-                                  <Stethoscope className="h-3.5 w-3.5 text-muted-foreground/50" />
-                                  <span className="text-sm text-muted-foreground/70 italic">Specialty not set</span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-green-500/10 w-fit">
-                                <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-                                <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Online</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Location */}
-                          {member.city ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground pb-3 border-b border-border">
-                              <MapPinIcon className="h-4 w-4 flex-shrink-0" />
-                              <span className="truncate">{member.city}</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground/50 pb-3 border-b border-border">
-                              <MapPinIcon className="h-4 w-4 flex-shrink-0 opacity-50" />
-                              <span className="truncate italic">Location not set</span>
-                            </div>
-                          )}
-
-                          {/* Interests */}
-                          {member.interests && member.interests.length > 0 ? (
-                            <div className="space-y-2">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Interests</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {member.interests.map((interest, idx) => (
-                                  <Badge
-                                    key={idx}
-                                    variant="secondary"
-                                    className="text-xs px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
-                                  >
-                                    {interest}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Interests</p>
-                              <p className="text-xs text-muted-foreground/70 italic">No interests listed</p>
-                            </div>
-                          )}
-
-                          {/* View Profile Button */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/u/${member.user_id}`)}
-                            className="w-full rounded-lg border-primary/30 hover:bg-primary/10 hover:border-primary/50"
-                          >
-                            View Full Profile
-                          </Button>
-                        </div>
-                      </HoverCardContent>
-                    </HoverCard>
-                  );
-                })}
-                {members.length > 5 && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 border-2 border-background flex items-center justify-center text-xs font-semibold text-primary cursor-pointer hover:from-primary/30 hover:via-primary/20 hover:to-primary/15 transition-all shadow-[0_2px_8px_rgba(255,152,0,0.15)] hover:scale-110 hover:shadow-[0_4px_12px_rgba(255,152,0,0.2)] ring-2 ring-background">
-                        +{members.length - 5}
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent side="bottom" align="end" className="w-80 p-0 shadow-xl border-border/50">
-                      <div className="p-4 space-y-3">
-                        <div className="flex items-center gap-2 pb-3 border-b border-border">
-                          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Users className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-sm text-foreground">Group Members</h4>
-                            <p className="text-xs text-muted-foreground">{members.length} physicians</p>
-                          </div>
-                        </div>
-                        <div className="space-y-1 max-h-80 overflow-y-auto">
-                          {members.map((member) => {
-                            const initials = member.full_name
-                              ?.split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase() || "U";
-
-                            return (
-                              <div
-                                key={member.user_id}
-                                className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-secondary/60 transition-colors cursor-pointer group"
-                                onClick={() => navigate(`/u/${member.user_id}`)}
-                              >
-                                <div className="relative">
-                                  <Avatar className="h-11 w-11 border border-border/50 shadow-sm ring-1 ring-background group-hover:ring-primary/30 transition-all">
-                                    <AvatarImage src={member.avatar_url || undefined} />
-                                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-white text-sm font-semibold">
-                                      {initials}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-background rounded-full shadow-sm" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm text-foreground truncate">{member.full_name || "Anonymous"}</p>
-                                  {member.specialty ? (
-                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{member.specialty}</p>
-                                  ) : (
-                                    <p className="text-xs text-muted-foreground/50 italic truncate mt-0.5">Specialty not set</p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10">
-                                  <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-                                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">Online</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
+          {/* Member avatars */}
+          <div className="flex -space-x-2">
+            {members.slice(0, 4).map(m => (
+              <Avatar key={m.user_id} className="h-8 w-8 border-2 border-white shadow-sm" onClick={() => navigate(`/u/${m.user_id}`)}>
+                <AvatarImage src={m.avatar_url || undefined} />
+                <AvatarFallback className="bg-[#4B0F2D] text-white text-[9px] font-semibold">{getInitials(m.full_name)}</AvatarFallback>
+              </Avatar>
+            ))}
+            {members.length > 4 && (
+              <div className="h-8 w-8 rounded-full bg-[#F6F1EC] border-2 border-white flex items-center justify-center text-[10px] font-semibold text-[#3A0B22]/60">
+                +{members.length - 4}
               </div>
-            </div>
-          </TooltipProvider>
+            )}
+          </div>
+
+          {/* Overflow */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-[#F6F1EC] transition-colors">
+                <MoreVertical className="h-4.5 w-4.5 text-[#3A0B22]/50" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-xl border-[#E8DDD4]">
+              <DropdownMenuItem onClick={() => setGroupDetailsOpen(true)} className="gap-2 text-[13px]">
+                <Users className="h-3.5 w-3.5" /> Group details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAIPlace} disabled={aiLoading} className="gap-2 text-[13px]">
+                <Sparkles className="h-3.5 w-3.5" /> AI place suggestions
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2 text-[13px] text-[#3A0B22]/50">
+                <Shield className="h-3.5 w-3.5" /> Community standards
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 text-[13px] text-[#3A0B22]/50">
+                <Flag className="h-3.5 w-3.5" /> Report an issue
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
-      {/* Messages Container - Professional Chat Layout */}
-      <div className="flex-1 overflow-y-auto relative">
-        {/* Soft background container */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/3 to-background" />
-
-        {/* Centered chat container */}
-        <div className="relative max-w-4xl mx-auto h-full flex flex-col">
-          <div className="flex-1 pl-2 pr-1 sm:px-6 py-4 sm:py-8 space-y-4 overflow-x-hidden">
-
-            {messages.length === 0 && polls.length === 0 ? (
-              <GroupChatEmptyState
-                members={members}
-                currentUserId={user?.id}
-                groupName={groupName}
-                onSendMessage={(message) => {
-                  // Send message directly without relying on input state
-                  handleSend(message);
-                }}
-                onAISuggestion={handleAIPlaceSuggestion}
-                aiLoading={aiLoading}
-              />
-            ) : (
-              <div className="space-y-4">
-                {messages
-                  .filter((message) => !message.is_deleted)
-                  .map((message, index) => {
-                    const prevMessage = index > 0 ? messages[index - 1] : null;
-                    const isConsecutive = prevMessage &&
-                      prevMessage.sender_id === message.sender_id &&
-                      !prevMessage.is_deleted &&
-                      new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() < 5 * 60 * 1000;
-
-                    return (
-                      <MessageItem
-                        key={message.id}
-                        message={message}
-                        isOwn={message.sender_id === user?.id}
-                        sender={getMemberInfo(message.sender_id)}
-                        isConsecutive={!!isConsecutive}
-                        editingMessageId={editingMessageId}
-                        editContent={editContent}
-                        setEditContent={setEditContent}
-                        handleStartEdit={handleStartEdit}
-                        handleSaveEdit={handleSaveEdit}
-                        handleCancelEdit={handleCancelEdit}
-                        handleDeleteMessage={handleDeleteMessage}
-                        handleEditKeyPress={handleEditKeyPress}
-                        editInputRef={editInputRef}
-                        setViewingImages={setViewingImages}
-                        setViewingImageIndex={setViewingImageIndex}
-                        t={t}
-                      />
-                    );
-                  })}
-              </div>
-            )}
-
-            {/* Active Polls Section - Now at the bottom */}
-            {polls.length > 0 && !loading && (
-              <div className="space-y-4 mt-6 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center gap-2 px-1">
-                  <BarChart3 className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {t("chat.activePolls", "Active Polls")}
-                  </span>
-                  <span className="text-xs text-muted-foreground">({polls.filter(p => !Boolean(p.is_closed)).length})</span>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {polls.map((poll) => (
-                    <Poll
-                      key={poll.id}
-                      poll={poll}
-                      userId={user?.id || ''}
-                      onVoteChange={fetchPolls}
-                      isOwn={poll.creator_id === user?.id}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-      </div>
-
-      {/* Input - Floating Premium Container */}
-      <div className="sticky bottom-0 z-10 px-2 sm:px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 sm:pt-4">
-        <div
-          ref={dropZoneRef}
-          className={`max-w-3xl mx-auto rounded-2xl border border-border/60 bg-card/98 backdrop-blur-xl shadow-[0_-8px_32px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.05)] p-4 transition-all relative ${isDragging ? 'bg-primary/10 border-primary shadow-[0_-8px_32px_rgba(255,152,0,0.25)]' : ''
-            }`}
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {/* Drag overlay */}
-          {isDragging && (
-            <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-xl flex items-center justify-center z-10 pointer-events-none backdrop-blur-sm">
-              <div className="flex flex-col items-center gap-2">
-                <Upload className="h-8 w-8 text-primary" />
-                <p className="text-sm font-semibold text-primary">Drop images here</p>
-              </div>
-            </div>
-          )}
-
-          {/* Quick Actions Panel */}
-          {showQuickActions && (
-            <div className="mb-3 p-3 rounded-xl bg-secondary/50 border border-border/50 animate-in fade-in slide-in-from-bottom-2 duration-200">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Vote className="h-3.5 w-3.5" />
-                  {t("chat.planMeetup", "Plan your meetup")}
-                </p>
-                <button
-                  onClick={() => { setShowQuickActions(false); setShowCustomPoll(false); }}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Poll Options */}
-              {!showCustomPoll ? (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
-                    <button
-                      onClick={() => handleCreatePoll('day')}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                    >
-                      <Calendar className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-medium text-foreground">{t("chat.voteDay", "Vote Day")}</span>
-                    </button>
-                    <button
-                      onClick={() => handleCreatePoll('time')}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                    >
-                      <Clock className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-medium text-foreground">{t("chat.voteTime", "Vote Time")}</span>
-                    </button>
-                    <button
-                      onClick={() => handleCreatePoll('activity')}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                    >
-                      <Coffee className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-medium text-foreground">{t("chat.voteActivity", "Vote Activity")}</span>
-                    </button>
-                    <button
-                      onClick={handleSuggestPlace}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                    >
-                      <MapPin className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-medium text-foreground">{t("chat.suggestPlaceBtn", "Suggest Place")}</span>
-                    </button>
-                    <button
-                      onClick={() => setShowCustomPoll(true)}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/80 hover:bg-background border border-border/50 hover:border-primary/30 transition-all hover:shadow-sm group"
-                    >
-                      <BarChart3 className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-medium text-foreground">{t("chat.customPoll", "Poll")}</span>
-                    </button>
-                  </div>
-
-                  {/* AI Suggestion */}
-                  <button
-                    onClick={() => {
-                      handleAIPlaceSuggestion();
-                      setShowQuickActions(false);
-                    }}
-                    disabled={aiLoading}
-                    className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-primary/10 to-orange-500/10 hover:from-primary/20 hover:to-orange-500/20 border border-primary/20 transition-all group"
-                  >
-                    {aiLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
-                    )}
-                    <span className="text-sm font-medium text-primary">{t("chat.aiSuggest", "AI Place Suggestions")}</span>
-                  </button>
-                </>
-              ) : (
-                /* Custom Poll Builder */
-                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <PenLine className="h-4 w-4 text-primary" />
-                      {t("chat.createCustomPoll", "Create Custom Poll")}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setShowCustomPoll(false);
-                        setCustomQuestion("");
-                        setCustomOptions(["", ""]);
-                        setCustomMultipleChoice(false);
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {t("common.back", "Back")}
-                    </button>
-                  </div>
-
-                  {/* Question */}
-                  <Input
-                    value={customQuestion}
-                    onChange={(e) => setCustomQuestion(e.target.value)}
-                    placeholder={t("chat.pollQuestionPlaceholder", "Your question...")}
-                    className="h-10 rounded-xl text-sm bg-background/80 border-border/50 focus-visible:ring-primary/50"
-                  />
-
-                  {/* Options */}
-                  <div className="space-y-2">
-                    {customOptions.map((option, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-5 text-center font-medium">{idx + 1}</span>
-                        <Input
-                          value={option}
-                          onChange={(e) => {
-                            const updated = [...customOptions];
-                            updated[idx] = e.target.value;
-                            setCustomOptions(updated);
-                          }}
-                          placeholder={`${t("chat.option", "Option")} ${idx + 1}`}
-                          className="h-9 rounded-xl text-sm bg-background/80 border-border/50 focus-visible:ring-primary/50 flex-1"
-                        />
-                        {customOptions.length > 2 && (
-                          <button
-                            onClick={() => setCustomOptions(customOptions.filter((_, i) => i !== idx))}
-                            className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {customOptions.length < 6 && (
-                      <button
-                        onClick={() => setCustomOptions([...customOptions, ""])}
-                        className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors ml-7"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        {t("chat.addOption", "Add option")}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Multiple choice toggle + Create button */}
-                  <div className="flex items-center justify-between pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={customMultipleChoice}
-                        onCheckedChange={(checked) => setCustomMultipleChoice(checked === true)}
-                      />
-                      <span className="text-xs text-muted-foreground">{t("chat.multipleChoice", "Multiple choice")}</span>
-                    </label>
-                    <Button
-                      onClick={handleCreateCustomPoll}
-                      size="sm"
-                      className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-600 text-white"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      {t("chat.createPoll", "Create Poll")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Image previews */}
-          {imagePreviews.length > 0 && (
-            <div className="mb-3 flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-              {imagePreviews.map((preview, index) => (
-                <div key={index} className="relative flex-shrink-0 group">
-                  <div className="relative">
-                    <img
-                      src={preview}
-                      alt={`Preview ${index + 1}`}
-                      className="h-24 w-24 object-cover rounded-xl border-2 border-border/50 shadow-md"
-                      width={96}
-                      height={96}
-                    />
-                    {/* Upload progress */}
-                    {uploadingImages && uploadProgress[index] !== undefined && (
-                      <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    )}
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1.5 hover:bg-destructive/90 shadow-lg transition-all opacity-0 group-hover:opacity-100 ring-2 ring-background"
-                      disabled={uploadingImages}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
+      {/* ─── Active Polls Section (above messages) ─── */}
+      {activePolls.length > 0 && (
+        <div className="bg-white/60 backdrop-blur-sm border-b border-[#E8DDD4]/40 px-4 py-3">
+          <button
+            onClick={() => setPollsExpanded(!pollsExpanded)}
+            className="flex items-center gap-2 w-full"
+          >
+            <BarChart3 className="h-3.5 w-3.5 text-[#F27C5C]" />
+            <span className="text-[12px] font-semibold text-[#3A0B22]/60 uppercase tracking-wider">
+              Active polls ({activePolls.length})
+            </span>
+            {pollsExpanded ? <ChevronUp className="h-3.5 w-3.5 text-[#3A0B22]/30 ml-auto" /> : <ChevronDown className="h-3.5 w-3.5 text-[#3A0B22]/30 ml-auto" />}
+          </button>
+          {pollsExpanded && (
+            <div className="mt-2 space-y-3 overflow-x-auto pb-1">
+              {activePolls.map(poll => (
+                <PollCard key={poll.id} poll={poll} userId={user?.id || ''} onVoteChange={fetchPolls} isOwn={poll.creator_id === user?.id} />
               ))}
             </div>
           )}
+        </div>
+      )}
 
-          <div className="flex gap-2.5 items-end">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-full h-12 w-12 flex-shrink-0 hover:bg-primary/10 transition-all hover:scale-105 shadow-sm border border-border/30"
-              disabled={selectedImages.length >= 5}
-              title="Attach images"
-            >
-              <ImageIcon className="h-5 w-5 text-muted-foreground" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowQuickActions(!showQuickActions)}
-              className={`rounded-full h-12 w-12 flex-shrink-0 hover:bg-primary/10 transition-all hover:scale-105 shadow-sm border border-border/30 ${showQuickActions ? 'bg-primary/10 border-primary/30' : ''}`}
-              title={t("chat.planMeetup", "Plan meetup")}
-            >
-              <Vote className="h-5 w-5 text-muted-foreground" />
-            </Button>
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
-              className="flex-1 rounded-full border-border/60 focus-visible:ring-primary/50 h-12 px-5 shadow-sm bg-background/80 text-sm font-medium placeholder:text-muted-foreground/60"
-            />
-            <Button
-              onClick={() => handleSend()}
-              disabled={(!input.trim() && selectedImages.length === 0) || uploadingImages}
-              className="rounded-full h-12 px-7 bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:scale-105"
-              title="Send message"
-            >
-              {uploadingImages ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+      {/* ─── Messages ─── */}
+      <div
+        className="flex-1 overflow-y-auto"
+        ref={dropZoneRef}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+          <div className="absolute inset-0 bg-[#F27C5C]/10 border-2 border-dashed border-[#F27C5C] rounded-xl flex items-center justify-center z-30 pointer-events-none">
+            <div className="flex flex-col items-center gap-2">
+              <Upload className="h-8 w-8 text-[#F27C5C]" />
+              <p className="text-sm font-semibold text-[#F27C5C]">Drop images here</p>
+            </div>
           </div>
+        )}
+
+        <div className="max-w-lg mx-auto px-4 py-5">
+          {visibleMessages.length === 0 && polls.length === 0 ? (
+            /* ── Empty state ── */
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="h-16 w-16 rounded-full bg-[#F6F1EC] flex items-center justify-center mb-4">
+                <MessageCircle className="h-7 w-7 text-[#3A0B22]/25" />
+              </div>
+              <h3 className="font-heading text-lg font-semibold text-[#3A0B22] mb-1.5">
+                Start the conversation
+              </h3>
+              <p className="text-[13px] text-[#3A0B22]/50 max-w-[260px] leading-relaxed mb-6">
+                Say hello to your group. Everyone here is a verified physician — no small talk required.
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {["Hi everyone! Looking forward to meeting.", "When works best for everyone this weekend?", "Any neighborhood preferences?"].map((msg, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSend(msg)}
+                    className="px-4 py-2.5 rounded-full text-[13px] font-medium bg-white border border-[#E8DDD4] text-[#3A0B22] hover:border-[#F27C5C]/40 hover:bg-[#FFF8F5] transition-all active:scale-[0.97]"
+                  >
+                    {msg}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* ── Messages list ── */
+            <>
+              {visibleMessages.map((msg, idx) => {
+                const prevMsg = idx > 0 ? visibleMessages[idx - 1] : null;
+                const isConsecutive = !!(prevMsg && prevMsg.sender_id === msg.sender_id && !prevMsg.is_deleted &&
+                  new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() < 5 * 60 * 1000);
+                const showDate = shouldShowDateSeparator(msg.created_at, prevMsg?.created_at || null);
+
+                return (
+                  <div key={msg.id}>
+                    {showDate && <DateSeparator date={msg.created_at} />}
+                    <MessageItem
+                      message={msg}
+                      isOwn={msg.sender_id === user?.id}
+                      sender={getMemberInfo(msg.sender_id)}
+                      isConsecutive={isConsecutive}
+                      editingMessageId={editingMessageId}
+                      editContent={editContent}
+                      setEditContent={setEditContent}
+                      handleStartEdit={handleStartEdit}
+                      handleSaveEdit={handleSaveEdit}
+                      handleCancelEdit={handleCancelEdit}
+                      handleDeleteMessage={handleDeleteMessage}
+                      handleEditKeyPress={handleEditKeyPress}
+                      editInputRef={editInputRef}
+                      setViewingImages={setViewingImages}
+                      setViewingImageIndex={setViewingImageIndex}
+                      onLongPress={setActionSheetMsg}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* Closed polls at bottom */}
+              {closedPolls.length > 0 && (
+                <div className="mt-6 mb-2">
+                  <p className="text-[11px] font-medium text-[#3A0B22]/30 uppercase tracking-wider text-center mb-3">Closed polls</p>
+                  {closedPolls.map(p => (
+                    <PollCard key={p.id} poll={p} userId={user?.id || ''} onVoteChange={fetchPolls} isOwn={p.creator_id === user?.id} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Image Viewer */}
+      {/* ─── Editing bar ─── */}
+      {editingMessageId && (
+        <div className="bg-[#FFF8F5] border-t border-[#F27C5C]/20 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Pencil className="h-3.5 w-3.5 text-[#F27C5C]" />
+            <span className="text-[12px] font-medium text-[#F27C5C]">Editing message</span>
+          </div>
+          <button onClick={handleCancelEdit} className="text-[12px] font-medium text-[#3A0B22]/50 hover:text-[#3A0B22]">Cancel</button>
+        </div>
+      )}
+
+      {/* ─── Composer ─── */}
+      <div className="sticky bottom-0 z-10 bg-white/95 backdrop-blur-md border-t border-[#E8DDD4]/60 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+        {/* Plan panel */}
+        {showPlanPanel && (
+          <div className="mb-3 p-4 rounded-[18px] bg-[#FDFAF7] border border-[#E8DDD4] animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[12px] font-semibold text-[#3A0B22]/50 uppercase tracking-wider flex items-center gap-1.5">
+                <Vote className="h-3.5 w-3.5" /> Plan your meetup
+              </span>
+              <button onClick={() => { setShowPlanPanel(false); setShowCustomPoll(false); }}>
+                <X className="h-4 w-4 text-[#3A0B22]/30" />
+              </button>
+            </div>
+
+            {!showCustomPoll ? (
+              <>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {([
+                    { type: 'day' as const, icon: Calendar, label: "Pick Day", desc: "Which day works best?" },
+                    { type: 'time' as const, icon: Clock, label: "Pick Time", desc: "What time feels easiest?" },
+                    { type: 'activity' as const, icon: Coffee, label: "Activity", desc: "What kind of meetup?" },
+                  ]).map(item => (
+                    <button
+                      key={item.type}
+                      onClick={() => handleCreatePoll(item.type)}
+                      className="flex flex-col items-start gap-1 p-3.5 rounded-2xl bg-white border border-[#E8DDD4]/60 hover:border-[#F27C5C]/30 transition-all active:scale-[0.97] text-left"
+                    >
+                      <item.icon className="h-4.5 w-4.5 text-[#F27C5C]" />
+                      <span className="text-[12px] font-semibold text-[#3A0B22]">{item.label}</span>
+                      <span className="text-[10px] text-[#3A0B22]/40 leading-tight">{item.desc}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setShowCustomPoll(true)}
+                    className="flex flex-col items-start gap-1 p-3.5 rounded-2xl bg-white border border-[#E8DDD4]/60 hover:border-[#F27C5C]/30 transition-all active:scale-[0.97] text-left"
+                  >
+                    <BarChart3 className="h-4.5 w-4.5 text-[#F27C5C]" />
+                    <span className="text-[12px] font-semibold text-[#3A0B22]">Custom Poll</span>
+                    <span className="text-[10px] text-[#3A0B22]/40 leading-tight">Ask anything</span>
+                  </button>
+                </div>
+                {/* AI suggestion */}
+                <button
+                  onClick={() => { handleAIPlace(); setShowPlanPanel(false); }}
+                  disabled={aiLoading}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-2xl bg-[#F27C5C]/8 border border-[#F27C5C]/15 hover:bg-[#F27C5C]/12 transition-all active:scale-[0.98]"
+                >
+                  {aiLoading ? <Loader2 className="h-4 w-4 animate-spin text-[#F27C5C]" /> : <Sparkles className="h-4 w-4 text-[#F27C5C]" />}
+                  <span className="text-[13px] font-medium text-[#F27C5C]">AI Place Suggestions</span>
+                </button>
+              </>
+            ) : (
+              /* Custom poll builder */
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-[#3A0B22] flex items-center gap-1.5">
+                    <PenLine className="h-3.5 w-3.5 text-[#F27C5C]" /> Create Poll
+                  </span>
+                  <button onClick={() => { setShowCustomPoll(false); setCustomQuestion(""); setCustomOptions(["", ""]); }} className="text-[11px] text-[#3A0B22]/40">Back</button>
+                </div>
+                <Input
+                  value={customQuestion}
+                  onChange={e => setCustomQuestion(e.target.value)}
+                  placeholder="Your question..."
+                  className="h-10 rounded-xl text-[13px] bg-white border-[#E8DDD4] focus-visible:ring-[#F27C5C]/30"
+                />
+                <div className="space-y-2">
+                  {customOptions.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-[11px] text-[#3A0B22]/30 w-4 text-center">{i + 1}</span>
+                      <Input
+                        value={opt}
+                        onChange={e => { const u = [...customOptions]; u[i] = e.target.value; setCustomOptions(u); }}
+                        placeholder={`Option ${i + 1}`}
+                        className="h-9 rounded-xl text-[13px] bg-white border-[#E8DDD4] flex-1"
+                      />
+                      {customOptions.length > 2 && (
+                        <button onClick={() => setCustomOptions(customOptions.filter((_, x) => x !== i))}>
+                          <X className="h-3.5 w-3.5 text-[#3A0B22]/25" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {customOptions.length < 6 && (
+                    <button onClick={() => setCustomOptions([...customOptions, ""])} className="flex items-center gap-1 text-[11px] text-[#F27C5C] ml-6">
+                      <Plus className="h-3 w-3" /> Add option
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={customMultipleChoice} onCheckedChange={c => setCustomMultipleChoice(c === true)} />
+                    <span className="text-[11px] text-[#3A0B22]/50">Multiple choice</span>
+                  </label>
+                  <Button onClick={handleCreateCustomPoll} size="sm" className="rounded-full px-5 bg-[#F27C5C] hover:bg-[#E8654A] text-white text-[12px] h-9">
+                    <Check className="h-3.5 w-3.5 mr-1" /> Create
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Image previews */}
+        {imagePreviews.length > 0 && (
+          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+            {imagePreviews.map((p, i) => (
+              <div key={i} className="relative flex-shrink-0 group">
+                <img src={p} alt="" className="h-20 w-20 object-cover rounded-xl border border-[#E8DDD4]" />
+                <button onClick={() => removeImage(i)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Input row */}
+        <div className="flex items-end gap-2.5 max-w-lg mx-auto">
+          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="h-11 w-11 rounded-full flex items-center justify-center bg-[#F6F1EC] hover:bg-[#EDE5DD] transition-colors flex-shrink-0 active:scale-95"
+            disabled={selectedImages.length >= 5}
+          >
+            <ImageIcon className="h-[18px] w-[18px] text-[#3A0B22]/40" />
+          </button>
+
+          <button
+            onClick={() => setShowPlanPanel(!showPlanPanel)}
+            className={`h-11 w-11 rounded-full flex items-center justify-center transition-colors flex-shrink-0 active:scale-95 ${
+              showPlanPanel ? "bg-[#F27C5C]/10 border border-[#F27C5C]/20" : "bg-[#F6F1EC] hover:bg-[#EDE5DD]"
+            }`}
+          >
+            <Vote className="h-[18px] w-[18px] text-[#3A0B22]/40" />
+          </button>
+
+          <Input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder="Type a message..."
+            className="flex-1 rounded-full h-11 px-5 bg-[#F6F1EC] border-[#E8DDD4]/60 text-[14px] text-[#3A0B22] placeholder:text-[#3A0B22]/30 focus-visible:ring-[#F27C5C]/30 focus-visible:border-[#F27C5C]/30"
+          />
+
+          <button
+            onClick={() => handleSend()}
+            disabled={(!input.trim() && selectedImages.length === 0) || uploadingImages}
+            className="h-11 w-11 rounded-full flex items-center justify-center bg-[#F27C5C] hover:bg-[#E8654A] text-white shadow-[0_2px_12px_rgba(242,124,92,0.3)] transition-all disabled:opacity-40 disabled:shadow-none flex-shrink-0 active:scale-95"
+          >
+            {uploadingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Group Details Sheet ─── */}
+      <Sheet open={groupDetailsOpen} onOpenChange={setGroupDetailsOpen}>
+        <SheetContent side="bottom" className="rounded-t-[28px] border-t-0 bg-[#FDFAF7] max-h-[80vh]">
+          <SheetHeader className="pb-4 border-b border-[#E8DDD4]/60">
+            <SheetTitle className="font-heading text-[18px] text-[#3A0B22]">{groupCity} · {groupName}</SheetTitle>
+            <SheetDescription className="text-[13px] text-[#3A0B22]/50">{members.length} physicians · {statusText}</SheetDescription>
+          </SheetHeader>
+          <div className="py-4 space-y-3 overflow-y-auto max-h-[50vh]">
+            {members.map(m => (
+              <div key={m.user_id} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/80 transition-colors cursor-pointer" onClick={() => { setGroupDetailsOpen(false); navigate(`/u/${m.user_id}`); }}>
+                <Avatar className="h-11 w-11 border border-[#E8DDD4]">
+                  <AvatarImage src={m.avatar_url || undefined} />
+                  <AvatarFallback className="bg-[#4B0F2D] text-white text-[11px] font-semibold">{getInitials(m.full_name)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-medium text-[#3A0B22] truncate">{m.full_name || "Anonymous"}</p>
+                  <p className="text-[12px] text-[#3A0B22]/45 truncate">{m.specialty || "Physician"}{m.city ? ` · ${m.city}` : ''}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="pt-3 border-t border-[#E8DDD4]/60 space-y-2">
+            <button className="w-full flex items-center gap-2.5 p-3 rounded-xl text-[13px] text-[#3A0B22]/50 hover:bg-white/80 transition-colors">
+              <AlertCircle className="h-4 w-4" /> No-show support
+            </button>
+            <button className="w-full flex items-center gap-2.5 p-3 rounded-xl text-[13px] text-[#3A0B22]/50 hover:bg-white/80 transition-colors">
+              <Flag className="h-4 w-4" /> Report an issue
+            </button>
+            <button className="w-full flex items-center gap-2.5 p-3 rounded-xl text-[13px] text-[#3A0B22]/50 hover:bg-white/80 transition-colors">
+              <Shield className="h-4 w-4" /> Community standards
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ─── Long-press Action Sheet (mobile) ─── */}
+      <Sheet open={!!actionSheetMsg} onOpenChange={v => !v && setActionSheetMsg(null)}>
+        <SheetContent side="bottom" className="rounded-t-[28px] border-t-0 bg-[#FDFAF7]">
+          <SheetHeader className="sr-only"><SheetTitle>Message actions</SheetTitle><SheetDescription>Choose an action</SheetDescription></SheetHeader>
+          {actionSheetMsg && (
+            <div className="py-2 space-y-1">
+              <button
+                onClick={() => { handleStartEdit(actionSheetMsg); setActionSheetMsg(null); }}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl hover:bg-white/80 transition-colors text-left"
+              >
+                <Pencil className="h-4 w-4 text-[#3A0B22]/50" />
+                <span className="text-[14px] text-[#3A0B22]">Edit message</span>
+              </button>
+              <button
+                onClick={() => { navigator.clipboard.writeText(actionSheetMsg.content); setActionSheetMsg(null); toast({ title: "Copied" }); }}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl hover:bg-white/80 transition-colors text-left"
+              >
+                <Copy className="h-4 w-4 text-[#3A0B22]/50" />
+                <span className="text-[14px] text-[#3A0B22]">Copy text</span>
+              </button>
+              <div className="h-px bg-[#E8DDD4]/60 my-1" />
+              <button
+                onClick={() => { handleDeleteMessage(actionSheetMsg.id); setActionSheetMsg(null); }}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl hover:bg-red-50 transition-colors text-left"
+              >
+                <Trash2 className="h-4 w-4 text-red-500" />
+                <span className="text-[14px] text-red-600">Delete message</span>
+              </button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* ─── Image Viewer ─── */}
       {viewingImages && (
         <ImageViewer
           images={viewingImages}

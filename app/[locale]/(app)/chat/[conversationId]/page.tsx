@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import ChatPageContent from '@/views/Chat';
+import GroupChatPageContent from '@/views/GroupChat';
 
 export const metadata: Metadata = {
-  title: 'Chat',
-  description: 'Chat with your matches on BeyondRounds.',
+  title: 'Group Chat',
+  description: 'Chat with your group on BeyondRounds.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -16,5 +16,5 @@ interface ChatPageProps {
 }
 
 export default function ChatPage({ params }: ChatPageProps) {
-  return <ChatPageContent />;
+  return <GroupChatPageContent />;
 }

@@ -12,7 +12,6 @@ export const APP_ROUTES = [
   '/profile',
   '/matches',
   '/chat',
-  '/group-chat',
   '/places',
   '/onboarding',
   '/interests',

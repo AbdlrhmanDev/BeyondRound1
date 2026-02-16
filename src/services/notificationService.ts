@@ -44,6 +44,11 @@ export const createNotification = async (
       return false;
     }
 
+    if (!supabase) {
+      console.error("Supabase client not initialized");
+      return false;
+    }
+
     const { error } = await supabase
       .from("notifications")
       .insert({
@@ -89,6 +94,11 @@ export const checkNotificationExists = async (
 
     if (!messagePattern?.trim()) {
       console.error("Invalid messagePattern for checkNotificationExists:", messagePattern);
+      return false;
+    }
+
+    if (!supabase) {
+      console.error("Supabase client not initialized");
       return false;
     }
 

@@ -1,175 +1,135 @@
 'use client';
 
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchUserGroups } from "@/services/matchService";
 import DashboardLayout from "@/components/DashboardLayout";
-import { getUserGroupMemberships, getGroupsByIds, getGroupMembers } from "@/services/matchService";
-import { getGroupConversationsByGroupIds } from "@/services/conversationService";
-import { getPublicProfile } from "@/services/profileService";
-import { getOrCreateGroupConversation } from "@/services/conversationService";
-import { useToast } from "@/hooks/use-toast";
-import { ChevronRight } from "lucide-react";
-import { ChatListEmptyState } from "@/components/ChatEmptyState";
-import { format } from "date-fns";
+import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import { Loader2, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import GroupChat from "@/views/GroupChat";
 
-interface GroupChatItem {
-  id: string;
-  groupId: string;
-  name: string;
-  conversationId: string | null;
-  members: { user_id: string; full_name: string | null; avatar_url: string | null }[];
-  matchWeek: string;
-}
-
+/**
+ * /chat route — auto-detects the user's most recent active group conversation
+ * and renders GroupChat with that conversation ID.
+ */
 export default function ChatListPage() {
-  const { t } = useTranslation();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useLocalizedNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [groups, setGroups] = useState<GroupChatItem[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (authLoading) return;
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
 
-    const fetch = async () => {
+    const findConversation = async () => {
       try {
-        const memberships = await getUserGroupMemberships(user.id);
-        if (!memberships?.length) {
-          setGroups([]);
-          return;
+        setLoading(true);
+
+        // Fetch user's active groups (sorted by score then match_week desc)
+        const groups = await fetchUserGroups(user.id);
+
+        if (groups.length > 0) {
+          // Find the first group that has a conversation_id
+          const groupWithChat = groups.find((g) => g.conversation_id);
+          if (groupWithChat?.conversation_id) {
+            setConversationId(groupWithChat.conversation_id);
+            setLoading(false);
+            return;
+          }
         }
 
-        const groupIds = memberships.map((m) => m.group_id);
-        const [groupsData, conversationsData] = await Promise.all([
-          getGroupsByIds(groupIds),
-          getGroupConversationsByGroupIds(groupIds),
-        ]);
+        // Fallback: query group_conversations directly for any conversation this user belongs to
+        if (supabase) {
+          const { data: memberships } = await supabase
+            .from("group_members")
+            .select("group_id")
+            .eq("user_id", user.id);
 
-        const conversationsMap = new Map(
-          conversationsData.map((c) => [c.group_id, c.id])
-        );
+          if (memberships && memberships.length > 0) {
+            const groupIds = memberships.map((m) => m.group_id);
+            const { data: conversations } = await supabase
+              .from("group_conversations")
+              .select("id, group_id, created_at")
+              .in("group_id", groupIds)
+              .order("created_at", { ascending: false })
+              .limit(1);
 
-        const result: GroupChatItem[] = [];
-        for (const g of groupsData || []) {
-          const members = await getGroupMembers(g.id);
-          const otherMemberIds = members
-            .map((m) => m.user_id)
-            .filter((id) => id !== user.id);
-          const profiles = await Promise.all(
-            otherMemberIds.slice(0, 4).map((id) => getPublicProfile(id))
-          );
-
-          result.push({
-            id: g.id,
-            groupId: g.id,
-            name: g.name || `${g.match_week} - Group`,
-            conversationId: conversationsMap.get(g.id) || null,
-            members: profiles
-              .filter(Boolean)
-              .map((p) => ({
-                user_id: p!.user_id,
-                full_name: p!.full_name,
-                avatar_url: p!.avatar_url,
-              })),
-            matchWeek: g.match_week,
-          });
+            if (conversations && conversations.length > 0) {
+              setConversationId(conversations[0].id);
+              setLoading(false);
+              return;
+            }
+          }
         }
 
-        setGroups(result);
-      } catch {
-        setGroups([]);
-      } finally {
+        // No conversation found
+        setLoading(false);
+      } catch (err) {
+        console.error("Error finding conversation:", err);
+        setError(true);
         setLoading(false);
       }
     };
 
-    fetch();
-  }, [user?.id]);
+    findConversation();
+  }, [user, authLoading, navigate]);
 
-  const openChat = async (item: GroupChatItem) => {
-    try {
-      const conversationId =
-        item.conversationId ||
-        (await getOrCreateGroupConversation(item.groupId));
-      navigate(`/group-chat/${conversationId}`);
-    } catch {
-      toast({
-        title: t("chat.errorOpen", "Could not open chat"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (loading) {
+  // Loading state
+  if (authLoading || loading) {
     return (
       <DashboardLayout>
-        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-3xl">
-          <Skeleton className="h-10 w-48 mb-6" />
-          <Skeleton className="h-24 w-full rounded-2xl mb-4" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
-        </main>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading chat...</p>
+        </div>
       </DashboardLayout>
     );
   }
 
-  return (
-    <DashboardLayout>
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-3xl">
-        <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-          {t("chat.title", "Chat")}
-        </h1>
-        <p className="text-muted-foreground mb-8">
-          {t("chat.subtitle", "Your active group chats.")}
-        </p>
-
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-            {t("chat.activeGroups", "Active Group Chats")}
-          </h2>
-
-          {groups.length === 0 ? (
-            <ChatListEmptyState onBookMeetup={() => navigate("/dashboard")} />
-          ) : (
-            groups.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => openChat(item)}
-                className="w-full text-left rounded-2xl border border-border/60 bg-card p-5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-4"
-              >
-                <div className="flex -space-x-2 flex-shrink-0">
-                  {item.members.slice(0, 4).map((m) => (
-                    <Avatar
-                      key={m.user_id}
-                      className="h-10 w-10 border-2 border-background"
-                    >
-                      <AvatarImage src={m.avatar_url || undefined} />
-                      <AvatarFallback className="text-xs">
-                        {m.full_name?.slice(0, 2).toUpperCase() || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-display font-semibold text-foreground truncate">
-                    {item.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {item.members.length} {t("chat.members", "members")} ·{" "}
-                    {format(new Date(item.matchWeek), "MMM d")}
-                  </p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-              </button>
-            ))
-          )}
+  // Error state
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4 px-6 text-center">
+          <MessageCircle className="h-12 w-12 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">Something went wrong loading your chat.</p>
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
         </div>
-      </main>
-    </DashboardLayout>
-  );
+      </DashboardLayout>
+    );
+  }
+
+  // No conversation found — empty state
+  if (!conversationId) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4 px-6 text-center">
+          <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+            <MessageCircle className="h-8 w-8 text-muted-foreground/60" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">No group chat yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Join a weekend gathering to start chatting with your group.
+            </p>
+          </div>
+          <Button onClick={() => navigate("/dashboard")} size="sm">
+            Find a gathering
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Render GroupChat with the detected conversation ID
+  return <GroupChat conversationIdProp={conversationId} />;
 }

@@ -375,9 +375,9 @@ const Onboarding = () => {
             city: profile.city || "",
             neighborhood: profile.neighborhood || "",
             gender: profile.gender || "",
-            birthYear: profile.birth_year?.toString() || "",
-            birthMonth: "",
-            birthDay: "",
+            birthYear: profile.date_of_birth ? profile.date_of_birth.split('-')[0] : "",
+            birthMonth: profile.date_of_birth ? profile.date_of_birth.split('-')[1] : "",
+            birthDay: profile.date_of_birth ? profile.date_of_birth.split('-')[2] : "",
             genderPreference: profile.gender_preference || "",
             nationality: profile.nationality || "",
           });
@@ -503,7 +503,7 @@ const Onboarding = () => {
     setIsLoading(true);
 
     try {
-      const { error, data } = await signUp(signupData.email, signupData.password, personalInfo.name);
+      const { error } = await signUp(signupData.email, signupData.password, personalInfo.name);
 
       if (error) {
         toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
@@ -531,7 +531,9 @@ const Onboarding = () => {
         city: personalInfo.city || null,
         neighborhood: personalInfo.neighborhood || null,
         gender: personalInfo.gender || null,
-        birth_year: personalInfo.birthYear ? parseInt(personalInfo.birthYear) : null,
+        date_of_birth: personalInfo.birthYear && personalInfo.birthMonth && personalInfo.birthDay
+          ? `${personalInfo.birthYear}-${personalInfo.birthMonth.padStart(2, '0')}-${personalInfo.birthDay.padStart(2, '0')}`
+          : null,
         gender_preference: personalInfo.genderPreference || null,
         nationality: personalInfo.nationality || null,
         avatar_url: avatarUrl,
@@ -841,7 +843,7 @@ const Onboarding = () => {
                     value={personalInfo.name}
                     onChange={(e) => handlePersonalInfoChange("name", e.target.value)}
                     placeholder="Dr. Jane Doe"
-                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-primary focus:ring-primary"
+                    className="h-12 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
                   />
                 </div>
                 <LocationSelect
@@ -856,46 +858,47 @@ const Onboarding = () => {
                   variant="profile"
                   className="w-full"
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Gender Column */}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Gender */}
                   <div className="space-y-2">
                     <Label className="text-gray-700 font-medium">Gender</Label>
                     <Select value={personalInfo.gender} onValueChange={(v) => handlePersonalInfoChange("gender", v)}>
-                      <SelectTrigger className="h-12 rounded-xl bg-white border-gray-300 text-gray-900">
+                      <SelectTrigger className="h-12 rounded-xl bg-white text-foreground border border-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 focus-visible:border-emerald-500 transition">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white border-gray-200">
+                      <SelectContent className="bg-white border border-gray-200 shadow-lg" position="popper" sideOffset={8}>
                         <SelectItem value="male" className="text-gray-900 hover:bg-gray-100">Male</SelectItem>
                         <SelectItem value="female" className="text-gray-900 hover:bg-gray-100">Female</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Date of Birth Column */}
+                  {/* Date of Birth */}
                   <div className="space-y-2">
                     <Label className="text-gray-700 font-medium">Date of Birth</Label>
                     <div className="grid grid-cols-3 gap-3">
                       <Select value={personalInfo.birthDay} onValueChange={(v) => handlePersonalInfoChange("birthDay", v)}>
-                        <SelectTrigger className="h-12 rounded-xl bg-white border-gray-300 text-gray-900 min-w-0">
+                        <SelectTrigger className="h-12 rounded-xl bg-white text-foreground border border-gray-300 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 focus-visible:border-emerald-500 transition">
                           <SelectValue placeholder="Day" />
                         </SelectTrigger>
-                        <SelectContent className="max-h-[200px] bg-white border-gray-200">
+                        <SelectContent className="max-h-[200px] bg-white border border-gray-200 shadow-lg" position="popper" sideOffset={8}>
                           {days.map(d => <SelectItem key={d.value} value={d.value} className="text-gray-900 hover:bg-gray-100">{d.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Select value={personalInfo.birthMonth} onValueChange={(v) => handlePersonalInfoChange("birthMonth", v)}>
-                        <SelectTrigger className="h-12 rounded-xl bg-white border-gray-300 text-gray-900 min-w-0">
+                        <SelectTrigger className="h-12 rounded-xl bg-white text-foreground border border-gray-300 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 focus-visible:border-emerald-500 transition">
                           <SelectValue placeholder="Month" />
                         </SelectTrigger>
-                        <SelectContent className="max-h-[200px] bg-white border-gray-200">
+                        <SelectContent className="max-h-[200px] bg-white border border-gray-200 shadow-lg" position="popper" sideOffset={8}>
                           {months.map(m => <SelectItem key={m.value} value={m.value} className="text-gray-900 hover:bg-gray-100">{m.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Select value={personalInfo.birthYear} onValueChange={(v) => handlePersonalInfoChange("birthYear", v)}>
-                        <SelectTrigger className="h-12 rounded-xl bg-white border-gray-300 text-gray-900 min-w-0">
+                        <SelectTrigger className="h-12 rounded-xl bg-white text-foreground border border-gray-300 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 focus-visible:border-emerald-500 transition">
                           <SelectValue placeholder="Year" />
                         </SelectTrigger>
-                        <SelectContent className="max-h-[200px] bg-white border-gray-200">
+                        <SelectContent className="max-h-[200px] bg-white border border-gray-200 shadow-lg" position="popper" sideOffset={8}>
                           {years.map(y => <SelectItem key={y} value={y.toString()} className="text-gray-900 hover:bg-gray-100">{y}</SelectItem>)}
                         </SelectContent>
                       </Select>
@@ -903,6 +906,7 @@ const Onboarding = () => {
                     <p className="text-xs text-gray-500 mt-1.5">Used only to improve matching. Not shown publicly.</p>
                   </div>
                 </div>
+
               </div>
             </section>
 

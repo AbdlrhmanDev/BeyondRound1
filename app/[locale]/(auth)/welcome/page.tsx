@@ -49,7 +49,9 @@ export default function WelcomePage() {
             city: personalInfo?.city || null,
             neighborhood: personalInfo?.neighborhood || null,
             gender: personalInfo?.gender || null,
-            birth_year: personalInfo?.birthYear ? parseInt(personalInfo.birthYear) : null,
+            date_of_birth: personalInfo?.birthYear && personalInfo?.birthMonth && personalInfo?.birthDay
+              ? `${personalInfo.birthYear}-${personalInfo.birthMonth.padStart(2, '0')}-${personalInfo.birthDay.padStart(2, '0')}`
+              : null,
             gender_preference: personalInfo?.genderPreference || null,
             nationality: personalInfo?.nationality || null,
           });

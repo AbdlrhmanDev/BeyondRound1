@@ -31,8 +31,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-dm-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['var(--font-dm-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'], // Unify fonts for cleaner look
+        sans: ['var(--font-dm-sans)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        heading: ['Playfair Display', 'DM Serif Display', 'Cormorant Garamond', 'serif'], // BeyondRounds serif headings
+        display: ['Playfair Display', 'DM Serif Display', 'Cormorant Garamond', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -96,7 +97,10 @@ export default {
       },
       boxShadow: {
         'subtle': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-        'card': '0 4px 6px -1px rgb(0 0 0 / 0.02), 0 2px 4px -2px rgb(0 0 0 / 0.02)', // Very subtle, no glow
+        'soft': '0 2px 8px rgb(58 11 34 / 0.06)', // BeyondRounds default
+        'hover': '0 4px 16px rgb(58 11 34 / 0.10)', // BeyondRounds hover
+        'modal': '0 8px 32px rgb(58 11 34 / 0.15)', // BeyondRounds modal
+        'card': '0 4px 6px -1px rgb(0 0 0 / 0.02), 0 2px 4px -2px rgb(0 0 0 / 0.02)',
         'float': '0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.02)',
       },
       keyframes: {

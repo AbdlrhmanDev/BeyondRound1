@@ -112,7 +112,7 @@ export default function EventsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to open chat");
       if (data.conversationId) {
-        navigate(`/group-chat/${data.conversationId}`);
+        navigate(`/chat/${data.conversationId}`);
       } else {
         navigate("/chat");
       }

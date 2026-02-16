@@ -2,50 +2,94 @@ interface LandingHowItWorksProps {
   t: (key: string) => string;
 }
 
+const steps = [
+  {
+    num: '01',
+    title: 'Verify you\u2019re a doctor',
+    desc: 'Quick verification to keep the community trusted.',
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 12l2 2 4-4" />
+        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+      </svg>
+    ),
+  },
+  {
+    num: '02',
+    title: 'Answer a short questionnaire',
+    desc: 'Interests + preferred vibe + weekend availability.',
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+      </svg>
+    ),
+  },
+  {
+    num: '03',
+    title: 'Get your match every Thursday',
+    desc: 'Matched with 3\u20134 doctors in Berlin.',
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+        <line x1="16" y1="2" x2="16" y2="6" />
+        <line x1="8" y1="2" x2="8" y2="6" />
+        <line x1="3" y1="10" x2="21" y2="10" />
+      </svg>
+    ),
+  },
+  {
+    num: '04',
+    title: 'Chat, pick a plan, meet',
+    desc: 'Simple activity: brunch, coffee, walk, or sport.',
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+];
+
 export function LandingHowItWorks({ t }: LandingHowItWorksProps) {
-  const steps = [
-    { num: '1', key: 'step1' },
-    { num: '2', key: 'step2' },
-    { num: '3', key: 'step3' },
-    { num: '4', key: 'step4' },
-  ];
-
   return (
-    <section className="py-20 sm:py-28 bg-white">
-      <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight mb-4">
-            {t('landing.howTitle')}
-          </h2>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            {t('landing.howSubtitle')}
-          </p>
-        </div>
+    <section id="how-it-works" className="py-20 sm:py-28 bg-[#F7F2EE]">
+      <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
+        <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#3A0B22] tracking-tight mb-14 text-center">
+          How it works
+        </h2>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {steps.map((step) => (
-            <div key={step.key} className="text-center">
-              <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto mb-4 font-bold text-lg">
-                {step.num}
+            <div
+              key={step.num}
+              className="bg-white/80 border border-[#E8DED5]/60 rounded-[22px] p-6 text-center shadow-sm"
+            >
+              {/* Icon */}
+              <div className="w-14 h-14 rounded-full bg-[#F27C5C]/10 flex items-center justify-center mx-auto mb-4">
+                {step.icon}
               </div>
-              <h3 className="font-display font-semibold text-gray-900 mb-2">
-                {t(`landing.${step.key}Title`)}
+
+              {/* Step number */}
+              <p className="text-[#F27C5C] text-xs font-semibold tracking-wider uppercase mb-2">
+                STEP {step.num}
+              </p>
+
+              {/* Title */}
+              <h3 className="font-display font-semibold text-[#3A0B22] text-base mb-2 leading-snug">
+                {step.title}
               </h3>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                {t(`landing.${step.key}Desc`)}
+
+              {/* Description */}
+              <p className="text-[#5E555B] text-sm leading-relaxed">
+                {step.desc}
               </p>
             </div>
           ))}
-        </div>
-
-        {/* What happens after box */}
-        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 sm:p-8 text-center">
-          <h3 className="font-display font-semibold text-gray-900 mb-2">
-            {t('landing.howAfterTitle')}
-          </h3>
-          <p className="text-gray-500 text-sm leading-relaxed max-w-lg mx-auto">
-            {t('landing.howAfterDesc')}
-          </p>
         </div>
       </div>
     </section>

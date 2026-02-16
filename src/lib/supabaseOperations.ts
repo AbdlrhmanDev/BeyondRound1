@@ -28,7 +28,7 @@ export async function updateUserProfile(
       .from('profiles')
       .update(profileData as never)
       .eq('user_id', user.id)
-      .select('id, user_id, full_name, avatar_url, city, gender, birth_year, status');
+      .select('id, user_id, full_name, avatar_url, city, gender, date_of_birth, status');
 
     if (error) {
       if (error.code === 'PGRST116' || (error as { status?: number }).status === 406) {

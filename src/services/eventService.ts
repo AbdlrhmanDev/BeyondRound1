@@ -227,6 +227,153 @@ export async function getUserBookings(userId: string): Promise<(Booking & { even
   }
 }
 
+/** Weekend day info for Choose Day module */
+export interface WeekendDay {
+  dayName: "Friday" | "Saturday" | "Sunday";
+  date: string; // ISO date string
+  dateFormatted: string; // e.g. "Friday, 21 February"
+  timeSlot: string; // "Evening" or "Afternoon"
+  eventId: string | null;
+  spotsLeft: number;
+  soldOut: boolean;
+}
+
+/** Get upcoming weekend dates (Fri/Sat/Sun) with event availability */
+export async function getWeekendEvents(
+  city: string = "Berlin"
+): Promise<WeekendDay[]> {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 5=Fri, 6=Sat
+
+  // Find next Friday (or this Friday if today is Mon-Fri before it)
+  let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+  if (daysUntilFriday === 0 && now.getHours() >= 22) daysUntilFriday = 7; // past Friday evening
+  if (dayOfWeek === 0) daysUntilFriday = 5; // Sunday → next Friday
+
+  const friday = new Date(now);
+  friday.setDate(now.getDate() + daysUntilFriday);
+  friday.setHours(0, 0, 0, 0);
+
+  const saturday = new Date(friday);
+  saturday.setDate(friday.getDate() + 1);
+
+  const sunday = new Date(friday);
+  sunday.setDate(friday.getDate() + 2);
+
+  const weekendDates = [friday, saturday, sunday];
+  const dayNames: ("Friday" | "Saturday" | "Sunday")[] = ["Friday", "Saturday", "Sunday"];
+  const timeSlots = ["Evening", "Evening", "Afternoon"];
+
+  // Fetch events for these dates
+  const startRange = friday.toISOString();
+  const endRange = new Date(sunday.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    const { data: events } = await (supabase as any)
+      .from("events")
+      .select("*")
+      .eq("city", city)
+      .eq("status", "open")
+      .gte("date_time", startRange)
+      .lt("date_time", endRange)
+      .order("date_time", { ascending: true });
+
+    // Count bookings for these events
+    const eventIds = (events || []).map((e: Event) => e.id);
+    let bookingCounts = new Map<string, number>();
+
+    if (eventIds.length > 0) {
+      const { data: bookings } = await (supabase as any)
+        .from("bookings")
+        .select("event_id")
+        .in("event_id", eventIds)
+        .in("status", ["pending", "confirmed"]);
+
+      for (const b of bookings || []) {
+        bookingCounts.set(b.event_id, (bookingCounts.get(b.event_id) ?? 0) + 1);
+      }
+    }
+
+    return weekendDates.map((date, i) => {
+      const dateStr = date.toISOString().split("T")[0];
+      const matchingEvent = (events || []).find((e: Event) =>
+        e.date_time.startsWith(dateStr)
+      );
+
+      const spotsLeft = matchingEvent
+        ? Math.max(0, matchingEvent.max_participants - (bookingCounts.get(matchingEvent.id) ?? 0))
+        : 24; // default capacity
+
+      const formatted = date.toLocaleDateString("en-US", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+
+      return {
+        dayName: dayNames[i],
+        date: dateStr,
+        dateFormatted: formatted,
+        timeSlot: timeSlots[i],
+        eventId: matchingEvent?.id || null,
+        spotsLeft,
+        soldOut: matchingEvent ? spotsLeft === 0 : false,
+      };
+    });
+  } catch {
+    // Fallback: return weekend dates without event data
+    return weekendDates.map((date, i) => ({
+      dayName: dayNames[i],
+      date: date.toISOString().split("T")[0],
+      dateFormatted: date.toLocaleDateString("en-US", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }),
+      timeSlot: timeSlots[i],
+      eventId: null,
+      spotsLeft: 24,
+      soldOut: false,
+    }));
+  }
+}
+
+/** Check if user has an active booking for the upcoming weekend */
+export async function getActiveBookingForWeekend(
+  userId: string
+): Promise<(Booking & { event?: Event }) | null> {
+  try {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    if (daysUntilFriday === 0 && now.getHours() >= 22) daysUntilFriday = 7;
+    if (dayOfWeek === 0) daysUntilFriday = 5;
+
+    const friday = new Date(now);
+    friday.setDate(now.getDate() + daysUntilFriday);
+    friday.setHours(0, 0, 0, 0);
+
+    const mondayAfter = new Date(friday);
+    mondayAfter.setDate(friday.getDate() + 3);
+
+    const { data, error } = await (supabase as any)
+      .from("bookings")
+      .select(`*, event:events!left(*)`)
+      .eq("user_id", userId)
+      .in("status", ["pending", "confirmed"])
+      .gte("created_at", friday.toISOString())
+      .lt("created_at", mondayAfter.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data as Booking & { event?: Event };
+  } catch {
+    return null;
+  }
+}
+
 /** Update booking with payment */
 export async function updateBookingPayment(
   bookingId: string,

@@ -1,115 +1,122 @@
 'use client';
 
-import { Button } from "@/components/ui/button";
-import { Heart, Users, Shield, Quote, ArrowRight } from "lucide-react";
-import { EMAILS } from "@/constants/emails";
-import { useTranslation } from "react-i18next";
-import LocalizedLink from "@/components/LocalizedLink";
+import Link from "next/link";
+import { Shield, Users, Heart, CalendarCheck, MessageCircle, CheckCircle2 } from "lucide-react";
 
 const About = () => {
-  const { t } = useTranslation('about');
-  const values = [
-    { icon: Users, titleKey: "verifiedCommunity", descKey: "verifiedCommunityDesc" },
-    { icon: Heart, titleKey: "beyondMedicine", descKey: "beyondMedicineDesc" },
-    { icon: Shield, titleKey: "safeAndPrivate", descKey: "safeAndPrivateDesc" },
-  ];
-
   return (
-    <div className="min-h-screen bg-white">
-      <main className="pt-32">
-        <section className="py-20">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-sm font-semibold mb-6">
-                <Heart size={14} />
-                {t("ourStory")}
-              </span>
-              <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight mb-6">
-                {t("bornFrom")}
-                <span className="text-emerald-600">{t("lateNightShift")}</span>
-              </h1>
-              <p className="text-xl text-gray-600">{t("buildingConnections")}</p>
-            </div>
+    <div className="min-h-screen bg-[#F6F1EC]">
+      {/* Hero */}
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#3A0B22]/5 to-transparent" />
+        <div className="container mx-auto px-5 sm:px-8 max-w-3xl relative z-10 text-center">
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#F27C5C] mb-4">About BeyondRounds</p>
+          <h1 className="font-display text-4xl sm:text-5xl font-bold text-[#3A0B22] tracking-tight leading-[1.15] mb-6">
+            A calmer way for doctors to make real friends.
+          </h1>
+          <p className="text-lg text-[#5E555B] max-w-xl mx-auto leading-relaxed">
+            Medicine is demanding. Friendships shouldn't be. BeyondRounds gives doctors the structure to show up, connect, and build lasting relationships — without the effort of organizing everything yourself.
+          </p>
+        </div>
+      </section>
 
-            <div className="max-w-4xl mx-auto">
-              <div className="relative bg-white border border-gray-200 shadow-sm rounded-2xl p-10 lg:p-14">
-                <Quote className="absolute top-8 left-8 w-16 h-16 text-emerald-100" />
-                <div className="relative z-10 space-y-6 text-lg text-gray-600 leading-relaxed">
-                  <p>{t("storyP1")}</p>
-                  <p>
-                    {t("storyP2")}{" "}
-                    <span className="font-semibold text-gray-900">{t("storyP2Bold")}</span>
-                  </p>
-                  <p>{t("storyP3")}</p>
-                  <p>
-                    {t("storyP4")}{" "}
-                    <span className="font-semibold text-gray-900">{t("storyP4Bold")}</span>
-                  </p>
-                  <p className="text-gray-900 font-medium text-xl">{t("storyP5")}</p>
+      {/* Image Grid */}
+      <section className="container mx-auto px-5 sm:px-8 max-w-4xl pb-16">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="aspect-[4/3] rounded-[22px] bg-[#E8DED5] flex items-center justify-center text-[#5E555B]/40 text-sm">[Image: caf&eacute; laughter]</div>
+          <div className="aspect-[4/3] rounded-[22px] bg-[#E8DED5] flex items-center justify-center text-[#5E555B]/40 text-sm">[Image: casual walk]</div>
+        </div>
+      </section>
+
+      {/* Mission */}
+      <section className="container mx-auto px-5 sm:px-8 max-w-3xl pb-20">
+        <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-4">The mission</h2>
+          <p className="text-[#5E555B] leading-relaxed mb-4">
+            Doctors are surrounded by people all day — patients, nurses, colleagues — yet many describe a deep sense of social isolation outside the hospital. Long hours, rotating schedules, and frequent relocations make it nearly impossible to maintain friendships the way others do.
+          </p>
+          <p className="text-[#3A0B22] font-semibold text-lg">
+            The problem isn't motivation. The problem is structure.
+          </p>
+          <p className="text-[#5E555B] leading-relaxed mt-4">
+            BeyondRounds provides that structure: small, curated groups of verified doctors who meet weekly in their city. No organizing. No guessing. Just show up.
+          </p>
+        </div>
+      </section>
+
+      {/* Why It Works */}
+      <section className="bg-[#3A0B22] py-20">
+        <div className="container mx-auto px-5 sm:px-8 max-w-3xl">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mb-10">Why it works</h2>
+          <div className="space-y-6">
+            {[
+              { icon: Users, title: "Small groups, not crowds", desc: "3–4 doctors per meetup. Intimate enough for real conversation." },
+              { icon: Shield, title: "Verified doctors only", desc: "Every member is verified. You know you're among peers." },
+              { icon: CalendarCheck, title: "Weekly rhythm", desc: "Every weekend, a new match. Consistency builds trust." },
+              { icon: MessageCircle, title: "Group chat with prompts", desc: "Break the ice before you meet. Arrive already connected." },
+              { icon: Heart, title: "Low-pressure, high-warmth", desc: "Not dating. Not networking. Just good company." },
+            ].map((item) => (
+              <div key={item.title} className="flex gap-4 items-start">
+                <div className="h-10 w-10 rounded-xl bg-[#F27C5C]/15 flex items-center justify-center shrink-0">
+                  <item.icon className="h-5 w-5 text-[#F27C5C]" />
                 </div>
-                <div className="mt-10 pt-10 border-t border-gray-200 flex items-center gap-5">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center text-white font-display font-bold text-2xl">
-                    DR
-                  </div>
-                  <div>
-                    <p className="font-display font-bold text-gray-900 text-lg">{t("founder")}</p>
-                    <p className="text-gray-500">{t("founderTitle")}</p>
-                  </div>
+                <div>
+                  <h3 className="text-white font-semibold mb-1">{item.title}</h3>
+                  <p className="text-white/60 text-sm leading-relaxed">{item.desc}</p>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="py-20 bg-gray-50">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto">
-              <div className="p-10 lg:p-14 rounded-2xl bg-emerald-600 text-white text-center">
-                <Shield className="w-12 h-12 mx-auto mb-6 opacity-80" />
-                <h2 className="font-display text-3xl lg:text-4xl font-bold mb-6">{t("ourMission")}</h2>
-                <p className="text-xl lg:text-2xl opacity-90 leading-relaxed">{t("missionText")}</p>
-              </div>
-            </div>
-          </div>
-        </section>
+      {/* The Experience */}
+      <section className="container mx-auto px-5 sm:px-8 max-w-3xl py-20">
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">The experience</h2>
+        <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
+          <p className="text-[#5E555B] leading-relaxed mb-4">
+            On Thursday, you'll receive your match: 3–4 doctors in your city who share your vibe and interests. A private group chat opens with conversation prompts and suggested meetup spots.
+          </p>
+          <p className="text-[#5E555B] leading-relaxed mb-4">
+            On the weekend, you meet. Maybe it's brunch at a neighbourhood spot. Maybe it's a walk along the canal. Maybe it's coffee at a quiet café. The format is simple. The connection is real.
+          </p>
+          <p className="text-[#3A0B22] font-medium">
+            No networking agendas. No forced icebreakers. Just a warm table and good company.
+          </p>
+        </div>
+      </section>
 
-        <section className="py-20">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="font-display text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-                {t("whatWeStandFor")}
-              </h2>
+      {/* Trust & Safety */}
+      <section className="container mx-auto px-5 sm:px-8 max-w-3xl pb-20">
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">Trust & safety</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {[
+            { title: "Verified community", desc: "Every member goes through medical license verification before joining." },
+            { title: "Community standards", desc: "Clear guidelines ensure a respectful, inclusive environment." },
+            { title: "Privacy-first", desc: "Your data stays private. We never share personal details with third parties." },
+            { title: "Safe reporting", desc: "Easy-to-use reporting tools for any concerns, with prompt follow-up." },
+          ].map((item) => (
+            <div key={item.title} className="bg-white/60 border border-[#E8DED5] rounded-[20px] p-6">
+              <h3 className="font-semibold text-[#3A0B22] mb-2">{item.title}</h3>
+              <p className="text-sm text-[#5E555B] leading-relaxed">{item.desc}</p>
             </div>
-            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {values.map((value, index) => (
-                <div key={index} className="bg-white border border-gray-200 shadow-sm rounded-2xl p-8 text-center hover:border-emerald-200 transition-all duration-300">
-                  <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-emerald-50 flex items-center justify-center">
-                    <value.icon className="w-8 h-8 text-emerald-600" />
-                  </div>
-                  <h3 className="font-display text-xl font-bold text-gray-900 mb-3">{t(value.titleKey)}</h3>
-                  <p className="text-gray-600 leading-relaxed">{t(value.descKey)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+          ))}
+        </div>
+      </section>
 
-        <section className="py-20 bg-gray-50">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">{t("ctaText")}</p>
-            <p className="text-gray-500 mb-6">
-              {t("interestedInTeam")}{" "}
-              <a href={`mailto:${EMAILS.team}`} className="text-emerald-600 hover:underline font-medium">{EMAILS.team}</a>
-            </p>
-            <LocalizedLink to="/auth">
-              <Button className="group text-base h-14 px-8">
-                {t("getStarted", { ns: "common" })}
-                <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </LocalizedLink>
-          </div>
-        </section>
-      </main>
+      {/* CTA */}
+      <section className="bg-[#3A0B22] py-20">
+        <div className="container mx-auto px-5 sm:px-8 max-w-xl text-center">
+          <h2 className="font-display text-3xl font-bold text-white mb-4">Choose a weekend meetup</h2>
+          <p className="text-white/60 mb-8">Join a curated group of doctors in Berlin this weekend.</p>
+          <Link
+            href="/en/auth"
+            className="inline-flex items-center justify-center h-14 px-10 rounded-full bg-[#F27C5C] hover:bg-[#e06d4d] text-white font-display font-semibold text-base transition-all active:scale-[0.98] shadow-sm"
+          >
+            Join Berlin
+          </Link>
+        </div>
+      </section>
     </div>
   );
 };

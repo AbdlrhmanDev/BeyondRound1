@@ -22,7 +22,7 @@ export interface Profile {
   neighborhood: string | null;
   languages?: string[] | null;
   gender: string | null;
-  birth_year: number | null;
+  date_of_birth: string | null;
   gender_preference: string | null;
   nationality: string | null;
   status?: string;

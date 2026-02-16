@@ -61,7 +61,7 @@ export function MarketingMobileMenu({
         aria-label="Close menu"
       />
       <div
-        className="fixed left-3 right-3 mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl p-5 animate-fade-in z-[9999] max-h-[calc(100dvh-env(safe-area-inset-top)-6rem)] overflow-y-auto"
+        className="fixed left-3 right-3 mt-2 bg-[#F6F1EC] border border-[#E8DED5]/60 rounded-2xl shadow-xl p-5 animate-fade-in z-[9999] max-h-[calc(100dvh-env(safe-area-inset-top)-6rem)] overflow-y-auto"
         style={{ top: 'calc(env(safe-area-inset-top) + 5rem)' }}
       >
         <nav className="flex flex-col gap-0.5">
@@ -70,13 +70,13 @@ export function MarketingMobileMenu({
               key={link.href}
               href={`/${locale}${link.href}`}
               prefetch={false}
-              className="min-h-[44px] flex items-center px-4 py-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100 rounded-xl font-medium transition-all duration-200"
+              className="min-h-[44px] flex items-center px-4 py-3 text-[#3A0B22] hover:text-[#F27C5C] hover:bg-[#F27C5C]/5 active:bg-[#F27C5C]/10 rounded-xl font-medium transition-all duration-200"
               onClick={close}
             >
               {link.label}
             </Link>
           ))}
-          <div className="border-t border-gray-100 my-4" aria-hidden />
+          <div className="border-t border-[#E8DED5]/60 my-4" aria-hidden />
           <div className="flex justify-end mb-3">
             <LanguageLinks variant="overlay" onLinkClick={close} />
           </div>
@@ -84,7 +84,7 @@ export function MarketingMobileMenu({
             <Link
               href={`/${locale}/auth`}
               prefetch={false}
-              className="min-h-[44px] flex items-center justify-center px-4 py-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100 rounded-xl font-medium transition-all duration-200"
+              className="min-h-[44px] flex items-center justify-center px-4 py-3 text-[#5E555B] hover:text-[#3A0B22] hover:bg-[#F27C5C]/5 active:bg-[#F27C5C]/10 rounded-xl font-medium transition-all duration-200"
               onClick={close}
             >
               {logInLabel}
@@ -93,7 +93,7 @@ export function MarketingMobileMenu({
               href={`/${locale}/onboarding`}
               prefetch={false}
               onClick={close}
-              className="flex min-h-[52px] items-center justify-center rounded-2xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98] transition-all duration-200"
+              className="flex min-h-[52px] items-center justify-center rounded-2xl font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200"
             >
               {joinNowLabel}
             </Link>
@@ -108,7 +108,7 @@ export function MarketingMobileMenu({
     <div className="md:hidden">
       <button
         type="button"
-        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-700 rounded-lg hover:bg-gray-100 cursor-pointer -mr-1"
+        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white rounded-lg hover:bg-white/10 cursor-pointer -mr-1"
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Close menu' : 'Open menu'}
         aria-expanded={isOpen}
