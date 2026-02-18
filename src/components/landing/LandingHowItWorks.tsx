@@ -1,3 +1,5 @@
+import { LandingCTAButton } from './LandingCTAButton';
+
 interface LandingHowItWorksProps {
   t: (key: string) => string;
 }
@@ -90,6 +92,17 @@ export function LandingHowItWorks({ t }: LandingHowItWorksProps) {
               </p>
             </div>
           ))}
+        </div>
+
+        {/* CTA — first conversion nudge */}
+        <div className="text-center mt-14">
+          <LandingCTAButton
+            label="Choose your weekend"
+            className="inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-[#F27C5C]/20"
+          />
+          <p className="text-[#5E555B]/50 text-xs mt-3 tracking-wide">
+            Only 24 spots per weekend in Berlin.
+          </p>
         </div>
       </div>
     </section>

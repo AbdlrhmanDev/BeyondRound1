@@ -1,14 +1,36 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-export type AuditAction = 
+export type AuditAction =
   | "user_edit"
   | "user_ban"
   | "user_suspend"
   | "user_unban"
   | "user_delete"
   | "role_grant"
-  | "role_revoke";
+  | "role_revoke"
+  | "approve_verification"
+  | "reject_verification"
+  | "request_reupload"
+  | "soft_delete_user"
+  | "restore_user"
+  | "change_role"
+  | "review_report"
+  | "resolve_report"
+  | "dismiss_report"
+  | "update_report"
+  | "update_report_notes"
+  | "warn_user"
+  | "cancel_event"
+  | "close_event"
+  | "reopen_event"
+  | "cancel_booking"
+  | "delete_message"
+  | "remove_from_group"
+  | "disband_group"
+  | "send_system_message"
+  | "update_app_config"
+  | "delete_feedback";
 
 interface AuditLogEntry {
   action: AuditAction;
@@ -20,9 +42,13 @@ interface AuditLogEntry {
   reason?: string;
 }
 
+/**
+ * Client-side audit log insertion — kept as fallback for read-side logging.
+ * Write operations should use SECURITY DEFINER RPCs instead.
+ */
 export const logAdminAction = async (entry: AuditLogEntry): Promise<boolean> => {
   const { data: { user } } = await supabase.auth.getUser();
-  
+
   if (!user) {
     console.error("No authenticated user for audit log");
     return false;

@@ -3,41 +3,30 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import LocalizedLink from "@/components/LocalizedLink";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { joinWaitlist, getWaitlistCount } from "@/services/waitlistService";
 import { useAuth } from "@/hooks/useAuth";
 import { useParams } from "next/navigation";
-import {
-  UserPlus,
-  Users,
-  Heart,
-  CheckCircle2,
-  Mail,
-  MapPin,
-  Stethoscope,
-  Shield,
-  Zap,
-  Target,
-  TrendingUp,
-  ArrowRight
-} from "lucide-react";
+
+const inputClass = [
+  'w-full rounded-[18px] border border-[#E8E0DA] bg-[#FDFBF9] px-4 py-3',
+  'text-sm text-[#1A0A12] placeholder:text-[#5E555B]/50',
+  'transition-all duration-200 h-12',
+  'focus:outline-none focus:border-[#F6B4A8] focus:ring-[3px] focus:ring-[#F6B4A8]/40',
+  'hover:border-[#D4C9C1]',
+].join(' ');
+
+const medicalSpecialties = [
+  "Cardiology", "Dermatology", "Emergency Medicine", "Family Medicine",
+  "Internal Medicine", "Neurology", "Oncology", "Pediatrics",
+  "Psychiatry", "Surgery", "Other",
+];
 
 const Waitlist = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const params = useParams<{ locale: string }>();
-  const lng = params?.locale === "en" ? "en" : "de";
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
   const [specialty, setSpecialty] = useState("");
@@ -48,23 +37,15 @@ const Waitlist = () => {
   const countRef = useRef(waitlistCount);
   const animatedCountRef = useRef(animatedCount);
 
-  // Update refs when state changes
-  useEffect(() => {
-    countRef.current = waitlistCount;
-  }, [waitlistCount]);
+  useEffect(() => { countRef.current = waitlistCount; }, [waitlistCount]);
+  useEffect(() => { animatedCountRef.current = animatedCount; }, [animatedCount]);
 
-  useEffect(() => {
-    animatedCountRef.current = animatedCount;
-  }, [animatedCount]);
-
-  // Function to animate counter from current value to target
   const animateCounter = (targetCount: number, startCount?: number) => {
     const start = startCount ?? animatedCountRef.current;
-    const duration = 1500; // 1.5 seconds
+    const duration = 1500;
     const steps = 60;
     const increment = (targetCount - start) / steps;
     const stepDuration = duration / steps;
-
     let current = start;
     const timer = setInterval(() => {
       current += increment;
@@ -75,19 +56,15 @@ const Waitlist = () => {
         setAnimatedCount(Math.floor(current));
       }
     }, stepDuration);
-
     return () => clearInterval(timer);
   };
 
-  // Function to update waitlist count
   const updateWaitlistCount = async (shouldAnimate = true) => {
     try {
       const count = await getWaitlistCount();
       if (count !== countRef.current) {
         setWaitlistCount(count);
-        if (shouldAnimate) {
-          animateCounter(count);
-        }
+        if (shouldAnimate) animateCounter(count);
       }
     } catch (error) {
       console.error("Error fetching waitlist count:", error);
@@ -95,118 +72,64 @@ const Waitlist = () => {
   };
 
   useEffect(() => {
-    // Get waitlist count on mount and animate
     getWaitlistCount().then((count) => {
       setWaitlistCount(count);
       animateCounter(count, 0);
     });
-
-    // Update count every 30 seconds
     const interval = setInterval(() => updateWaitlistCount(true), 30000);
-
     return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!email.trim()) {
-      toast({
-        title: t("waitlistPage.toastEmailRequired"),
-        description: t("waitlistPage.toastEmailDesc"),
-        variant: "destructive",
-      });
+      toast({ title: t("waitlistPage.toastEmailRequired"), description: t("waitlistPage.toastEmailDesc"), variant: "destructive" });
       return;
     }
-
     setLoading(true);
-
     try {
-      const result = await joinWaitlist({
-        email,
-        city: city.trim() || undefined,
-        medicalSpecialty: specialty.trim() || undefined,
-      });
-
+      const result = await joinWaitlist({ email, city: city.trim() || undefined, medicalSpecialty: specialty.trim() || undefined });
       if (result.success) {
         setSubmitted(true);
-        setEmail("");
-        setCity("");
-        setSpecialty("");
-        // Update count immediately after successful submission
+        setEmail(""); setCity(""); setSpecialty("");
         updateWaitlistCount();
-
-        // Trigger email notification
         try {
-          await fetch('/api/notifications/whitelist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-          });
-        } catch (emailError) {
-          console.error("Failed to send waitlist confirmation email:", emailError);
-        }
-
-        toast({
-          title: "You're on the list!",
-          description: "We'll notify you when we launch.",
-        });
+          await fetch('/api/notifications/whitelist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        } catch (emailError) { console.error("Failed to send waitlist confirmation email:", emailError); }
+        toast({ title: "You're on the list!", description: "We'll notify you when we launch." });
       } else {
-        toast({
-          title: t("waitlistPage.toastErrorTitle"),
-          description: result.error || t("waitlistPage.toastErrorDesc"),
-          variant: "destructive",
-        });
+        toast({ title: t("waitlistPage.toastErrorTitle"), description: result.error || t("waitlistPage.toastErrorDesc"), variant: "destructive" });
       }
     } catch (error) {
       console.error("Error submitting waitlist:", error);
-      toast({
-        title: t("waitlistPage.toastErrorTitle"),
-        description: t("waitlistPage.toastGenericDesc"),
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+      toast({ title: t("waitlistPage.toastErrorTitle"), description: t("waitlistPage.toastGenericDesc"), variant: "destructive" });
+    } finally { setLoading(false); }
   };
 
-  const medicalSpecialties = [
-    "Cardiology",
-    "Dermatology",
-    "Emergency Medicine",
-    "Family Medicine",
-    "Internal Medicine",
-    "Neurology",
-    "Oncology",
-    "Pediatrics",
-    "Psychiatry",
-    "Surgery",
-    "Other",
-  ];
-
   return (
-    <div className="min-h-screen relative overflow-hidden bg-white">
+    <div className="min-h-screen bg-[#F6F1EC]">
       {/* Header */}
-      <header className="relative z-20 sticky top-0">
-        <div className="mx-4 mt-4">
-          <div className="bg-white/95 border-b border-gray-100 backdrop-blur-sm rounded-2xl shadow-sm">
-            <div className="container mx-auto px-4 sm:px-6">
-              <div className="flex items-center justify-center h-16">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-                    <Heart className="h-5 w-5 text-white" />
-                  </div>
-                  <span className="font-display text-xl font-bold text-gray-900 tracking-tight">
-                    BeyondRounds
+      <header className="sticky top-0 z-20">
+        <div className="mx-3 mt-3 sm:mx-4 sm:mt-4">
+          <div className="bg-[#3A0B22]/90 backdrop-blur-xl border border-white/[0.06] rounded-[20px] shadow-lg shadow-[#3A0B22]/15">
+            <div className="container mx-auto px-5 sm:px-6">
+              <div className="flex items-center justify-center h-14 sm:h-[60px] relative">
+                <LocalizedLink to="/" className="flex items-center gap-1.5">
+                  <span className="font-display font-bold text-xl text-white italic tracking-tight">
+                    Beyond
                   </span>
-                </div>
+                  <span className="font-display font-bold text-xl text-[#F6B4A8] italic tracking-tight">
+                    Rounds
+                  </span>
+                </LocalizedLink>
 
                 {!authLoading && user && (
-                  <div className="absolute right-4 sm:right-6">
-                    <LocalizedLink to="/dashboard">
-                      <Button size="sm" className="h-9 px-4 text-xs font-bold">
-                        {t("dashboard")}
-                      </Button>
+                  <div className="absolute right-5 sm:right-6">
+                    <LocalizedLink
+                      to="/dashboard"
+                      className="inline-flex h-9 items-center justify-center rounded-full px-4 text-sm font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] transition-all duration-200 shadow-sm shadow-[#F27C5C]/25"
+                    >
+                      {t("dashboard")}
                     </LocalizedLink>
                   </div>
                 )}
@@ -216,242 +139,194 @@ const Waitlist = () => {
         </div>
       </header>
 
-      <main className="relative z-10">
-        {/* Hero Section */}
-        <section className="container mx-auto px-6 py-20 md:py-32">
+      <main>
+        {/* Hero */}
+        <section className="container mx-auto px-6 py-20 md:py-28">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-gray-900 leading-tight animate-fade-up">
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-[#3A0B22] leading-tight">
               {t("waitlistPage.heroTitle")}{" "}
-              <span className="text-emerald-600">
-                {t("waitlistPage.heroTitleHighlight")}
-              </span>
+              <span className="text-[#F27C5C]">{t("waitlistPage.heroTitleHighlight")}</span>
             </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-up delay-200">
+            <p className="text-lg md:text-xl text-[#5E555B] mb-12 max-w-2xl mx-auto leading-relaxed">
               {t("waitlistPage.heroSubtitle")}
             </p>
 
-            {/* Primary CTA */}
-            <div className="mb-6 animate-fade-up delay-300 flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <a href="#waitlist-form">
-                <Button
-                  size="lg"
-                  className="h-14 px-8 text-lg group"
-                >
-                  {t("waitlistPage.joinWaitlist")}
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </a>
-              <Button
-                variant="outline"
-                className="h-14 px-8 text-lg"
-                asChild
+            {/* CTAs */}
+            <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <a
+                href="#waitlist-form"
+                className="inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-[#F27C5C]/20"
               >
-                <LocalizedLink to="/survey">{t("waitlistPage.takeQuiz")}</LocalizedLink>
-              </Button>
+                {t("waitlistPage.joinWaitlist")}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+              </a>
+              <LocalizedLink
+                to="/survey"
+                className="inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-medium text-[#3A0B22] border border-[#3A0B22]/20 hover:border-[#3A0B22]/40 hover:bg-[#3A0B22]/[0.03] transition-all duration-200"
+              >
+                {t("waitlistPage.takeQuiz")}
+              </LocalizedLink>
             </div>
-            <p className="mb-16 text-sm text-gray-500 animate-fade-up delay-300">
-              <LocalizedLink to="/for-doctors" className="underline hover:text-gray-700">
+            <p className="mb-14 text-sm text-[#5E555B]/60">
+              <LocalizedLink to="/for-doctors" className="underline hover:text-[#5E555B]">
                 {t("waitlistPage.whyDoctors")}
               </LocalizedLink>
             </p>
 
-            {/* Social Proof with Animated Counter */}
-            <div className="animate-fade-up delay-400">
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white border border-gray-200 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-emerald-600" />
-                  <span className="text-2xl font-display font-bold text-gray-900 number-display">
-                    {animatedCount.toLocaleString()}+
-                  </span>
-                </div>
-                <span className="text-sm text-gray-600">{t("waitlistPage.doctorsJoined")}</span>
+            {/* Counter pill */}
+            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/80 border border-[#E8DED5]/60 shadow-sm">
+              <div className="flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+                <span className="text-2xl font-display font-bold text-[#3A0B22]">
+                  {animatedCount.toLocaleString()}+
+                </span>
               </div>
+              <span className="text-sm text-[#5E555B]">{t("waitlistPage.doctorsJoined")}</span>
             </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="container mx-auto px-4 sm:px-6 py-10 sm:py-16 md:py-24">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900 animate-fade-up">
-              {t("waitlistPage.whyTitle")} <span className="text-emerald-600">{t("waitlistPage.whyHighlight")}</span>{t("waitlistPage.whySuffix")}
-            </h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-200">
-                <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
-                  <Shield className="h-6 w-6 text-emerald-600" />
-                </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-gray-900">{t("waitlistPage.verifiedOnly")}</h3>
-                <p className="text-sm text-gray-600">
-                  {t("waitlistPage.verifiedOnlyDesc")}
-                </p>
-              </Card>
-
-              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-300">
-                <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
-                  <Zap className="h-6 w-6 text-emerald-600" />
-                </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-gray-900">{t("waitlistPage.smartMatching")}</h3>
-                <p className="text-sm text-gray-600">
-                  {t("waitlistPage.smartMatchingDesc")}
-                </p>
-              </Card>
-
-              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-400">
-                <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
-                  <Target className="h-6 w-6 text-emerald-600" />
-                </div>
-                <h3 className="font-display text-lg font-bold mb-2 text-gray-900">{t("waitlistPage.curatedGroups")}</h3>
-                <p className="text-sm text-gray-600">
-                  {t("waitlistPage.curatedGroupsDesc")}
-                </p>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        {/* Three Steps Section */}
-        <section className="container mx-auto px-4 sm:px-6 py-10 sm:py-16 md:py-24">
+        {/* Features */}
+        <section className="container mx-auto px-4 sm:px-6 py-10 sm:py-16 md:py-20">
           <div className="max-w-5xl mx-auto">
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* Step 1 */}
-              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-200">
-                <CardContent className="p-8 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-                    <UserPlus className="h-8 w-8 text-emerald-600" />
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-12 text-[#3A0B22] tracking-tight">
+              {t("waitlistPage.whyTitle")} <span className="text-[#F27C5C]">{t("waitlistPage.whyHighlight")}</span>{t("waitlistPage.whySuffix")}
+            </h2>
+            <div className="grid md:grid-cols-3 gap-5">
+              {[
+                { icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>, titleKey: "waitlistPage.verifiedOnly", descKey: "waitlistPage.verifiedOnlyDesc" },
+                { icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>, titleKey: "waitlistPage.smartMatching", descKey: "waitlistPage.smartMatchingDesc" },
+                { icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></svg>, titleKey: "waitlistPage.curatedGroups", descKey: "waitlistPage.curatedGroupsDesc" },
+              ].map((feature) => (
+                <div key={feature.titleKey} className="bg-white/80 border border-[#E8DED5]/60 rounded-[22px] p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+                  <div className="h-12 w-12 rounded-2xl bg-[#F27C5C]/10 flex items-center justify-center mb-4">
+                    {feature.icon}
                   </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-gray-900">{t("waitlistPage.step1Title")}</h3>
-                  <p className="text-gray-600">
-                    {t("waitlistPage.step1Desc")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Step 2 */}
-              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-300">
-                <CardContent className="p-8 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-                    <Users className="h-8 w-8 text-emerald-600" />
-                  </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-gray-900">{t("waitlistPage.step2Title")}</h3>
-                  <p className="text-gray-600">
-                    {t("waitlistPage.step2Desc")}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Step 3 */}
-              <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-up delay-400">
-                <CardContent className="p-8 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-                    <Heart className="h-8 w-8 text-emerald-600" />
-                  </div>
-                  <h3 className="font-display text-xl font-bold mb-3 text-gray-900">{t("waitlistPage.step3Title")}</h3>
-                  <p className="text-gray-600">
-                    {t("waitlistPage.step3Desc")}
-                  </p>
-                </CardContent>
-              </Card>
+                  <h3 className="font-display text-lg font-bold mb-2 text-[#3A0B22]">{t(feature.titleKey)}</h3>
+                  <p className="text-sm text-[#5E555B] leading-relaxed">{t(feature.descKey)}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Waitlist Form */}
-        <section id="waitlist-form" className="container mx-auto px-6 py-16 md:py-24">
+        {/* Steps */}
+        <section className="container mx-auto px-4 sm:px-6 py-10 sm:py-16 md:py-20">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-3 gap-5">
+              {[
+                { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>, titleKey: "waitlistPage.step1Title", descKey: "waitlistPage.step1Desc" },
+                { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>, titleKey: "waitlistPage.step2Title", descKey: "waitlistPage.step2Desc" },
+                { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>, titleKey: "waitlistPage.step3Title", descKey: "waitlistPage.step3Desc" },
+              ].map((step) => (
+                <div key={step.titleKey} className="bg-white/80 border border-[#E8DED5]/60 rounded-[22px] p-8 text-center shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+                  <div className="h-16 w-16 rounded-2xl bg-[#F27C5C]/10 flex items-center justify-center mx-auto mb-6">
+                    {step.icon}
+                  </div>
+                  <h3 className="font-display text-xl font-bold mb-3 text-[#3A0B22]">{t(step.titleKey)}</h3>
+                  <p className="text-[#5E555B] leading-relaxed">{t(step.descKey)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Form */}
+        <section id="waitlist-form" className="container mx-auto px-6 py-16 md:py-20">
           <div className="max-w-2xl mx-auto">
-            <Card className="bg-white border border-gray-200 rounded-3xl shadow-lg animate-fade-up delay-500">
-              <CardContent className="p-8 md:p-12">
+            <div className="bg-[#FAF6F3] border border-[#E8DED5]/60 rounded-[22px] shadow-sm">
+              <div className="p-8 md:p-12">
                 {submitted ? (
-                  <div className="text-center py-8 animate-fade-in">
-                    <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-6">
-                      <CheckCircle2 className="h-8 w-8 text-accent" />
+                  <div className="text-center py-8">
+                    <div className="h-16 w-16 rounded-full bg-[#F27C5C]/10 flex items-center justify-center mx-auto mb-6">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                     </div>
-                    <h2 className="font-display text-2xl font-bold mb-3 text-gray-900">{t("waitlistPage.successTitle")}</h2>
-                    <p className="text-gray-600 mb-6">
-                      {t("waitlistPage.successDesc")}
-                    </p>
-                    <Button
-                      variant="outline"
+                    <h2 className="font-display text-2xl font-bold mb-3 text-[#3A0B22]">{t("waitlistPage.successTitle")}</h2>
+                    <p className="text-[#5E555B] mb-6">{t("waitlistPage.successDesc")}</p>
+                    <button
+                      type="button"
                       onClick={() => setSubmitted(false)}
+                      className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium text-[#3A0B22] border border-[#3A0B22]/20 hover:bg-[#3A0B22]/[0.03] transition-all duration-200"
                     >
                       {t("waitlistPage.addAnotherEmail")}
-                    </Button>
+                    </button>
                   </div>
                 ) : (
                   <>
-                    <h2 className="font-display text-3xl font-bold mb-2 text-center text-gray-900">
-                      {t("waitlistPage.formTitle")} <span className="text-emerald-600">{t("waitlistPage.formTitleHighlight")}</span>
+                    <h2 className="font-display text-2xl sm:text-3xl font-bold mb-2 text-center text-[#3A0B22] tracking-tight">
+                      {t("waitlistPage.formTitle")} <span className="text-[#F27C5C]">{t("waitlistPage.formTitleHighlight")}</span>
                     </h2>
-                    <p className="text-gray-600 text-center mb-8">
+                    <p className="text-[#5E555B] text-center mb-8">
                       {t("waitlistPage.formSubtitle")}
                     </p>
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                       {/* Email */}
                       <div>
-                        <label htmlFor="email" className="flex items-center gap-2 text-sm font-medium mb-2 text-gray-900">
-                          <Mail className="h-4 w-4" />
+                        <label htmlFor="email" className="flex items-center gap-2 text-sm font-medium mb-2 text-[#3A0B22]">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
                           {t("waitlistPage.emailLabel")}
                         </label>
-                        <Input
+                        <input
                           id="email"
                           type="email"
                           placeholder={t("waitlistPage.emailPlaceholder")}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
-                          className="h-12"
+                          className={inputClass}
                         />
                       </div>
 
                       {/* City */}
                       <div>
-                        <label htmlFor="city" className="flex items-center gap-2 text-sm font-medium mb-2 text-gray-900">
-                          <MapPin className="h-4 w-4" />
+                        <label htmlFor="city" className="flex items-center gap-2 text-sm font-medium mb-2 text-[#3A0B22]">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                           {t("waitlistPage.cityLabel")}
                         </label>
-                        <Input
+                        <input
                           id="city"
                           type="text"
                           placeholder={t("waitlistPage.cityPlaceholder")}
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          className="h-12"
+                          className={inputClass}
                         />
                       </div>
 
-                      {/* Medical Specialty */}
+                      {/* Specialty */}
                       <div>
-                        <label htmlFor="specialty" className="flex items-center gap-2 text-sm font-medium mb-2 text-gray-900">
-                          <Stethoscope className="h-4 w-4" />
+                        <label htmlFor="specialty" className="flex items-center gap-2 text-sm font-medium mb-2 text-[#3A0B22]">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" /><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" /><circle cx="20" cy="10" r="2" /></svg>
                           {t("waitlistPage.specialtyLabel")}
                         </label>
-                        <Select value={specialty} onValueChange={setSpecialty}>
-                          <SelectTrigger id="specialty" className="h-12">
-                            <SelectValue placeholder={t("waitlistPage.specialtyPlaceholder")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {medicalSpecialties.map((spec) => (
-                              <SelectItem key={spec} value={spec}>
-                                {t(`waitlistPage.specialties.${spec}`)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <select
+                          id="specialty"
+                          value={specialty}
+                          onChange={(e) => setSpecialty(e.target.value)}
+                          className={`${inputClass} appearance-none cursor-pointer ${!specialty ? 'text-[#5E555B]/50' : ''}`}
+                        >
+                          <option value="">{t("waitlistPage.specialtyPlaceholder")}</option>
+                          {medicalSpecialties.map((spec) => (
+                            <option key={spec} value={spec}>
+                              {t(`waitlistPage.specialties.${spec}`)}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
-                      {/* Submit Button */}
-                      <Button
+                      {/* Submit */}
+                      <button
                         type="submit"
                         disabled={loading}
-                        className="w-full h-12 text-lg"
+                        className="w-full h-12 rounded-full bg-[#F27C5C] text-white font-semibold text-base hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-sm shadow-[#F27C5C]/20 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {loading ? t("waitlistPage.submitting") : t("waitlistPage.submitButton")}
-                      </Button>
+                      </button>
                     </form>
                   </>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </section>
       </main>

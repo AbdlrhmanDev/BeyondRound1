@@ -40,28 +40,13 @@ const Auth = () => {
   });
 
   // Redirect if already logged in - admins go to /admin, regular users go to /dashboard
-  // تحسين: عدم انتظار adminLoading إذا لم يكن هناك مستخدم
   useEffect(() => {
-    if (!loading && user) {
-      // تحسين: الانتظار بحد أقصى 2 ثانية لـ adminLoading
-      const timeout = setTimeout(() => {
-        if (isAdmin) {
-          navigate('/admin', { replace: true });
-        } else {
-          navigate('/dashboard', { replace: true });
-        }
-      }, adminLoading ? 2000 : 0);
-
-      if (!adminLoading) {
-        clearTimeout(timeout);
-        if (isAdmin) {
-          navigate('/admin', { replace: true });
-        } else {
-          navigate('/dashboard', { replace: true });
-        }
+    if (!loading && user && !adminLoading) {
+      if (isAdmin) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
       }
-
-      return () => clearTimeout(timeout);
     }
   }, [user, loading, adminLoading, isAdmin, navigate]);
 

@@ -1,20 +1,25 @@
 'use client';
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ArrowRight, Mail, Sparkles, ArrowLeft, Check, MailCheck } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import LocalizedLink from "@/components/LocalizedLink";
 import { useToast } from "@/hooks/use-toast";
-import { getSupabaseClient, supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";
 
 const emailSchema = z.object({
   email: z.string().email("Please enter a valid email"),
 });
+
+const inputClass = [
+  'w-full rounded-[18px] border border-[#E8E0DA] bg-[#FDFBF9] px-4 py-3',
+  'text-sm text-[#1A0A12] placeholder:text-[#5E555B]/50',
+  'transition-all duration-200 h-12',
+  'focus:outline-none focus:border-[#F6B4A8] focus:ring-[3px] focus:ring-[#F6B4A8]/40',
+  'hover:border-[#D4C9C1]',
+].join(' ');
 
 const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -49,9 +54,7 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     setIsLoading(true);
 
     try {
@@ -93,130 +96,117 @@ const ForgotPassword = () => {
     }
   };
 
-  const features = [
-    "Secure password reset process",
-    "Email verification required",
-    "Quick and easy recovery",
-    "Protected account access"
-  ];
-
   return (
-    <div className="min-h-screen bg-[#FAFAF7] text-slate-900 font-sans selection:bg-emerald-100 selection:text-emerald-900 flex flex-col">
+    <div className="min-h-screen bg-[#F6F1EC] flex flex-col">
       {/* Top Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-16 bg-[#FAFAF7]/80 backdrop-blur-md border-b border-slate-200/50 supports-[backdrop-filter]:bg-[#FAFAF7]/60">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 h-16 bg-[#F6F1EC]/80 backdrop-blur-md border-b border-[#E8DED5]/40">
         <div className="w-20">
           <LocalizedLink
             to="/auth"
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors"
+            className="flex items-center gap-2 text-[#5E555B] hover:text-[#3A0B22] transition-colors"
           >
             <ArrowLeft size={20} />
             <span className="sr-only">{t("common.back")}</span>
           </LocalizedLink>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-600">
-            <Sparkles size={16} />
-          </div>
-          <span className="font-bold text-slate-900 text-lg tracking-tight">BeyondRounds</span>
-        </div>
+        <LocalizedLink to="/" className="flex items-center gap-1.5">
+          <span className="font-display font-bold text-xl text-[#3A0B22] italic tracking-tight">
+            Beyond
+          </span>
+          <span className="font-display font-bold text-xl text-[#F6B4A8] italic tracking-tight">
+            Rounds
+          </span>
+        </LocalizedLink>
 
-        <div className="w-20 flex justify-end">
-          {/* Placeholder for balance */}
-        </div>
+        <div className="w-20" />
       </nav>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center pt-24 pb-12 px-4">
         <div className="w-full max-w-md space-y-8">
-
-          {/* Header Copy */}
+          {/* Header */}
           <div className="text-center space-y-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+            <h1 className="font-display text-2xl md:text-3xl font-bold text-[#3A0B22] tracking-tight">
               {isSuccess ? t("forgotPassword.checkEmail") : t("forgotPassword.title")}
             </h1>
-            <p className="text-slate-500 text-base md:text-lg">
+            <p className="text-[#5E555B] text-base">
               {isSuccess ? t("forgotPassword.checkEmailDesc") : t("forgotPassword.subtitle")}
             </p>
           </div>
 
           {/* Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-[#FAF6F3] rounded-[22px] border border-[#E8DED5]/60 shadow-sm overflow-hidden">
             <div className="p-6 md:p-8">
               {isSuccess ? (
-                /* Success State */
                 <div className="text-center space-y-6">
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-emerald-600">
-                    <MailCheck className="w-8 h-8" />
+                  <div className="w-16 h-16 rounded-full bg-[#F27C5C]/10 flex items-center justify-center mx-auto">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 10.5V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h12.5" />
+                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                      <path d="m16 19 2 2 4-4" />
+                    </svg>
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-slate-600">
-                      We've sent password reset instructions to <span className="font-semibold text-slate-900">{formData.email}</span>
-                    </p>
-                  </div>
+                  <p className="text-[#5E555B]">
+                    We&apos;ve sent password reset instructions to{' '}
+                    <span className="font-semibold text-[#3A0B22]">{formData.email}</span>
+                  </p>
 
                   <div className="space-y-3 pt-2">
-                    <Button
+                    <button
+                      type="button"
                       onClick={() => {
                         setIsSuccess(false);
                         setFormData({ email: "" });
                       }}
-                      variant="outline"
-                      className="w-full h-12 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-medium"
+                      className="w-full h-12 rounded-full border border-[#3A0B22]/20 text-[#3A0B22] hover:bg-[#3A0B22]/[0.03] font-medium transition-all duration-200"
                     >
                       {t("forgotPassword.sendAnother")}
-                    </Button>
+                    </button>
                     <LocalizedLink to="/auth" className="block w-full">
-                      <Button
-                        variant="ghost"
-                        className="w-full h-12 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                      <button
+                        type="button"
+                        className="w-full h-12 rounded-full text-[#5E555B] hover:text-[#3A0B22] hover:bg-[#3A0B22]/[0.03] font-medium transition-all duration-200"
                       >
                         {t("forgotPassword.backToLogin")}
-                      </Button>
+                      </button>
                     </LocalizedLink>
                   </div>
                 </div>
               ) : (
-                /* Form State */
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-slate-700 font-medium">
+                    <label htmlFor="email" className="text-sm font-medium text-[#3A0B22]">
                       {t("auth.emailAddress")}
-                    </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="doctor@hospital.com"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className={`pl-10 h-12 rounded-xl border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:ring-emerald-500/20 hover:border-emerald-500/50 transition-all ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
-                        required
-                      />
-                    </div>
+                    </label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="doctor@hospital.com"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className={`${inputClass} ${errors.email ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20' : ''}`}
+                      required
+                    />
                     {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                   </div>
 
-                  <Button
+                  <button
                     type="submit"
-                    className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 bg-none text-white font-semibold shadow-sm hover:shadow transition-all text-[15px]"
+                    className="w-full h-12 rounded-full bg-[#F27C5C] text-white font-semibold hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-sm shadow-[#F27C5C]/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={isLoading}
                   >
                     {isLoading ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
                     ) : (
-                      <>
-                        {t("forgotPassword.sendResetLink")}
-                        <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
-                      </>
+                      t("forgotPassword.sendResetLink")
                     )}
-                  </Button>
+                  </button>
 
                   <LocalizedLink to="/auth" className="block w-full text-center">
-                    <span className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
+                    <span className="text-sm font-medium text-[#5E555B] hover:text-[#3A0B22] transition-colors">
                       {t("forgotPassword.backToLogin")}
                     </span>
                   </LocalizedLink>
@@ -224,7 +214,6 @@ const ForgotPassword = () => {
               )}
             </div>
           </div>
-
         </div>
       </main>
     </div>

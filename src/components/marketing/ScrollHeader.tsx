@@ -20,10 +20,10 @@ export function ScrollHeader({ children }: ScrollHeaderProps) {
     <header className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)]">
       <div className="mx-3 mt-3 sm:mx-4 sm:mt-4">
         <div
-          className={`rounded-2xl transition-all duration-300 ${
+          className={`rounded-[20px] backdrop-blur-xl transition-all duration-500 ease-out ${
             scrolled
-              ? 'bg-[#3A0B22]/70 backdrop-blur-xl shadow-lg border border-white/10'
-              : 'bg-transparent'
+              ? 'bg-gradient-to-r from-[#3A0B22] via-[#3A0B22]/95 to-[#4B0F2D] shadow-xl shadow-[#3A0B22]/20 border border-white/[0.08]'
+              : 'bg-gradient-to-r from-[#3A0B22]/90 via-[#3A0B22]/85 to-[#4B0F2D]/90 shadow-lg shadow-[#3A0B22]/15 border border-white/[0.06]'
           }`}
         >
           {children}

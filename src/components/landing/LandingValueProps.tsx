@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { LandingCTAButton } from './LandingCTAButton';
 
 interface LandingValuePropsProps {
   t: (key: string) => string;
@@ -64,9 +65,20 @@ export function LandingValueProps({ t }: LandingValuePropsProps) {
               ))}
             </ul>
 
-            <p className="text-[#F27C5C] text-sm font-medium italic">
+            <p className="text-[#F27C5C] text-sm font-medium italic mb-8">
               We remove the friction. You keep the fun.
             </p>
+
+            {/* CTA — trust built, gentle nudge */}
+            <div>
+              <LandingCTAButton
+                label="Check weekend spots"
+                className="inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-md shadow-[#F27C5C]/20"
+              />
+              <p className="text-[#5E555B]/50 text-xs mt-3 tracking-wide">
+                Takes 30 seconds. No commitment yet.
+              </p>
+            </div>
           </div>
 
           {/* Right: Photo grid */}

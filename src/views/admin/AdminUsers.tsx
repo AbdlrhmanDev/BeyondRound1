@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, RefreshCw, MapPin, Stethoscope, Ban, UserCheck, Pencil } from "lucide-react";
+import { Search, RefreshCw, MapPin, Stethoscope, Ban, UserCheck, Pencil, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/contexts/LocaleContext";
 import UserEditDialog from "@/components/admin/UserEditDialog";
 import UserBanDialog from "@/components/admin/UserBanDialog";
 import { logAdminAction } from "@/lib/auditLog";
-import { getAllUsers, banUser, unbanUser, updateUserProfile, UserProfile } from "@/services/adminService";
+import { getAllUsers, banUser, unbanUser, unbanUserRpc, updateUserProfile, UserProfile } from "@/services/adminService";
+import Link from "next/link";
 
 const AdminUsers = () => {
   const { t } = useTranslation();
@@ -24,6 +26,7 @@ const AdminUsers = () => {
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [banningUser, setBanningUser] = useState<UserProfile | null>(null);
   const { toast } = useToast();
+  const { pathWithLocale } = useLocale();
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -163,6 +166,12 @@ const AdminUsers = () => {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-2 border-t">
+                      <Link href={pathWithLocale(`/admin/users/${user.user_id}`)} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full">
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                      </Link>
                       <Button
                         variant="outline"
                         size="sm"

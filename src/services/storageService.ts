@@ -126,6 +126,45 @@ export const uploadAvatar = async (userId: string, file: File): Promise<string |
 };
 
 /**
+ * Deletes avatar image from storage
+ */
+export const deleteAvatar = async (userId: string): Promise<boolean> => {
+  if (!userId?.trim()) {
+    console.error("Invalid userId for deleteAvatar:", userId);
+    return false;
+  }
+
+  try {
+    // List files in the user's avatar folder and delete them all
+    const { data: files, error: listError } = await supabase.storage
+      .from('avatars')
+      .list(userId);
+
+    if (listError) {
+      console.error("Error listing avatar files:", listError);
+      return false;
+    }
+
+    if (!files || files.length === 0) return true;
+
+    const filePaths = files.map(f => `${userId}/${f.name}`);
+    const { error: deleteError } = await supabase.storage
+      .from('avatars')
+      .remove(filePaths);
+
+    if (deleteError) {
+      console.error("Error deleting avatar files:", deleteError);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting avatar:", error);
+    return false;
+  }
+};
+
+/**
  * Uploads license document
  */
 export const uploadLicense = async (userId: string, file: File): Promise<string | null> => {

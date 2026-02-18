@@ -19,10 +19,19 @@ export function LandingProblem({ t }: LandingProblemProps) {
               Medicine is demanding. Long hours, rotating hospitals, new cities, and little time to build real friendships.
             </p>
 
-            <p className="text-[#3A0B22] font-bold text-lg leading-snug">
+            <p className="text-[#3A0B22] font-bold text-lg leading-snug mb-8">
               The problem isn&apos;t motivation.<br />
               The problem is structure.
             </p>
+
+            {/* CTA — soft, "learn" phase */}
+            <a
+              href="#how-it-works"
+              className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-[#3A0B22] border border-[#3A0B22]/20 hover:border-[#3A0B22]/40 hover:bg-[#3A0B22]/[0.03] active:bg-[#3A0B22]/[0.06] transition-all duration-200"
+            >
+              See how it works
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+            </a>
           </div>
 
           {/* Right: Photo */}

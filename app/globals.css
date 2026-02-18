@@ -65,6 +65,16 @@
     --cream-dark: 25 18% 92%;
     --wine: 335 65% 18%;
 
+    /* BeyondRounds Brand Palette (shared with index.css) */
+    --plum-900: 340 85% 13%;
+    --plum-light: 330 50% 25%;
+    --cream-50: 30 29% 95%;
+    --coral-500: 11 87% 66%;
+    --coral-light: 15 75% 82%;
+    --blush-200: 8 86% 82%;
+    --ink-900: 330 60% 8%;
+    --warmgray-600: 330 6% 37%;
+
     /* Success (for app pages) */
     --success: 160 55% 42%;
     --success-foreground: 0 0% 100%;

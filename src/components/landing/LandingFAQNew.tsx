@@ -1,3 +1,5 @@
+import { LandingCTAButton } from './LandingCTAButton';
+
 interface LandingFAQNewProps {
   t: (key: string) => string;
 }
@@ -68,6 +70,25 @@ export function LandingFAQNew({ t }: LandingFAQNewProps) {
               </div>
             </details>
           ))}
+        </div>
+
+        {/* CTA — objections handled, final nudge */}
+        <div className="text-center mt-14">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <LandingCTAButton
+              label="Reserve my spot"
+              className="inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-[#F27C5C]/20"
+            />
+            <a
+              href="/contact"
+              className="inline-flex items-center justify-center rounded-full px-6 py-4 text-sm font-medium text-[#5E555B] hover:text-[#3A0B22] hover:bg-[#3A0B22]/[0.03] transition-all duration-200"
+            >
+              Still have questions?
+            </a>
+          </div>
+          <p className="text-[#5E555B]/50 text-xs mt-3 tracking-wide">
+            24 spots per weekend. Founding access limited to 100 doctors.
+          </p>
         </div>
       </div>
     </section>

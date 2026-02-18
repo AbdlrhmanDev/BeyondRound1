@@ -13,7 +13,7 @@ import { LandingFAQNew } from '@/components/landing/LandingFAQNew';
 
 const LandingHero = nextDynamic(() => import('@/components/landing/LandingHero').then(m => ({ default: m.LandingHero })), { ssr: false });
 const LandingWeekendPicker = nextDynamic(() => import('@/components/landing/LandingWeekendPicker').then(m => ({ default: m.LandingWeekendPicker })), { ssr: false });
-const   LandingFinalCTANew = nextDynamic(() => import('@/components/landing/LandingFinalCTANew').then(m => ({ default: m.LandingFinalCTANew })), { ssr: false });
+
 const StickyMobileCTA = nextDynamic(() => import('@/components/landing/StickyMobileCTA'), { ssr: false });
 
 export const dynamic = 'force-static';
@@ -55,9 +55,6 @@ export default async function HomePage({ params }: HomePageProps) {
 
         {/* H: FAQ */}
         <LandingFAQNew t={t} />
-
-        {/* I: Final CTA footer (plum bg) */}
-        <LandingFinalCTANew />
 
         <StickyMobileCTA label="Reserve my spot" />
       </div>

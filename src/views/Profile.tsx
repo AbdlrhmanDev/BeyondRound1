@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -25,6 +25,12 @@ import {
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import { getProfile, updateProfile } from "@/services/profileService";
+import { getOnboardingPreferences } from "@/services/onboardingService";
+import { getSettings, updateSettings } from "@/services/settingsService";
+import { uploadAvatar, deleteAvatar } from "@/services/storageService";
+import { getUserGroupMemberships } from "@/services/matchService";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CheckCircle2,
   Camera,
@@ -50,6 +56,7 @@ import {
   AlertCircle,
   BellRing,
   HelpCircle,
+  ImageOff,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────
@@ -69,22 +76,6 @@ interface ProfileData {
   email_notifications: boolean;
   push_notifications: boolean;
 }
-
-// ─── Mock Data ──────────────────────────────────────────
-const initialProfile: ProfileData = {
-  full_name: "Dr. Sarah Chen",
-  initials: "SC",
-  avatar_url: null,
-  specialty: "Internal Medicine",
-  city: "Berlin",
-  country: "Germany",
-  verification_status: "not_started",
-  bio: "Internal medicine physician. Originally from Munich, now based in Berlin.",
-  languages: ["English", "German"],
-  interests: ["Running", "Cooking", "Travel", "Photography", "Wine", "Yoga"],
-  email_notifications: true,
-  push_notifications: false,
-};
 
 // ─── Available Options ──────────────────────────────────
 const CITIES = [
@@ -111,10 +102,12 @@ const ALL_INTERESTS = [
   "Meditation", "Gardening", "Film", "Dance", "Climbing",
 ];
 
-const mockStats = {
-  meetups: 3,
-  doctorsMet: 12,
-};
+function getInitials(name: string | null): string {
+  if (!name) return "?";
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  return name.trim().slice(0, 2).toUpperCase();
+}
 
 // ─── Edit Profile Sheet ─────────────────────────────────
 function EditProfileSheet({
@@ -126,7 +119,7 @@ function EditProfileSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profile: ProfileData;
-  onSave: (updates: Partial<ProfileData>) => void;
+  onSave: (updates: Partial<ProfileData>) => Promise<void>;
 }) {
   const [name, setName] = useState(profile.full_name);
   const [specialty, setSpecialty] = useState(profile.specialty);
@@ -134,7 +127,6 @@ function EditProfileSheet({
   const [selectedInterests, setSelectedInterests] = useState<string[]>(profile.interests);
   const [saving, setSaving] = useState(false);
 
-  // Sync when profile changes or sheet opens
   const handleOpen = useCallback(
     (value: boolean) => {
       if (value) {
@@ -158,26 +150,21 @@ function EditProfileSheet({
     );
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!name.trim()) return;
     setSaving(true);
-    setTimeout(() => {
-      const words = name.trim().split(" ");
-      const initials =
-        words.length >= 2
-          ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
-          : name.trim().slice(0, 2).toUpperCase();
-
-      onSave({
+    try {
+      await onSave({
         full_name: name.trim(),
-        initials,
+        initials: getInitials(name.trim()),
         specialty,
         bio: bio.trim(),
         interests: selectedInterests,
       });
-      setSaving(false);
       onOpenChange(false);
-    }, 800);
+    } finally {
+      setSaving(false);
+    }
   }, [name, specialty, bio, selectedInterests, onSave, onOpenChange]);
 
   const hasChanges =
@@ -199,75 +186,31 @@ function EditProfileSheet({
         </SheetHeader>
 
         <div className="space-y-5 pt-4 pb-2">
-          {/* Name */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Full name
-            </label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Dr. First Last"
-              className="h-12 rounded-[14px]"
-              aria-label="Full name"
-            />
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Full name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Dr. First Last" className="h-12 rounded-[14px]" aria-label="Full name" />
           </div>
 
-          {/* Specialty */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Specialty
-            </label>
-            <select
-              value={specialty}
-              onChange={(e) => setSpecialty(e.target.value)}
-              className="w-full h-12 rounded-[14px] border border-input bg-background px-4 text-sm text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Medical specialty"
-            >
-              {SPECIALTIES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Specialty</label>
+            <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className="w-full h-12 rounded-[14px] border border-input bg-background px-4 text-sm text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Medical specialty">
+              {SPECIALTIES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
           </div>
 
-          {/* Bio */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              About you
-            </label>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="A few words about yourself..."
-              maxLength={200}
-              className="w-full h-24 rounded-[14px] border border-input bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Bio"
-            />
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">About you</label>
+            <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A few words about yourself..." maxLength={200} className="w-full h-24 rounded-[14px] border border-input bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Bio" />
             <p className="text-xs text-muted-foreground text-right">{bio.length}/200</p>
           </div>
 
-          {/* Interests */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Interests ({selectedInterests.length}/8)
-            </label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Interests ({selectedInterests.length}/8)</label>
             <div className="flex flex-wrap gap-2">
               {ALL_INTERESTS.map((interest) => {
                 const selected = selectedInterests.includes(interest);
                 return (
-                  <button
-                    key={interest}
-                    onClick={() => toggleInterest(interest)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.96] min-h-[36px] ${
-                      selected
-                        ? "bg-accent text-white"
-                        : "bg-muted/60 text-muted-foreground hover:bg-muted"
-                    }`}
-                    aria-pressed={selected}
-                    aria-label={interest}
-                  >
+                  <button key={interest} onClick={() => toggleInterest(interest)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.96] min-h-[36px] ${selected ? "bg-accent text-white" : "bg-muted/60 text-muted-foreground hover:bg-muted"}`} aria-pressed={selected} aria-label={interest}>
                     {interest}
                   </button>
                 );
@@ -275,12 +218,7 @@ function EditProfileSheet({
             </div>
           </div>
 
-          {/* Save */}
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim() || !hasChanges || saving}
-            className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
-          >
+          <Button onClick={handleSave} disabled={!name.trim() || !hasChanges || saving} className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all">
             {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save changes"}
           </Button>
         </div>
@@ -290,88 +228,37 @@ function EditProfileSheet({
 }
 
 // ─── Edit City Sheet ────────────────────────────────────
-function EditCitySheet({
-  open,
-  onOpenChange,
-  currentCity,
-  onSave,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentCity: string;
-  onSave: (city: string) => void;
-}) {
+function EditCitySheet({ open, onOpenChange, currentCity, onSave }: { open: boolean; onOpenChange: (open: boolean) => void; currentCity: string; onSave: (city: string) => Promise<void>; }) {
   const [selected, setSelected] = useState(currentCity);
   const [saving, setSaving] = useState(false);
 
-  const handleOpen = useCallback(
-    (value: boolean) => {
-      if (value) setSelected(currentCity);
-      onOpenChange(value);
-    },
-    [onOpenChange, currentCity]
-  );
+  const handleOpen = useCallback((value: boolean) => { if (value) setSelected(currentCity); onOpenChange(value); }, [onOpenChange, currentCity]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
-    setTimeout(() => {
-      onSave(selected);
-      setSaving(false);
-      onOpenChange(false);
-    }, 600);
+    try { await onSave(selected); onOpenChange(false); } finally { setSaving(false); }
   }, [selected, onSave, onOpenChange]);
 
   return (
     <Sheet open={open} onOpenChange={handleOpen}>
       <SheetContent side="bottom" className="rounded-t-[24px] max-h-[80vh] overflow-y-auto">
         <SheetHeader className="text-left pb-2">
-          <SheetTitle className="font-display text-xl font-bold text-foreground">
-            Your city
-          </SheetTitle>
-          <SheetDescription className="text-sm text-muted-foreground">
-            Choose the city where you'd like to meet other doctors.
-          </SheetDescription>
+          <SheetTitle className="font-display text-xl font-bold text-foreground">Your city</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">Choose the city where you'd like to meet other doctors.</SheetDescription>
         </SheetHeader>
-
         <div className="space-y-3 pt-4 pb-2">
           <div className="space-y-1">
             {CITIES.map((city) => (
-              <button
-                key={city}
-                onClick={() => setSelected(city)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[14px] text-left transition-all min-h-[48px] active:scale-[0.99] ${
-                  selected === city
-                    ? "bg-accent/10 border border-accent/30"
-                    : "hover:bg-muted/40"
-                }`}
-                aria-pressed={selected === city}
-              >
+              <button key={city} onClick={() => setSelected(city)} className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[14px] text-left transition-all min-h-[48px] active:scale-[0.99] ${selected === city ? "bg-accent/10 border border-accent/30" : "hover:bg-muted/40"}`} aria-pressed={selected === city}>
                 <div className="flex items-center gap-3">
-                  <MapPin
-                    className={`h-4 w-4 shrink-0 ${
-                      selected === city ? "text-accent" : "text-muted-foreground"
-                    }`}
-                  />
-                  <span
-                    className={`text-sm font-medium ${
-                      selected === city ? "text-accent" : "text-foreground"
-                    }`}
-                  >
-                    {city}
-                  </span>
+                  <MapPin className={`h-4 w-4 shrink-0 ${selected === city ? "text-accent" : "text-muted-foreground"}`} />
+                  <span className={`text-sm font-medium ${selected === city ? "text-accent" : "text-foreground"}`}>{city}</span>
                 </div>
-                {selected === city && (
-                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
-                )}
+                {selected === city && <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />}
               </button>
             ))}
           </div>
-
-          <Button
-            onClick={handleSave}
-            disabled={selected === currentCity || saving}
-            className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
-          >
+          <Button onClick={handleSave} disabled={selected === currentCity || saving} className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all">
             {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Update city"}
           </Button>
         </div>
@@ -381,42 +268,17 @@ function EditCitySheet({
 }
 
 // ─── Edit Language Sheet ────────────────────────────────
-function EditLanguageSheet({
-  open,
-  onOpenChange,
-  currentLanguages,
-  onSave,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentLanguages: string[];
-  onSave: (languages: string[]) => void;
-}) {
+function EditLanguageSheet({ open, onOpenChange, currentLanguages, onSave }: { open: boolean; onOpenChange: (open: boolean) => void; currentLanguages: string[]; onSave: (languages: string[]) => Promise<void>; }) {
   const [selected, setSelected] = useState<string[]>(currentLanguages);
   const [saving, setSaving] = useState(false);
 
-  const handleOpen = useCallback(
-    (value: boolean) => {
-      if (value) setSelected(currentLanguages);
-      onOpenChange(value);
-    },
-    [onOpenChange, currentLanguages]
-  );
+  const handleOpen = useCallback((value: boolean) => { if (value) setSelected(currentLanguages); onOpenChange(value); }, [onOpenChange, currentLanguages]);
+  const toggleLanguage = useCallback((lang: string) => { setSelected((prev) => prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]); }, []);
 
-  const toggleLanguage = useCallback((lang: string) => {
-    setSelected((prev) =>
-      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
-    );
-  }, []);
-
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (selected.length === 0) return;
     setSaving(true);
-    setTimeout(() => {
-      onSave(selected);
-      setSaving(false);
-      onOpenChange(false);
-    }, 600);
+    try { await onSave(selected); onOpenChange(false); } finally { setSaving(false); }
   }, [selected, onSave, onOpenChange]);
 
   const hasChanges = JSON.stringify(selected.sort()) !== JSON.stringify([...currentLanguages].sort());
@@ -425,60 +287,26 @@ function EditLanguageSheet({
     <Sheet open={open} onOpenChange={handleOpen}>
       <SheetContent side="bottom" className="rounded-t-[24px] max-h-[80vh] overflow-y-auto">
         <SheetHeader className="text-left pb-2">
-          <SheetTitle className="font-display text-xl font-bold text-foreground">
-            Languages
-          </SheetTitle>
-          <SheetDescription className="text-sm text-muted-foreground">
-            Select the languages you speak. This helps us match you with compatible groups.
-          </SheetDescription>
+          <SheetTitle className="font-display text-xl font-bold text-foreground">Languages</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">Select the languages you speak.</SheetDescription>
         </SheetHeader>
-
         <div className="space-y-3 pt-4 pb-2">
           <div className="space-y-1">
             {LANGUAGES.map((lang) => {
               const isSelected = selected.includes(lang);
               return (
-                <button
-                  key={lang}
-                  onClick={() => toggleLanguage(lang)}
-                  className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[14px] text-left transition-all min-h-[48px] active:scale-[0.99] ${
-                    isSelected
-                      ? "bg-accent/10 border border-accent/30"
-                      : "hover:bg-muted/40"
-                  }`}
-                  aria-pressed={isSelected}
-                >
+                <button key={lang} onClick={() => toggleLanguage(lang)} className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[14px] text-left transition-all min-h-[48px] active:scale-[0.99] ${isSelected ? "bg-accent/10 border border-accent/30" : "hover:bg-muted/40"}`} aria-pressed={isSelected}>
                   <div className="flex items-center gap-3">
-                    <Globe
-                      className={`h-4 w-4 shrink-0 ${
-                        isSelected ? "text-accent" : "text-muted-foreground"
-                      }`}
-                    />
-                    <span
-                      className={`text-sm font-medium ${
-                        isSelected ? "text-accent" : "text-foreground"
-                      }`}
-                    >
-                      {lang}
-                    </span>
+                    <Globe className={`h-4 w-4 shrink-0 ${isSelected ? "text-accent" : "text-muted-foreground"}`} />
+                    <span className={`text-sm font-medium ${isSelected ? "text-accent" : "text-foreground"}`}>{lang}</span>
                   </div>
-                  {isSelected && (
-                    <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
-                  )}
+                  {isSelected && <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />}
                 </button>
               );
             })}
           </div>
-
-          {selected.length === 0 && (
-            <p className="text-xs text-red-500 text-center">Select at least one language.</p>
-          )}
-
-          <Button
-            onClick={handleSave}
-            disabled={selected.length === 0 || !hasChanges || saving}
-            className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
-          >
+          {selected.length === 0 && <p className="text-xs text-red-500 text-center">Select at least one language.</p>}
+          <Button onClick={handleSave} disabled={selected.length === 0 || !hasChanges || saving} className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all">
             {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Update languages"}
           </Button>
         </div>
@@ -488,66 +316,23 @@ function EditLanguageSheet({
 }
 
 // ─── Verification Badge ─────────────────────────────────
-function VerificationBadge({
-  status,
-  onTap,
-}: {
-  status: VerificationStatus;
-  onTap: () => void;
-}) {
+function VerificationBadge({ status, onTap }: { status: VerificationStatus; onTap: () => void; }) {
   const config = {
-    not_started: {
-      label: "Not verified",
-      className: "bg-muted text-muted-foreground border-border",
-      icon: <Shield className="h-3.5 w-3.5" />,
-    },
-    pending: {
-      label: "Verification pending",
-      className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-      icon: <Clock className="h-3.5 w-3.5" />,
-    },
-    verified: {
-      label: "Verified doctor",
-      className: "bg-primary/10 text-primary border-primary/20",
-      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-    },
-    rejected: {
-      label: "Verification needed",
-      className: "bg-red-500/10 text-red-600 border-red-500/20",
-      icon: <AlertCircle className="h-3.5 w-3.5" />,
-    },
+    not_started: { label: "Not verified", className: "bg-muted text-muted-foreground border-border", icon: <Shield className="h-3.5 w-3.5" /> },
+    pending: { label: "Verification pending", className: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: <Clock className="h-3.5 w-3.5" /> },
+    verified: { label: "Verified doctor", className: "bg-primary/10 text-primary border-primary/20", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
+    rejected: { label: "Verification needed", className: "bg-red-500/10 text-red-600 border-red-500/20", icon: <AlertCircle className="h-3.5 w-3.5" /> },
   };
-
   const { label, className, icon } = config[status];
-
   return (
-    <button
-      onClick={onTap}
-      className="min-h-[44px] flex items-center justify-center"
-      aria-label={`Verification status: ${label}. Tap to manage verification.`}
-    >
-      <Badge className={`gap-1.5 px-3 py-1 cursor-pointer ${className}`}>
-        {icon}
-        {label}
-      </Badge>
+    <button onClick={onTap} className="min-h-[44px] flex items-center justify-center" aria-label={`Verification status: ${label}`}>
+      <Badge className={`gap-1.5 px-3 py-1 cursor-pointer ${className}`}>{icon}{label}</Badge>
     </button>
   );
 }
 
 // ─── Verification Sheet ─────────────────────────────────
-function VerificationSheet({
-  open,
-  onOpenChange,
-  status,
-  onSubmit,
-  onRetry,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  status: VerificationStatus;
-  onSubmit: () => void;
-  onRetry: () => void;
-}) {
+function VerificationSheet({ open, onOpenChange, status, onSubmit, onRetry }: { open: boolean; onOpenChange: (open: boolean) => void; status: VerificationStatus; onSubmit: () => void; onRetry: () => void; }) {
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -555,24 +340,11 @@ function VerificationSheet({
   const handleFileSelect = useCallback(() => {
     setUploadError(null);
     setUploading(true);
-    // Simulate file upload
-    setTimeout(() => {
-      setFileName("medical_license.pdf");
-      setUploading(false);
-    }, 1500);
+    setTimeout(() => { setFileName("medical_license.pdf"); setUploading(false); }, 1500);
   }, []);
 
-  const handleSubmit = useCallback(() => {
-    if (!fileName) return;
-    onSubmit();
-    setFileName(null);
-  }, [fileName, onSubmit]);
-
-  const handleRetry = useCallback(() => {
-    setFileName(null);
-    setUploadError(null);
-    onRetry();
-  }, [onRetry]);
+  const handleSubmit = useCallback(() => { if (!fileName) return; onSubmit(); setFileName(null); }, [fileName, onSubmit]);
+  const handleRetry = useCallback(() => { setFileName(null); setUploadError(null); onRetry(); }, [onRetry]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -582,151 +354,54 @@ function VerificationSheet({
             {status === "rejected" ? "Resubmit verification" : "Doctor verification"}
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground leading-relaxed">
-            {status === "rejected"
-              ? "Your previous submission couldn't be verified. Please upload a clearer document."
-              : "Verify your medical credentials to join meetups and connect with other doctors."}
+            {status === "rejected" ? "Your previous submission couldn't be verified. Please upload a clearer document." : "Verify your medical credentials to join meetups and connect with other doctors."}
           </SheetDescription>
         </SheetHeader>
-
         <div className="space-y-6 pt-4">
-          {/* Not started / Rejected: show upload form */}
           {(status === "not_started" || status === "rejected") && (
             <>
-              {/* What we accept */}
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Accepted documents
-                </p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Accepted documents</p>
                 <ul className="text-sm text-muted-foreground space-y-1.5">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    Medical license (Approbationsurkunde)
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    Hospital ID or official letter
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    Medical chamber registration
-                  </li>
+                  {["Medical license (Approbationsurkunde)", "Hospital ID or official letter", "Medical chamber registration"].map((doc) => (
+                    <li key={doc} className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />{doc}</li>
+                  ))}
                 </ul>
               </div>
-
-              {/* Upload area */}
               <div className="space-y-3">
                 {!fileName ? (
-                  <button
-                    onClick={handleFileSelect}
-                    disabled={uploading}
-                    className="w-full flex flex-col items-center justify-center gap-3 py-8 px-4 rounded-[18px] border-2 border-dashed border-border hover:border-primary/40 bg-muted/30 transition-colors min-h-[120px] active:scale-[0.99]"
-                    aria-label="Upload verification document"
-                  >
-                    {uploading ? (
-                      <>
-                        <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                        <span className="text-sm text-muted-foreground">Uploading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">
-                          Upload document
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          PDF, JPG, or PNG · Max 10 MB
-                        </span>
-                      </>
-                    )}
+                  <button onClick={handleFileSelect} disabled={uploading} className="w-full flex flex-col items-center justify-center gap-3 py-8 px-4 rounded-[18px] border-2 border-dashed border-border hover:border-primary/40 bg-muted/30 transition-colors min-h-[120px] active:scale-[0.99]" aria-label="Upload verification document">
+                    {uploading ? (<><Loader2 className="h-8 w-8 text-primary animate-spin" /><span className="text-sm text-muted-foreground">Uploading...</span></>) : (<><Upload className="h-8 w-8 text-muted-foreground" /><span className="text-sm font-medium text-foreground">Upload document</span><span className="text-xs text-muted-foreground">PDF, JPG, or PNG · Max 10 MB</span></>)}
                   </button>
                 ) : (
                   <div className="flex items-center gap-3 p-4 rounded-[14px] bg-primary/5 border border-primary/20">
                     <FileText className="h-5 w-5 text-primary shrink-0" />
-                    <span className="text-sm font-medium text-foreground flex-1 truncate">
-                      {fileName}
-                    </span>
-                    <button
-                      onClick={() => setFileName(null)}
-                      className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
-                      aria-label="Remove uploaded file"
-                    >
-                      <X className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                    <span className="text-sm font-medium text-foreground flex-1 truncate">{fileName}</span>
+                    <button onClick={() => setFileName(null)} className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors" aria-label="Remove uploaded file"><X className="h-4 w-4 text-muted-foreground" /></button>
                   </div>
                 )}
-
                 {uploadError && (
-                  <div className="flex items-start gap-2 p-3 rounded-[12px] bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900" role="alert" aria-live="assertive">
-                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-600">{uploadError}</p>
-                  </div>
+                  <div className="flex items-start gap-2 p-3 rounded-[12px] bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900" role="alert"><AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" /><p className="text-sm text-red-600">{uploadError}</p></div>
                 )}
               </div>
-
-              {/* Privacy note */}
-              <div className="flex items-start gap-2 p-3 rounded-[12px] bg-muted/40">
-                <Shield className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Your document is encrypted and only used for verification. It will not be
-                  shared or stored after review.
-                </p>
-              </div>
-
-              {/* Submit CTA */}
-              <Button
-                onClick={status === "rejected" ? handleRetry : handleSubmit}
-                disabled={!fileName}
-                className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
-              >
+              <div className="flex items-start gap-2 p-3 rounded-[12px] bg-muted/40"><Shield className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" /><p className="text-xs text-muted-foreground leading-relaxed">Your document is encrypted and only used for verification.</p></div>
+              <Button onClick={status === "rejected" ? handleRetry : handleSubmit} disabled={!fileName} className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all">
                 {status === "rejected" ? "Resubmit for review" : "Submit for review"}
               </Button>
-
-              {/* Timeline note */}
-              <p className="text-center text-xs text-muted-foreground">
-                Reviews typically take 1–2 business days.
-              </p>
+              <p className="text-center text-xs text-muted-foreground">Reviews typically take 1–2 business days.</p>
             </>
           )}
-
-          {/* Pending state */}
           {status === "pending" && (
             <div className="text-center space-y-4 py-6">
-              <div className="mx-auto h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <Clock className="h-7 w-7 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="font-display text-lg font-semibold text-foreground mb-1">
-                  Under review
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">
-                  We're reviewing your document. This usually takes 1–2 business days. We'll
-                  notify you once it's complete.
-                </p>
-              </div>
-              <div className="flex items-start gap-2 p-3 rounded-[12px] bg-muted/40 text-left">
-                <BellRing className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground">
-                  You'll receive a notification when your verification is approved.
-                </p>
-              </div>
+              <div className="mx-auto h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center"><Clock className="h-7 w-7 text-amber-600" /></div>
+              <div><h3 className="font-display text-lg font-semibold text-foreground mb-1">Under review</h3><p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">We're reviewing your document. This usually takes 1–2 business days.</p></div>
+              <div className="flex items-start gap-2 p-3 rounded-[12px] bg-muted/40 text-left"><BellRing className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" /><p className="text-xs text-muted-foreground">You'll receive a notification when your verification is approved.</p></div>
             </div>
           )}
-
-          {/* Verified state */}
           {status === "verified" && (
             <div className="text-center space-y-4 py-6">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <ShieldCheck className="h-7 w-7 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-display text-lg font-semibold text-foreground mb-1">
-                  You're verified
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">
-                  Your doctor status has been confirmed. You have full access to all
-                  BeyondRounds features.
-                </p>
-              </div>
+              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center"><ShieldCheck className="h-7 w-7 text-primary" /></div>
+              <div><h3 className="font-display text-lg font-semibold text-foreground mb-1">You're verified</h3><p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">Your doctor status has been confirmed. You have full access to all BeyondRounds features.</p></div>
             </div>
           )}
         </div>
@@ -736,154 +411,61 @@ function VerificationSheet({
 }
 
 // ─── Delete Account Dialog ──────────────────────────────
-function DeleteAccountFlow({
-  open,
-  onOpenChange,
-  onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
-}) {
+function DeleteAccountFlow({ open, onOpenChange, onConfirm }: { open: boolean; onOpenChange: (open: boolean) => void; onConfirm: () => void; }) {
   const [step, setStep] = useState<"warning" | "confirm" | "success">("warning");
   const [confirmText, setConfirmText] = useState("");
   const [reason, setReason] = useState("");
   const [deleting, setDeleting] = useState(false);
   const navigate = useLocalizedNavigate();
 
-  const handleClose = useCallback(
-    (value: boolean) => {
-      if (!value) {
-        // Reset state when closing
-        setTimeout(() => {
-          setStep("warning");
-          setConfirmText("");
-          setReason("");
-          setDeleting(false);
-        }, 300);
-      }
-      onOpenChange(value);
-    },
-    [onOpenChange]
-  );
+  const handleClose = useCallback((value: boolean) => { if (!value) { setTimeout(() => { setStep("warning"); setConfirmText(""); setReason(""); setDeleting(false); }, 300); } onOpenChange(value); }, [onOpenChange]);
 
   const handleDelete = useCallback(() => {
     setDeleting(true);
-    // Simulate deletion
-    setTimeout(() => {
-      setDeleting(false);
-      setStep("success");
-    }, 2000);
+    setTimeout(() => { setDeleting(false); setStep("success"); }, 2000);
   }, []);
 
-  const handleDone = useCallback(() => {
-    handleClose(false);
-    onConfirm();
-  }, [handleClose, onConfirm]);
+  const handleDone = useCallback(() => { handleClose(false); onConfirm(); }, [handleClose, onConfirm]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="rounded-[24px] max-w-[400px] mx-4 p-0 overflow-hidden">
-        {/* Warning step */}
         {step === "warning" && (
           <div className="p-6 space-y-5">
             <DialogHeader className="space-y-3">
-              <div className="mx-auto h-14 w-14 rounded-full bg-red-500/10 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-              <DialogTitle className="font-display text-xl font-bold text-foreground text-center">
-                Delete your account?
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground text-center leading-relaxed">
-                This action is permanent and cannot be undone.
-              </DialogDescription>
+              <div className="mx-auto h-14 w-14 rounded-full bg-red-500/10 flex items-center justify-center"><AlertTriangle className="h-6 w-6 text-red-600" /></div>
+              <DialogTitle className="font-display text-xl font-bold text-foreground text-center">Delete your account?</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground text-center leading-relaxed">This action is permanent and cannot be undone.</DialogDescription>
             </DialogHeader>
-
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                What happens when you delete
-              </p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">What happens when you delete</p>
               <ul className="space-y-2.5">
-                {[
-                  "Your profile and personal data will be permanently removed",
-                  "Your chat history will no longer be visible to group members",
-                  "Any active meetup reservations will be cancelled",
-                  "Your verification status will be revoked",
-                ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0 mt-2" />
-                    {item}
-                  </li>
+                {["Your profile and personal data will be permanently removed", "Your chat history will no longer be visible to group members", "Any active meetup reservations will be cancelled", "Your verification status will be revoked"].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0 mt-2" />{item}</li>
                 ))}
               </ul>
             </div>
-
-            {/* Need help instead? */}
             <div className="flex items-center justify-center gap-1.5 py-1">
               <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-              <button
-                onClick={() => {
-                  handleClose(false);
-                  navigate("/contact");
-                }}
-                className="text-xs text-accent font-medium underline underline-offset-2 min-h-[44px] flex items-center"
-              >
-                Need help instead? Contact us
-              </button>
+              <button onClick={() => { handleClose(false); navigate("/contact"); }} className="text-xs text-accent font-medium underline underline-offset-2 min-h-[44px] flex items-center">Need help instead? Contact us</button>
             </div>
-
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => handleClose(false)}
-                className="flex-1 h-12 rounded-full font-semibold"
-              >
-                Keep my account
-              </Button>
-              <Button
-                onClick={() => setStep("confirm")}
-                className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold active:scale-[0.98] transition-all"
-              >
-                Continue
-              </Button>
+              <Button variant="outline" onClick={() => handleClose(false)} className="flex-1 h-12 rounded-full font-semibold">Keep my account</Button>
+              <Button onClick={() => setStep("confirm")} className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold active:scale-[0.98] transition-all">Continue</Button>
             </div>
           </div>
         )}
-
-        {/* Confirm step */}
         {step === "confirm" && (
           <div className="p-6 space-y-5">
             <DialogHeader className="space-y-2">
-              <DialogTitle className="font-display text-lg font-bold text-foreground text-center">
-                Confirm deletion
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground text-center leading-relaxed">
-                Type <span className="font-mono font-semibold text-foreground">DELETE</span> below
-                to confirm.
-              </DialogDescription>
+              <DialogTitle className="font-display text-lg font-bold text-foreground text-center">Confirm deletion</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground text-center leading-relaxed">Type <span className="font-mono font-semibold text-foreground">DELETE</span> below to confirm.</DialogDescription>
             </DialogHeader>
-
             <div className="space-y-4">
-              <Input
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
-                placeholder='Type "DELETE" to confirm'
-                className="h-12 rounded-[14px] text-center font-mono tracking-wider"
-                aria-label="Type DELETE to confirm account deletion"
-                autoComplete="off"
-              />
-
-              {/* Optional reason */}
+              <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "DELETE" to confirm' className="h-12 rounded-[14px] text-center font-mono tracking-wider" aria-label="Type DELETE to confirm account deletion" autoComplete="off" />
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Reason for leaving (optional)
-                </label>
-                <select
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full h-12 rounded-[14px] border border-input bg-background px-4 text-sm text-foreground appearance-none cursor-pointer"
-                  aria-label="Reason for deleting account"
-                >
+                <label className="text-xs font-medium text-muted-foreground">Reason for leaving (optional)</label>
+                <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full h-12 rounded-[14px] border border-input bg-background px-4 text-sm text-foreground appearance-none cursor-pointer" aria-label="Reason for deleting account">
                   <option value="">Select a reason...</option>
                   <option value="not_useful">Not finding it useful</option>
                   <option value="no_time">Don't have time</option>
@@ -893,51 +475,22 @@ function DeleteAccountFlow({
                 </select>
               </div>
             </div>
-
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setStep("warning")}
-                className="flex-1 h-12 rounded-full font-semibold"
-              >
-                Go back
-              </Button>
-              <Button
-                onClick={handleDelete}
-                disabled={confirmText !== "DELETE" || deleting}
-                className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold disabled:opacity-40 active:scale-[0.98] transition-all"
-              >
-                {deleting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  "Delete my account"
-                )}
+              <Button variant="outline" onClick={() => setStep("warning")} className="flex-1 h-12 rounded-full font-semibold">Go back</Button>
+              <Button onClick={handleDelete} disabled={confirmText !== "DELETE" || deleting} className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold disabled:opacity-40 active:scale-[0.98] transition-all">
+                {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Delete my account"}
               </Button>
             </div>
           </div>
         )}
-
-        {/* Success step */}
         {step === "success" && (
           <div className="p-6 space-y-5 text-center">
-            <div className="mx-auto h-14 w-14 rounded-full bg-muted flex items-center justify-center">
-              <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
-            </div>
+            <div className="mx-auto h-14 w-14 rounded-full bg-muted flex items-center justify-center"><CheckCircle2 className="h-6 w-6 text-muted-foreground" /></div>
             <div>
-              <h3 className="font-display text-lg font-bold text-foreground mb-2">
-                Account scheduled for deletion
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Your account has been scheduled for deletion. All data will be removed within
-                30 days. You'll receive a confirmation email.
-              </p>
+              <h3 className="font-display text-lg font-bold text-foreground mb-2">Account scheduled for deletion</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Your account has been scheduled for deletion. All data will be removed within 30 days.</p>
             </div>
-            <Button
-              onClick={handleDone}
-              className="w-full h-12 rounded-full font-semibold active:scale-[0.98] transition-all"
-            >
-              Done
-            </Button>
+            <Button onClick={handleDone} className="w-full h-12 rounded-full font-semibold active:scale-[0.98] transition-all">Done</Button>
           </div>
         )}
       </DialogContent>
@@ -946,92 +499,33 @@ function DeleteAccountFlow({
 }
 
 // ─── Feedback Sheet ─────────────────────────────────────
-function FeedbackSheet({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+function FeedbackSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void; }) {
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = useCallback(() => {
-    if (!feedback.trim()) return;
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      setSubmitted(true);
-    }, 1000);
-  }, [feedback]);
-
-  const handleClose = useCallback(
-    (value: boolean) => {
-      if (!value) {
-        setTimeout(() => {
-          setFeedback("");
-          setSubmitted(false);
-        }, 300);
-      }
-      onOpenChange(value);
-    },
-    [onOpenChange]
-  );
+  const handleSubmit = useCallback(() => { if (!feedback.trim()) return; setSubmitting(true); setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 1000); }, [feedback]);
+  const handleClose = useCallback((value: boolean) => { if (!value) { setTimeout(() => { setFeedback(""); setSubmitted(false); }, 300); } onOpenChange(value); }, [onOpenChange]);
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent side="bottom" className="rounded-t-[24px]">
         <SheetHeader className="text-left pb-2">
-          <SheetTitle className="font-display text-xl font-bold text-foreground">
-            Feedback & suggestions
-          </SheetTitle>
-          <SheetDescription className="text-sm text-muted-foreground">
-            Help us make BeyondRounds better for you.
-          </SheetDescription>
+          <SheetTitle className="font-display text-xl font-bold text-foreground">Feedback & suggestions</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">Help us make BeyondRounds better for you.</SheetDescription>
         </SheetHeader>
-
         {!submitted ? (
           <div className="space-y-4 pt-4">
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="What's on your mind? Share ideas, report issues, or suggest improvements..."
-              className="w-full h-32 rounded-[14px] border border-input bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Your feedback"
-            />
-            <Button
-              onClick={handleSubmit}
-              disabled={!feedback.trim() || submitting}
-              className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all"
-            >
-              {submitting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                "Send feedback"
-              )}
+            <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="What's on your mind?" className="w-full h-32 rounded-[14px] border border-input bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Your feedback" />
+            <Button onClick={handleSubmit} disabled={!feedback.trim() || submitting} className="w-full h-[52px] rounded-full bg-accent hover:bg-accent/90 text-white font-display font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition-all">
+              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send feedback"}
             </Button>
           </div>
         ) : (
           <div className="text-center space-y-4 py-8">
-            <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-              <CheckCircle2 className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-display text-lg font-semibold text-foreground mb-1">
-                Thank you
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Your feedback helps us build a better experience for doctors.
-              </p>
-            </div>
-            <Button
-              onClick={() => handleClose(false)}
-              variant="outline"
-              className="h-11 rounded-full px-8 font-semibold"
-            >
-              Close
-            </Button>
+            <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center"><CheckCircle2 className="h-6 w-6 text-primary" /></div>
+            <div><h3 className="font-display text-lg font-semibold text-foreground mb-1">Thank you</h3><p className="text-sm text-muted-foreground">Your feedback helps us build a better experience for doctors.</p></div>
+            <Button onClick={() => handleClose(false)} variant="outline" className="h-11 rounded-full px-8 font-semibold">Close</Button>
           </div>
         )}
       </SheetContent>
@@ -1040,41 +534,17 @@ function FeedbackSheet({
 }
 
 // ─── Sign Out Confirmation ──────────────────────────────
-function SignOutDialog({
-  open,
-  onOpenChange,
-  onConfirm,
-  loading,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
-  loading: boolean;
-}) {
+function SignOutDialog({ open, onOpenChange, onConfirm, loading }: { open: boolean; onOpenChange: (open: boolean) => void; onConfirm: () => void; loading: boolean; }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-[24px] max-w-[360px] mx-4">
         <DialogHeader className="space-y-2">
-          <DialogTitle className="font-display text-lg font-bold text-foreground text-center">
-            Sign out?
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground text-center">
-            You can sign back in anytime with your email.
-          </DialogDescription>
+          <DialogTitle className="font-display text-lg font-bold text-foreground text-center">Sign out?</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground text-center">You can sign back in anytime with your email.</DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex gap-3 pt-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="flex-1 h-12 rounded-full font-semibold"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold active:scale-[0.98] transition-all"
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-12 rounded-full font-semibold">Cancel</Button>
+          <Button onClick={onConfirm} disabled={loading} className="flex-1 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold active:scale-[0.98] transition-all">
             {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign out"}
           </Button>
         </DialogFooter>
@@ -1084,72 +554,101 @@ function SignOutDialog({
 }
 
 // ─── Settings Row ───────────────────────────────────────
-function SettingsRow({
-  icon: Icon,
-  label,
-  description,
-  onClick,
-  external,
-  danger,
-  trailing,
-}: {
-  icon: React.ElementType;
-  label: string;
-  description?: string;
-  onClick?: () => void;
-  external?: boolean;
-  danger?: boolean;
-  trailing?: React.ReactNode;
-}) {
+function SettingsRow({ icon: Icon, label, description, onClick, external, danger, trailing }: { icon: React.ElementType; label: string; description?: string; onClick?: () => void; external?: boolean; danger?: boolean; trailing?: React.ReactNode; }) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left min-h-[56px] active:bg-muted/50"
-      aria-label={description ? `${label}: ${description}` : label}
-    >
+    <button onClick={onClick} className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors text-left min-h-[56px] active:bg-muted/50" aria-label={description ? `${label}: ${description}` : label}>
       <div className="flex items-center gap-4">
-        <div
-          className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
-            danger ? "bg-red-500/10" : "bg-muted/80"
-          }`}
-        >
-          <Icon
-            className={`h-5 w-5 ${danger ? "text-red-600" : "text-muted-foreground"}`}
-          />
+        <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${danger ? "bg-red-500/10" : "bg-muted/80"}`}>
+          <Icon className={`h-5 w-5 ${danger ? "text-red-600" : "text-muted-foreground"}`} />
         </div>
         <div>
-          <p
-            className={`text-sm font-semibold ${
-              danger ? "text-red-600" : "text-foreground"
-            }`}
-          >
-            {label}
-          </p>
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
+          <p className={`text-sm font-semibold ${danger ? "text-red-600" : "text-foreground"}`}>{label}</p>
+          {description && <p className="text-xs text-muted-foreground">{description}</p>}
         </div>
       </div>
-      {trailing || (
-        <>
-          {external ? (
-            <ExternalLink className="h-4 w-4 text-muted-foreground/50 shrink-0" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
-          )}
-        </>
-      )}
+      {trailing || (external ? <ExternalLink className="h-4 w-4 text-muted-foreground/50 shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />)}
     </button>
+  );
+}
+
+// ─── Avatar Action Sheet ────────────────────────────────
+function AvatarSheet({ open, onOpenChange, hasAvatar, onUpload, onRemove, uploading }: { open: boolean; onOpenChange: (open: boolean) => void; hasAvatar: boolean; onUpload: (file: File) => void; onRemove: () => void; uploading: boolean; }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (5MB max) and type
+      if (file.size > 5 * 1024 * 1024) { alert("Image must be under 5 MB"); return; }
+      if (!file.type.startsWith("image/")) { alert("Please select an image file"); return; }
+      onUpload(file);
+    }
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [onUpload]);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="rounded-t-[24px]">
+        <SheetHeader className="text-left pb-2">
+          <SheetTitle className="font-display text-lg font-bold text-foreground">Profile photo</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">Upload or remove your profile picture.</SheetDescription>
+        </SheetHeader>
+        <div className="space-y-2 pt-4 pb-2">
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="w-full flex items-center gap-4 px-5 py-4 rounded-[14px] hover:bg-muted/30 active:bg-muted/50 transition-colors min-h-[56px] text-left"
+          >
+            <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+              {uploading ? <Loader2 className="h-5 w-5 text-accent animate-spin" /> : <Camera className="h-5 w-5 text-accent" />}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{uploading ? "Uploading..." : hasAvatar ? "Change photo" : "Upload photo"}</p>
+              <p className="text-xs text-muted-foreground">JPG, PNG · Max 5 MB</p>
+            </div>
+          </button>
+          {hasAvatar && (
+            <button
+              onClick={onRemove}
+              disabled={uploading}
+              className="w-full flex items-center gap-4 px-5 py-4 rounded-[14px] hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-950/20 transition-colors min-h-[56px] text-left"
+            >
+              <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                <ImageOff className="h-5 w-5 text-red-600" />
+              </div>
+              <p className="text-sm font-semibold text-red-600">Remove photo</p>
+            </button>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
 // ─── Main Component ─────────────────────────────────────
 export default function Profile() {
-  const { signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useLocalizedNavigate();
 
-  // Profile state
-  const [profile, setProfile] = useState<ProfileData>(initialProfile);
+  // Data loading
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<ProfileData>({
+    full_name: "",
+    initials: "",
+    avatar_url: null,
+    specialty: "",
+    city: "",
+    country: "",
+    verification_status: "not_started",
+    bio: "",
+    languages: [],
+    interests: [],
+    email_notifications: true,
+    push_notifications: false,
+  });
+  const [stats, setStats] = useState({ meetups: 0, doctorsMet: 0 });
 
   // UI state
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -1159,19 +658,69 @@ export default function Profile() {
   const [feedbackSheetOpen, setFeedbackSheetOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [emailNotifLoading, setEmailNotifLoading] = useState(false);
   const [pushNotifLoading, setPushNotifLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // ── Load profile data from DB ────────────────────────
+  useEffect(() => {
+    // Wait for auth to finish loading before checking user
+    if (authLoading) return;
+    if (!user?.id) { setLoading(false); return; }
+
+    let cancelled = false;
+
+    const loadData = async () => {
+      const [dbProfile, prefs, settings, memberships] = await Promise.all([
+        getProfile(user.id),
+        getOnboardingPreferences(user.id),
+        getSettings(user.id),
+        getUserGroupMemberships(user.id),
+      ]);
+
+      if (cancelled) return;
+
+      // Determine verification status from profile data
+      let verificationStatus: VerificationStatus = "not_started";
+      if ((dbProfile as unknown as Record<string, unknown>)?.verified_at) verificationStatus = "verified";
+      else if (dbProfile?.license_url) verificationStatus = "pending";
+
+      // Compute stats from memberships
+      const completedGroups = memberships.length;
+
+      setProfile({
+        full_name: dbProfile?.full_name || "",
+        initials: getInitials(dbProfile?.full_name || null),
+        avatar_url: dbProfile?.avatar_url || null,
+        specialty: prefs?.specialty || "",
+        city: dbProfile?.city || "",
+        country: dbProfile?.country || "",
+        verification_status: verificationStatus,
+        bio: "",
+        languages: dbProfile?.languages || [],
+        interests: prefs?.interests || [],
+        email_notifications: settings?.email_notifications ?? true,
+        push_notifications: settings?.push_notifications ?? false,
+      });
+
+      setStats({
+        meetups: completedGroups,
+        doctorsMet: completedGroups * 3,
+      });
+
+      setLoading(false);
+    };
+
+    loadData();
+    return () => { cancelled = true; };
+  }, [user?.id, authLoading]);
 
   // ── Handlers ────────────────────────────────────────
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
-    try {
-      await signOut();
-      navigate("/");
-    } catch {
-      setSigningOut(false);
-    }
+    try { await signOut(); navigate("/"); } catch { setSigningOut(false); }
   }, [signOut, navigate]);
 
   const handleVerificationSubmit = useCallback(() => {
@@ -1179,64 +728,119 @@ export default function Profile() {
   }, []);
 
   const handleVerificationRetry = useCallback(() => {
-    // Reset to not_started so user can re-upload
     setProfile((prev) => ({ ...prev, verification_status: "not_started" as VerificationStatus }));
   }, []);
 
   const handleDeleteConfirm = useCallback(() => {
-    // After deletion animation, sign out
-    setTimeout(async () => {
-      await signOut();
-      navigate("/");
-    }, 500);
+    setTimeout(async () => { await signOut(); navigate("/"); }, 500);
   }, [signOut, navigate]);
 
-  const handleProfileSave = useCallback((updates: Partial<ProfileData>) => {
+  const handleProfileSave = useCallback(async (updates: Partial<ProfileData>) => {
+    if (!user?.id) return;
+    // Update profile table
+    await updateProfile(user.id, { full_name: updates.full_name } as Partial<import("@/services/profileService").Profile>);
+
+    // Update onboarding_preferences (specialty, interests) — use supabase directly for this
+    // Since the onboarding service doesn't have a generic update, we'll import supabase
+    const { supabase: sb } = await import("@/integrations/supabase/client");
+    if (sb && (updates.specialty || updates.interests)) {
+      await sb.from("onboarding_preferences").update({
+        ...(updates.specialty ? { specialty: updates.specialty } : {}),
+        ...(updates.interests ? { interests: updates.interests } : {}),
+      }).eq("user_id", user!.id);
+    }
+
     setProfile((prev) => ({ ...prev, ...updates }));
-  }, []);
+  }, [user?.id]);
 
-  const handleCitySave = useCallback((city: string) => {
+  const handleCitySave = useCallback(async (city: string) => {
+    if (!user?.id) return;
+    await updateProfile(user.id, { city } as Partial<import("@/services/profileService").Profile>);
     setProfile((prev) => ({ ...prev, city }));
-  }, []);
+  }, [user?.id]);
 
-  const handleLanguageSave = useCallback((languages: string[]) => {
+  const handleLanguageSave = useCallback(async (languages: string[]) => {
+    if (!user?.id) return;
+    await updateProfile(user.id, { languages } as Partial<import("@/services/profileService").Profile>);
     setProfile((prev) => ({ ...prev, languages }));
-  }, []);
+  }, [user?.id]);
 
-  const handleToggleEmailNotif = useCallback(() => {
+  const handleToggleEmailNotif = useCallback(async () => {
+    if (!user?.id) return;
     setEmailNotifLoading(true);
-    setTimeout(() => {
-      setProfile((prev) => ({
-        ...prev,
-        email_notifications: !prev.email_notifications,
-      }));
-      setEmailNotifLoading(false);
-    }, 600);
-  }, []);
+    const newVal = !profile.email_notifications;
+    await updateSettings(user.id, { email_notifications: newVal });
+    setProfile((prev) => ({ ...prev, email_notifications: newVal }));
+    setEmailNotifLoading(false);
+  }, [user?.id, profile.email_notifications]);
 
-  const handleTogglePushNotif = useCallback(() => {
+  const handleTogglePushNotif = useCallback(async () => {
+    if (!user?.id) return;
     setPushNotifLoading(true);
-    setTimeout(() => {
-      setProfile((prev) => ({
-        ...prev,
-        push_notifications: !prev.push_notifications,
-      }));
-      setPushNotifLoading(false);
-    }, 600);
-  }, []);
+    const newVal = !profile.push_notifications;
+    await updateSettings(user.id, { push_notifications: newVal });
+    setProfile((prev) => ({ ...prev, push_notifications: newVal }));
+    setPushNotifLoading(false);
+  }, [user?.id, profile.push_notifications]);
 
-  const handleAvatarEdit = useCallback(() => {
-    // In production: open file picker → upload → update profile
-    alert("Avatar upload would open here");
-  }, []);
+  const handleAvatarUpload = useCallback(async (file: File) => {
+    if (!user?.id) return;
+    setAvatarUploading(true);
+    try {
+      const publicUrl = await uploadAvatar(user.id, file);
+      if (publicUrl) {
+        // Add cache-busting timestamp
+        const urlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
+        await updateProfile(user.id, { avatar_url: urlWithTimestamp } as Partial<import("@/services/profileService").Profile>);
+        setProfile((prev) => ({ ...prev, avatar_url: urlWithTimestamp }));
+        setAvatarSheetOpen(false);
+      }
+    } finally {
+      setAvatarUploading(false);
+    }
+  }, [user?.id]);
 
-  // ── Verification helper text for account row ──────
+  const handleAvatarRemove = useCallback(async () => {
+    if (!user?.id) return;
+    setAvatarUploading(true);
+    try {
+      const deleted = await deleteAvatar(user.id);
+      if (deleted) {
+        await updateProfile(user.id, { avatar_url: null } as Partial<import("@/services/profileService").Profile>);
+        setProfile((prev) => ({ ...prev, avatar_url: null }));
+        setAvatarSheetOpen(false);
+      }
+    } finally {
+      setAvatarUploading(false);
+    }
+  }, [user?.id]);
+
   const verificationHelper: Record<VerificationStatus, string> = {
     not_started: "Verify to join meetups",
     pending: "Review in progress",
     verified: "Your status is confirmed",
     rejected: "Resubmit your document",
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <main className="container mx-auto px-4 py-6 max-w-lg space-y-6">
+          <div className="flex flex-col items-center">
+            <Skeleton className="h-28 w-28 rounded-full mb-4" />
+            <Skeleton className="h-7 w-48 mb-2" />
+            <Skeleton className="h-5 w-32 mb-3" />
+            <Skeleton className="h-6 w-24" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-28 rounded-[18px]" />
+            <Skeleton className="h-28 rounded-[18px]" />
+          </div>
+          <Skeleton className="h-60 rounded-[20px]" />
+        </main>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -1245,12 +849,13 @@ export default function Profile() {
         <div className="flex flex-col items-center text-center">
           <div className="relative mb-4">
             <Avatar className="h-28 w-28 border-4 border-background shadow-md">
+              <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
               <AvatarFallback className="bg-primary/10 text-primary text-3xl font-semibold">
                 {profile.initials}
               </AvatarFallback>
             </Avatar>
             <button
-              onClick={handleAvatarEdit}
+              onClick={() => setAvatarSheetOpen(true)}
               className="absolute bottom-1 right-1 h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md ring-2 ring-background active:scale-[0.95] transition-transform"
               aria-label="Change profile photo"
             >
@@ -1259,7 +864,7 @@ export default function Profile() {
           </div>
 
           <h1 className="font-display text-2xl font-bold text-foreground tracking-tight mb-1">
-            {profile.full_name}
+            {profile.full_name || "Your profile"}
           </h1>
 
           {profile.specialty && (
@@ -1281,12 +886,8 @@ export default function Profile() {
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-2xl font-bold text-foreground">
-                {mockStats.meetups}
-              </span>
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
-                Meetups
-              </span>
+              <span className="text-2xl font-bold text-foreground">{stats.meetups}</span>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">Meetups</span>
             </CardContent>
           </Card>
           <Card className="rounded-[18px] bg-card border border-border shadow-sm">
@@ -1294,12 +895,8 @@ export default function Profile() {
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                 <Users className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-2xl font-bold text-foreground">
-                {mockStats.doctorsMet}
-              </span>
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
-                Doctors met
-              </span>
+              <span className="text-2xl font-bold text-foreground">{stats.doctorsMet}</span>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">Doctors met</span>
             </CardContent>
           </Card>
         </div>
@@ -1308,88 +905,34 @@ export default function Profile() {
         <Card className="rounded-[20px] bg-card border border-border shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="px-5 py-3 border-b border-border/60 bg-muted/20">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                Preferences
-              </h2>
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Preferences</h2>
             </div>
-
             <div className="divide-y divide-border/60">
-              {/* City */}
-              <button
-                onClick={() => setEditCityOpen(true)}
-                className="w-full flex items-center gap-4 px-5 py-4 min-h-[56px] hover:bg-muted/30 active:bg-muted/50 transition-colors text-left"
-                aria-label={`City: ${profile.city}. Tap to change.`}
-              >
-                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0">
-                  <MapPin className="h-5 w-5 text-muted-foreground" />
-                </div>
+              <button onClick={() => setEditCityOpen(true)} className="w-full flex items-center gap-4 px-5 py-4 min-h-[56px] hover:bg-muted/30 active:bg-muted/50 transition-colors text-left" aria-label={`City: ${profile.city}`}>
+                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0"><MapPin className="h-5 w-5 text-muted-foreground" /></div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground">City</p>
-                  <p className="text-xs text-muted-foreground">
-                    {profile.city}, {profile.country}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{[profile.city, profile.country].filter(Boolean).join(", ") || "Not set"}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
               </button>
-
-              {/* Language */}
-              <button
-                onClick={() => setEditLanguageOpen(true)}
-                className="w-full flex items-center gap-4 px-5 py-4 min-h-[56px] hover:bg-muted/30 active:bg-muted/50 transition-colors text-left"
-                aria-label={`Languages: ${profile.languages.join(", ")}. Tap to change.`}
-              >
-                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0">
-                  <Globe className="h-5 w-5 text-muted-foreground" />
-                </div>
+              <button onClick={() => setEditLanguageOpen(true)} className="w-full flex items-center gap-4 px-5 py-4 min-h-[56px] hover:bg-muted/30 active:bg-muted/50 transition-colors text-left" aria-label={`Languages: ${profile.languages.join(", ")}`}>
+                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0"><Globe className="h-5 w-5 text-muted-foreground" /></div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground">Language</p>
-                  <p className="text-xs text-muted-foreground">
-                    {profile.languages.join(", ")}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{profile.languages.length > 0 ? profile.languages.join(", ") : "Not set"}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
               </button>
-
-              {/* Email notifications */}
               <div className="flex items-center gap-4 px-5 py-4 min-h-[56px]">
-                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0">
-                  <Bell className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    Email notifications
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Meetup reminders and updates
-                  </p>
-                </div>
-                <Switch
-                  checked={profile.email_notifications}
-                  onCheckedChange={handleToggleEmailNotif}
-                  loading={emailNotifLoading}
-                  aria-label="Toggle email notifications"
-                />
+                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0"><Bell className="h-5 w-5 text-muted-foreground" /></div>
+                <div className="flex-1"><p className="text-sm font-semibold text-foreground">Email notifications</p><p className="text-xs text-muted-foreground">Meetup reminders and updates</p></div>
+                <Switch checked={profile.email_notifications} onCheckedChange={handleToggleEmailNotif} loading={emailNotifLoading} aria-label="Toggle email notifications" />
               </div>
-
-              {/* Push notifications */}
               <div className="flex items-center gap-4 px-5 py-4 min-h-[56px]">
-                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0">
-                  <BellRing className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    Push notifications
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Chat messages and match alerts
-                  </p>
-                </div>
-                <Switch
-                  checked={profile.push_notifications}
-                  onCheckedChange={handleTogglePushNotif}
-                  loading={pushNotifLoading}
-                  aria-label="Toggle push notifications"
-                />
+                <div className="h-10 w-10 rounded-full bg-muted/80 flex items-center justify-center shrink-0"><BellRing className="h-5 w-5 text-muted-foreground" /></div>
+                <div className="flex-1"><p className="text-sm font-semibold text-foreground">Push notifications</p><p className="text-xs text-muted-foreground">Chat messages and match alerts</p></div>
+                <Switch checked={profile.push_notifications} onCheckedChange={handleTogglePushNotif} loading={pushNotifLoading} aria-label="Toggle push notifications" />
               </div>
             </div>
           </CardContent>
@@ -1399,54 +942,15 @@ export default function Profile() {
         <Card className="rounded-[20px] bg-card border border-border shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="px-5 py-3 border-b border-border/60 bg-muted/20">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                Account
-              </h2>
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Account</h2>
             </div>
-
             <div className="divide-y divide-border/60">
-              <SettingsRow
-                icon={Pencil}
-                label="Edit profile"
-                description="Name, specialty, interests"
-                onClick={() => setEditProfileOpen(true)}
-              />
-
-              <SettingsRow
-                icon={ShieldCheck}
-                label="Doctor verification"
-                description={verificationHelper[profile.verification_status]}
-                onClick={() => setVerificationSheetOpen(true)}
-              />
-
-              <SettingsRow
-                icon={MessageSquare}
-                label="Feedback & suggestions"
-                description="Help us improve BeyondRounds"
-                onClick={() => setFeedbackSheetOpen(true)}
-              />
-
-              <SettingsRow
-                icon={Shield}
-                label="Privacy policy"
-                onClick={() => navigate("/privacy")}
-                external
-              />
-
-              <SettingsRow
-                icon={FileText}
-                label="Terms of service"
-                onClick={() => navigate("/terms")}
-                external
-              />
-
-              <SettingsRow
-                icon={Trash2}
-                label="Delete account"
-                description="Permanently remove your data"
-                onClick={() => setDeleteDialogOpen(true)}
-                danger
-              />
+              <SettingsRow icon={Pencil} label="Edit profile" description="Name, specialty, interests" onClick={() => setEditProfileOpen(true)} />
+              <SettingsRow icon={ShieldCheck} label="Doctor verification" description={verificationHelper[profile.verification_status]} onClick={() => setVerificationSheetOpen(true)} />
+              <SettingsRow icon={MessageSquare} label="Feedback & suggestions" description="Help us improve BeyondRounds" onClick={() => setFeedbackSheetOpen(true)} />
+              <SettingsRow icon={Shield} label="Privacy policy" onClick={() => navigate("/privacy")} external />
+              <SettingsRow icon={FileText} label="Terms of service" onClick={() => navigate("/terms")} external />
+              <SettingsRow icon={Trash2} label="Delete account" description="Permanently remove your data" onClick={() => setDeleteDialogOpen(true)} danger />
             </div>
           </CardContent>
         </Card>
@@ -1454,68 +958,24 @@ export default function Profile() {
         {/* ── Sign Out ────────────────────────────────── */}
         <Card className="rounded-[20px] bg-card border border-border shadow-sm overflow-hidden">
           <CardContent className="p-0">
-            <button
-              onClick={() => setSignOutDialogOpen(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-4 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors min-h-[56px] active:bg-red-100 dark:active:bg-red-950/50"
-              aria-label="Sign out of your account"
-            >
-              <LogOut className="h-5 w-5" />
-              <span className="font-semibold">Sign out</span>
+            <button onClick={() => setSignOutDialogOpen(true)} className="w-full flex items-center justify-center gap-2 px-4 py-4 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors min-h-[56px] active:bg-red-100 dark:active:bg-red-950/50" aria-label="Sign out of your account">
+              <LogOut className="h-5 w-5" /><span className="font-semibold">Sign out</span>
             </button>
           </CardContent>
         </Card>
 
-        {/* Bottom spacing for nav */}
         <div className="h-4" />
       </main>
 
       {/* ── Modals & Sheets ──────────────────────────── */}
-      <EditProfileSheet
-        open={editProfileOpen}
-        onOpenChange={setEditProfileOpen}
-        profile={profile}
-        onSave={handleProfileSave}
-      />
-
-      <EditCitySheet
-        open={editCityOpen}
-        onOpenChange={setEditCityOpen}
-        currentCity={profile.city}
-        onSave={handleCitySave}
-      />
-
-      <EditLanguageSheet
-        open={editLanguageOpen}
-        onOpenChange={setEditLanguageOpen}
-        currentLanguages={profile.languages}
-        onSave={handleLanguageSave}
-      />
-
-      <VerificationSheet
-        open={verificationSheetOpen}
-        onOpenChange={setVerificationSheetOpen}
-        status={profile.verification_status}
-        onSubmit={handleVerificationSubmit}
-        onRetry={handleVerificationRetry}
-      />
-
-      <FeedbackSheet
-        open={feedbackSheetOpen}
-        onOpenChange={setFeedbackSheetOpen}
-      />
-
-      <DeleteAccountFlow
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDeleteConfirm}
-      />
-
-      <SignOutDialog
-        open={signOutDialogOpen}
-        onOpenChange={setSignOutDialogOpen}
-        onConfirm={handleSignOut}
-        loading={signingOut}
-      />
+      <AvatarSheet open={avatarSheetOpen} onOpenChange={setAvatarSheetOpen} hasAvatar={!!profile.avatar_url} onUpload={handleAvatarUpload} onRemove={handleAvatarRemove} uploading={avatarUploading} />
+      <EditProfileSheet open={editProfileOpen} onOpenChange={setEditProfileOpen} profile={profile} onSave={handleProfileSave} />
+      <EditCitySheet open={editCityOpen} onOpenChange={setEditCityOpen} currentCity={profile.city} onSave={handleCitySave} />
+      <EditLanguageSheet open={editLanguageOpen} onOpenChange={setEditLanguageOpen} currentLanguages={profile.languages} onSave={handleLanguageSave} />
+      <VerificationSheet open={verificationSheetOpen} onOpenChange={setVerificationSheetOpen} status={profile.verification_status} onSubmit={handleVerificationSubmit} onRetry={handleVerificationRetry} />
+      <FeedbackSheet open={feedbackSheetOpen} onOpenChange={setFeedbackSheetOpen} />
+      <DeleteAccountFlow open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDeleteConfirm} />
+      <SignOutDialog open={signOutDialogOpen} onOpenChange={setSignOutDialogOpen} onConfirm={handleSignOut} loading={signingOut} />
     </DashboardLayout>
   );
 }

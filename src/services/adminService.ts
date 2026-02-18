@@ -443,6 +443,487 @@ export const getMatchGroups = async (): Promise<MatchGroup[]> => {
 /**
  * Gets audit logs with admin and target user names
  */
+// ============================================================
+// VERIFICATION
+// ============================================================
+
+export interface VerificationRequest {
+  id: string;
+  user_id: string;
+  document_type: string;
+  file_url: string | null;
+  status: string;
+  rejection_reason: string | null;
+  created_at: string;
+  full_name?: string | null;
+  city?: string | null;
+  specialty?: string | null;
+  career_stage?: string | null;
+  verification_status?: string | null;
+}
+
+export const getVerificationQueue = async (statusFilter?: string): Promise<VerificationRequest[]> => {
+  try {
+    let query = (supabase as any)
+      .from("verification_requests")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (statusFilter && statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
+
+    const { data, error } = await query;
+
+    if (error || !data) {
+      console.error("Error fetching verification queue:", error);
+      return [];
+    }
+
+    const userIds = [...new Set((data as any[]).map((r) => r.user_id))] as string[];
+    if (userIds.length === 0) return data;
+
+    const [profilesRes, prefsRes] = await Promise.allSettled([
+      (supabase as any).from("profiles").select("user_id, full_name, city, verification_status").in("user_id", userIds),
+      (supabase as any).from("onboarding_preferences").select("user_id, specialty, career_stage").in("user_id", userIds),
+    ]);
+
+    const profileMap = new Map<string, any>();
+    const prefsMap = new Map<string, any>();
+
+    if (profilesRes.status === "fulfilled" && (profilesRes.value as any).data) {
+      ((profilesRes.value as any).data as any[]).forEach((p: any) => profileMap.set(p.user_id, p));
+    }
+    if (prefsRes.status === "fulfilled" && (prefsRes.value as any).data) {
+      ((prefsRes.value as any).data as any[]).forEach((p: any) => prefsMap.set(p.user_id, p));
+    }
+
+    return (data as any[]).map((r) => {
+      const profile = profileMap.get(r.user_id);
+      const prefs = prefsMap.get(r.user_id);
+      return {
+        ...r,
+        full_name: profile?.full_name || null,
+        city: profile?.city || null,
+        verification_status: profile?.verification_status || null,
+        specialty: prefs?.specialty || null,
+        career_stage: prefs?.career_stage || null,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching verification queue:", error);
+    return [];
+  }
+};
+
+export const getVerificationDetail = async (userId: string): Promise<VerificationRequest | null> => {
+  try {
+    const { data } = await (supabase as any)
+      .from("verification_requests")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!data) return null;
+
+    const [profileRes, prefsRes] = await Promise.allSettled([
+      (supabase as any).from("profiles").select("full_name, city, verification_status, created_at, avatar_url").eq("user_id", userId).single(),
+      (supabase as any).from("onboarding_preferences").select("specialty, career_stage").eq("user_id", userId).single(),
+    ]);
+
+    const profile = profileRes.status === "fulfilled" ? profileRes.value.data : null;
+    const prefs = prefsRes.status === "fulfilled" ? prefsRes.value.data : null;
+
+    return {
+      ...data,
+      full_name: profile?.full_name || null,
+      city: profile?.city || null,
+      verification_status: profile?.verification_status || null,
+      specialty: prefs?.specialty || null,
+      career_stage: prefs?.career_stage || null,
+    };
+  } catch (error) {
+    console.error("Error fetching verification detail:", error);
+    return null;
+  }
+};
+
+export const approveVerification = async (userId: string, reason?: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_approve_verification' as any, {
+      p_user_id: userId,
+      p_reason: reason || null,
+    });
+    if (error) { console.error("Error approving verification:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error approving verification:", error); return false; }
+};
+
+export const rejectVerification = async (userId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_reject_verification' as any, {
+      p_user_id: userId,
+      p_reason: reason,
+    });
+    if (error) { console.error("Error rejecting verification:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error rejecting verification:", error); return false; }
+};
+
+export const requestReupload = async (userId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_request_reupload' as any, {
+      p_user_id: userId,
+      p_reason: reason,
+    });
+    if (error) { console.error("Error requesting reupload:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error requesting reupload:", error); return false; }
+};
+
+export const getSignedDocumentUrl = async (path: string): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.storage.from('verifications').createSignedUrl(path, 300);
+    if (error) { console.error("Error creating signed URL:", error); return null; }
+    return data?.signedUrl || null;
+  } catch (error) { console.error("Error creating signed URL:", error); return null; }
+};
+
+// ============================================================
+// REPORTS
+// ============================================================
+
+export interface Report {
+  id: string;
+  reporter_id: string;
+  reported_id: string;
+  reason: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  reporter_name?: string | null;
+  reported_name?: string | null;
+}
+
+export const getReports = async (statusFilter?: string): Promise<Report[]> => {
+  try {
+    let query = (supabase as any)
+      .from("user_reports")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (statusFilter && statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) { console.error("Error fetching reports:", error); return []; }
+
+    const userIds = [...new Set([
+      ...(data as any[]).map((r: any) => r.reporter_id),
+      ...(data as any[]).map((r: any) => r.reported_id),
+    ].filter(Boolean))] as string[];
+
+    if (userIds.length === 0) return data;
+
+    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+    const nameMap = new Map((profiles || []).map((p) => [p.user_id, p.full_name]));
+
+    return (data as any[]).map((r: any) => ({
+      ...r,
+      reporter_name: nameMap.get(r.reporter_id) || null,
+      reported_name: nameMap.get(r.reported_id) || null,
+    }));
+  } catch (error) { console.error("Error fetching reports:", error); return []; }
+};
+
+export const getReportDetail = async (reportId: string): Promise<Report | null> => {
+  try {
+    const { data, error } = await (supabase as any)
+      .from("user_reports")
+      .select("*")
+      .eq("id", reportId)
+      .single();
+
+    if (error || !data) return null;
+
+    const userIds = [data.reporter_id, data.reported_id].filter(Boolean);
+    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+    const nameMap = new Map((profiles || []).map((p) => [p.user_id, p.full_name]));
+
+    return {
+      ...data,
+      reporter_name: nameMap.get(data.reporter_id) || null,
+      reported_name: nameMap.get(data.reported_id) || null,
+    };
+  } catch (error) { console.error("Error fetching report detail:", error); return null; }
+};
+
+export const updateReportStatus = async (reportId: string, status: string, notes?: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_update_report' as any, {
+      p_report_id: reportId,
+      p_status: status,
+      p_admin_notes: notes || null,
+    });
+    if (error) { console.error("Error updating report:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error updating report:", error); return false; }
+};
+
+// ============================================================
+// USER MANAGEMENT (RPC-based)
+// ============================================================
+
+export const banUserRpc = async (userId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_ban_user' as any, { p_user_id: userId, p_reason: reason });
+    if (error) { console.error("Error banning user:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error banning user:", error); return false; }
+};
+
+export const unbanUserRpc = async (userId: string, reason?: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_unban_user' as any, { p_user_id: userId, p_reason: reason || 'Unbanned by admin' });
+    if (error) { console.error("Error unbanning user:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error unbanning user:", error); return false; }
+};
+
+export const softDeleteUser = async (userId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_soft_delete_user' as any, { p_user_id: userId, p_reason: reason });
+    if (error) { console.error("Error soft deleting user:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error soft deleting user:", error); return false; }
+};
+
+export const restoreUser = async (userId: string, reason?: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_restore_user' as any, { p_user_id: userId, p_reason: reason || 'Restored by admin' });
+    if (error) { console.error("Error restoring user:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error restoring user:", error); return false; }
+};
+
+export const changeUserRole = async (userId: string, newRole: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_change_role' as any, { p_user_id: userId, p_new_role: newRole, p_reason: reason });
+    if (error) { console.error("Error changing role:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error changing role:", error); return false; }
+};
+
+export const getUserDetail = async (userId: string): Promise<any | null> => {
+  try {
+    const [profileRes, prefsRes, bookingsRes, groupsRes, reportsRes, verRes] = await Promise.allSettled([
+      supabase.from("profiles").select("*").eq("user_id", userId).single(),
+      supabase.from("onboarding_preferences").select("*").eq("user_id", userId).single(),
+      (supabase as any).from("bookings").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+      supabase.from("group_members").select("*, match_groups(*)").eq("user_id", userId),
+      (supabase as any).from("user_reports").select("*").or(`reporter_id.eq.${userId},reported_id.eq.${userId}`).order("created_at", { ascending: false }),
+      (supabase as any).from("verification_requests").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(1),
+    ]);
+
+    const profile = profileRes.status === "fulfilled" ? profileRes.value.data : null;
+    if (!profile) return null;
+
+    return {
+      profile,
+      preferences: prefsRes.status === "fulfilled" ? prefsRes.value.data : null,
+      bookings: bookingsRes.status === "fulfilled" ? (bookingsRes.value as any).data || [] : [],
+      groups: groupsRes.status === "fulfilled" ? groupsRes.value.data || [] : [],
+      reports: reportsRes.status === "fulfilled" ? (reportsRes.value as any).data || [] : [],
+      verification: verRes.status === "fulfilled" ? (verRes.value as any).data?.[0] || null : null,
+    };
+  } catch (error) { console.error("Error fetching user detail:", error); return null; }
+};
+
+// ============================================================
+// GROUPS & CHAT MODERATION
+// ============================================================
+
+export const getGroups = async (statusFilter?: string): Promise<any[]> => {
+  try {
+    let query = supabase.from("match_groups").select("*").order("created_at", { ascending: false });
+    if (statusFilter && statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
+    const { data: groups, error } = await query;
+    if (error || !groups) return [];
+
+    const { data: members } = await supabase.from("group_members").select("group_id");
+    const memberCounts: Record<string, number> = {};
+    (members || []).forEach((m) => { memberCounts[m.group_id] = (memberCounts[m.group_id] || 0) + 1; });
+
+    return groups.map((g) => ({ ...g, member_count: memberCounts[g.id] || 0 }));
+  } catch (error) { console.error("Error fetching groups:", error); return []; }
+};
+
+export const getGroupDetail = async (groupId: string): Promise<any | null> => {
+  try {
+    const [groupRes, membersRes, convRes] = await Promise.allSettled([
+      supabase.from("match_groups").select("*").eq("id", groupId).single(),
+      supabase.from("group_members").select("*, profiles(user_id, full_name, avatar_url)").eq("group_id", groupId),
+      (supabase as any).from("group_conversations").select("id").eq("group_id", groupId).single(),
+    ]);
+
+    const group = groupRes.status === "fulfilled" ? groupRes.value.data : null;
+    if (!group) return null;
+
+    const members = membersRes.status === "fulfilled" ? membersRes.value.data || [] : [];
+    const conversationId = convRes.status === "fulfilled" ? (convRes.value as any).data?.id : null;
+
+    return { group, members, conversationId };
+  } catch (error) { console.error("Error fetching group detail:", error); return null; }
+};
+
+export const getGroupMessages = async (conversationId: string, limit: number = 50, offset: number = 0): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("group_messages")
+      .select("*, profiles:sender_id(full_name, avatar_url)")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) { console.error("Error fetching messages:", error); return []; }
+    return data || [];
+  } catch (error) { console.error("Error fetching messages:", error); return []; }
+};
+
+export const deleteMessage = async (messageId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_delete_message' as any, { p_message_id: messageId, p_reason: reason });
+    if (error) { console.error("Error deleting message:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error deleting message:", error); return false; }
+};
+
+export const removeFromGroup = async (groupId: string, userId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_remove_from_group' as any, { p_group_id: groupId, p_user_id: userId, p_reason: reason });
+    if (error) { console.error("Error removing from group:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error removing from group:", error); return false; }
+};
+
+export const disbandGroup = async (groupId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_disband_group' as any, { p_group_id: groupId, p_reason: reason });
+    if (error) { console.error("Error disbanding group:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error disbanding group:", error); return false; }
+};
+
+export const sendSystemMessage = async (groupId: string, content: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_send_system_message' as any, { p_group_id: groupId, p_content: content });
+    if (error) { console.error("Error sending system message:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error sending system message:", error); return false; }
+};
+
+// ============================================================
+// EVENTS (RPC-based)
+// ============================================================
+
+export const getEventDetail = async (eventId: string): Promise<any | null> => {
+  try {
+    const [eventRes, bookingsRes] = await Promise.allSettled([
+      (supabase as any).from("events").select("*").eq("id", eventId).single(),
+      (supabase as any).from("bookings").select("*, profiles:user_id(full_name, avatar_url)").eq("event_id", eventId).order("created_at", { ascending: false }),
+    ]);
+
+    const event = eventRes.status === "fulfilled" ? (eventRes.value as any).data : null;
+    if (!event) return null;
+
+    const bookings = bookingsRes.status === "fulfilled" ? (bookingsRes.value as any).data || [] : [];
+    return { event, bookings };
+  } catch (error) { console.error("Error fetching event detail:", error); return null; }
+};
+
+export const cancelEvent = async (eventId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_cancel_event' as any, { p_event_id: eventId, p_reason: reason });
+    if (error) { console.error("Error cancelling event:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error cancelling event:", error); return false; }
+};
+
+export const closeEvent = async (eventId: string, reason?: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_close_event' as any, { p_event_id: eventId, p_reason: reason || 'Closed by admin' });
+    if (error) { console.error("Error closing event:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error closing event:", error); return false; }
+};
+
+export const reopenEvent = async (eventId: string, reason?: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_reopen_event' as any, { p_event_id: eventId, p_reason: reason || 'Reopened by admin' });
+    if (error) { console.error("Error reopening event:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error reopening event:", error); return false; }
+};
+
+export const cancelBooking = async (bookingId: string, reason: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_cancel_booking' as any, { p_booking_id: bookingId, p_reason: reason });
+    if (error) { console.error("Error cancelling booking:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error cancelling booking:", error); return false; }
+};
+
+// ============================================================
+// WAITLIST & SURVEYS
+// ============================================================
+
+export const getWaitlist = async (): Promise<any[]> => {
+  try {
+    const { data, error } = await (supabase as any).from("waitlist").select("*").order("created_at", { ascending: false });
+    if (error) { console.error("Error fetching waitlist:", error); return []; }
+    return data || [];
+  } catch (error) { console.error("Error fetching waitlist:", error); return []; }
+};
+
+export const getSurveySubmissions = async (): Promise<any[]> => {
+  try {
+    const { data, error } = await (supabase as any).from("survey_submissions").select("*").order("created_at", { ascending: false });
+    if (error) { console.error("Error fetching surveys:", error); return []; }
+    return data || [];
+  } catch (error) { console.error("Error fetching surveys:", error); return []; }
+};
+
+// ============================================================
+// APP CONFIG
+// ============================================================
+
+export const getAppConfig = async (): Promise<any[]> => {
+  try {
+    const { data, error } = await (supabase as any).from("app_config").select("*").order("key", { ascending: true });
+    if (error) { console.error("Error fetching app config:", error); return []; }
+    return data || [];
+  } catch (error) { console.error("Error fetching app config:", error); return []; }
+};
+
+export const updateAppConfig = async (key: string, value: string, reason?: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_update_app_config' as any, {
+      p_key: key, p_value: value, p_reason: reason || 'Config updated',
+    });
+    if (error) { console.error("Error updating app config:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error updating app config:", error); return false; }
+};
+
+// ============================================================
+// AUDIT LOGS
+// ============================================================
+
 export const getAuditLogs = async (limit: number = 100): Promise<AuditLog[]> => {
   try {
     // Input validation

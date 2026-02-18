@@ -88,12 +88,33 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
-        // Removing explicit 'gold', 'navy', etc. to enforce the new system
+        // BeyondRounds Brand Palette
+        coral: {
+          500: "hsl(var(--coral-500))",
+          light: "hsl(var(--coral-light))",
+        },
+        plum: {
+          900: "hsl(var(--plum-900))",
+          light: "hsl(var(--plum-light))",
+        },
+        blush: {
+          200: "hsl(var(--blush-200))",
+        },
+        cream: {
+          50: "hsl(var(--cream-50))",
+        },
+        ink: {
+          900: "hsl(var(--ink-900))",
+        },
+        warmgray: {
+          600: "hsl(var(--warmgray-600))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)", // 12-16px
         md: "calc(var(--radius) - 4px)",
         sm: "calc(var(--radius) - 8px)",
+        pill: "999px",
       },
       boxShadow: {
         'subtle': '0 1px 2px 0 rgb(0 0 0 / 0.05)',

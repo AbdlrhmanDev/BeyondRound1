@@ -514,7 +514,14 @@ const Onboarding = () => {
       const { data: { user: newUser } } = await getSupabaseClient().auth.getUser();
 
       if (!newUser) {
-        const onboardingData = { personalInfo, answers, timestamp: new Date().toISOString() };
+        // Normalize answer keys so welcome page can read them correctly
+        const normalizedAnswers = {
+          ...answers,
+          music_preferences: answers.music || [],
+          movie_preferences: answers.movies || [],
+          dietary_preferences: answers.dietary || [],
+        };
+        const onboardingData = { personalInfo, answers: normalizedAnswers, timestamp: new Date().toISOString() };
         localStorage.setItem('pending_onboarding_data', JSON.stringify(onboardingData));
         navigate('/auth');
         return;
@@ -524,7 +531,7 @@ const Onboarding = () => {
       if (avatarFile) avatarUrl = await uploadAvatar(newUser.id, avatarFile);
       if (licenseFile) licenseUrl = await uploadLicense(newUser.id, licenseFile);
 
-      await updateProfile(newUser.id, {
+      const profileResult = await updateProfile(newUser.id, {
         full_name: personalInfo.name || null,
         country: personalInfo.country || null,
         state: personalInfo.state || null,
@@ -539,8 +546,11 @@ const Onboarding = () => {
         avatar_url: avatarUrl,
         license_url: licenseUrl,
       });
+      if (!profileResult) {
+        console.error("Failed to save profile during signup");
+      }
 
-      await saveOnboardingPreferences(newUser.id, {
+      const prefsResult = await saveOnboardingPreferences(newUser.id, {
         specialty: answers.specialty?.[0] || null,
         specialty_preference: "no_preference",
         group_language_preference: answers.group_language_preference?.[0] || "both",
@@ -553,12 +563,24 @@ const Onboarding = () => {
         meeting_activities: answers.meeting_activities || ["coffee", "dinner"],
         availability_slots: answers.availability || [],
         goals: answers.goals || [],
-        social_style: answers.goals || [],
+        social_style: answers.social_style || [],
         dietary_preferences: answers.dietary || [],
         life_stage: answers.life_stage?.[0] || null,
         ideal_weekend: answers.ideal_weekend || [],
         completed_at: new Date().toISOString(),
       });
+      if (!prefsResult) {
+        // Direct save failed — store for welcome page to retry
+        const normalizedAnswers = {
+          ...answers,
+          music_preferences: answers.music || [],
+          movie_preferences: answers.movies || [],
+          dietary_preferences: answers.dietary || [],
+        };
+        const onboardingData = { personalInfo, answers: normalizedAnswers, timestamp: new Date().toISOString() };
+        localStorage.setItem('pending_onboarding_data', JSON.stringify(onboardingData));
+        console.error("Failed to save preferences during signup — stored for retry");
+      }
 
       await createNotification(newUser.id, {
         type: "welcome",
@@ -579,7 +601,35 @@ const Onboarding = () => {
     if (!user) return;
     setIsLoading(true);
     try {
-      await saveOnboardingPreferences(user.id, {
+      // Save personal info to profiles table
+      let avatarUrl: string | null = null;
+      let licenseUrl: string | null = null;
+      if (avatarFile) avatarUrl = await uploadAvatar(user.id, avatarFile);
+      if (licenseFile) licenseUrl = await uploadLicense(user.id, licenseFile);
+
+      const profileUpdates: Record<string, unknown> = {
+        full_name: personalInfo.name || null,
+        country: personalInfo.country || null,
+        state: personalInfo.state || null,
+        city: personalInfo.city || null,
+        neighborhood: personalInfo.neighborhood || null,
+        gender: personalInfo.gender || null,
+        date_of_birth: personalInfo.birthYear && personalInfo.birthMonth && personalInfo.birthDay
+          ? `${personalInfo.birthYear}-${personalInfo.birthMonth.padStart(2, '0')}-${personalInfo.birthDay.padStart(2, '0')}`
+          : null,
+        gender_preference: personalInfo.genderPreference || null,
+        nationality: personalInfo.nationality || null,
+      };
+      if (avatarUrl) profileUpdates.avatar_url = avatarUrl;
+      if (licenseUrl) profileUpdates.license_url = licenseUrl;
+
+      const profileResult = await updateProfile(user.id, profileUpdates as Partial<import("@/services/profileService").Profile>);
+      if (!profileResult) {
+        console.error("Failed to save profile data");
+      }
+
+      // Save preferences to onboarding_preferences table
+      const prefsResult = await saveOnboardingPreferences(user.id, {
         specialty: answers.specialty?.[0] || null,
         specialty_preference: "no_preference",
         group_language_preference: answers.group_language_preference?.[0] || "both",
@@ -592,15 +642,20 @@ const Onboarding = () => {
         meeting_activities: answers.meeting_activities || ["coffee", "dinner"],
         availability_slots: answers.availability || [],
         goals: answers.goals || [],
-        social_style: answers.goals || [],
+        social_style: answers.social_style || [],
         dietary_preferences: answers.dietary || [],
         life_stage: answers.life_stage?.[0] || null,
         ideal_weekend: answers.ideal_weekend || [],
         completed_at: new Date().toISOString(),
       });
+      if (!prefsResult) {
+        console.error("Failed to save onboarding preferences");
+      }
+
       toast({ title: "Profile Updated", description: "Your preferences have been saved." });
       navigate('/dashboard');
     } catch (error) {
+      console.error("Error saving onboarding data:", error);
       toast({ title: "Save Failed", variant: "destructive" });
     } finally {
       setIsLoading(false);

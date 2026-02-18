@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { submitSurvey } from "@/services/surveyService";
 import LocalizedLink from "@/components/LocalizedLink";
-import { Mail, Sparkles, CheckCircle2, ArrowRight, Heart } from "lucide-react";
+
+const inputClass = [
+  'w-full rounded-[18px] border border-[#E8E0DA] bg-[#FDFBF9] px-4 py-3',
+  'text-sm text-[#1A0A12] placeholder:text-[#5E555B]/50',
+  'transition-all duration-200 h-12',
+  'focus:outline-none focus:border-[#F6B4A8] focus:ring-[3px] focus:ring-[#F6B4A8]/40',
+  'hover:border-[#D4C9C1]',
+].join(' ');
 
 const QUESTION_KEYS = [
   {
@@ -56,8 +60,7 @@ const Survey = () => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
-  const QUESTIONS = QUESTION_KEYS;
-  const allAnswered = QUESTIONS.every((q) => answers[q.id]?.trim());
+  const allAnswered = QUESTION_KEYS.every((q) => answers[q.id]?.trim());
   const canSubmit = email.trim() && allAnswered;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,87 +81,98 @@ const Survey = () => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-foreground dark:bg-background flex items-center justify-center px-4">
-        <Card className="max-w-lg w-full bg-primary-foreground/5 border border-primary-foreground/10 rounded-3xl">
-          <CardContent className="p-10 text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 className="w-8 h-8 text-primary" />
+      <div className="min-h-screen bg-[#F6F1EC] flex items-center justify-center px-4">
+        <div className="max-w-lg w-full bg-[#FAF6F3] border border-[#E8DED5]/60 rounded-[22px] shadow-sm">
+          <div className="p-10 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#F27C5C]/10 flex items-center justify-center mx-auto mb-6">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F27C5C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
             </div>
-            <h1 className="font-display text-2xl font-bold text-primary-foreground mb-3">
+            <h1 className="font-display text-2xl font-bold text-[#3A0B22] mb-3">
               {t("survey.thanksTitle")}
             </h1>
-            <p className="text-primary-foreground/60 mb-8">
+            <p className="text-[#5E555B] mb-8">
               {t("survey.thanksDesc")}
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="group" asChild>
-                <LocalizedLink to="/waitlist">
-                  {t("survey.joinWaitlist")}
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </LocalizedLink>
-              </Button>
-              <Button variant="outline" className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10" asChild>
-                <LocalizedLink to="/">{t("common.backToHome")}</LocalizedLink>
-              </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <LocalizedLink
+                to="/waitlist"
+                className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-sm shadow-[#F27C5C]/20"
+              >
+                {t("survey.joinWaitlist")}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+              </LocalizedLink>
+              <LocalizedLink
+                to="/"
+                className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium text-[#3A0B22] border border-[#3A0B22]/20 hover:bg-[#3A0B22]/[0.03] transition-all duration-200"
+              >
+                {t("common.backToHome")}
+              </LocalizedLink>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-foreground dark:bg-background relative overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/10 blur-[200px]" />
-      </div>
-
-      <header className="relative z-20 py-6">
+    <div className="min-h-screen bg-[#F6F1EC]">
+      {/* Header */}
+      <header className="py-6">
         <div className="container mx-auto px-4 flex justify-center">
-          <LocalizedLink to="/" className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground">
-            <Heart className="h-5 w-5" />
-            <span className="font-display font-bold text-lg">{t("common.brand")}</span>
+          <LocalizedLink to="/" className="flex items-center gap-1.5">
+            <span className="font-display font-bold text-xl text-[#3A0B22] italic tracking-tight">
+              Beyond
+            </span>
+            <span className="font-display font-bold text-xl text-[#F6B4A8] italic tracking-tight">
+              Rounds
+            </span>
           </LocalizedLink>
         </div>
       </header>
 
-      <main className="relative z-10 container mx-auto px-4 pb-20">
+      <main className="container mx-auto px-4 pb-20">
         <div className="max-w-2xl mx-auto">
+          {/* Title section */}
           <div className="text-center mb-10">
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/5 border border-primary-foreground/10 text-primary-foreground/60 text-sm font-semibold mb-4">
-              <Sparkles size={14} className="text-primary" />
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#F27C5C]/10 border border-[#F27C5C]/20 text-[#F27C5C] text-sm font-semibold mb-4">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /></svg>
               {t("survey.quizLabel")}
             </span>
-            <h1 className="font-display text-3xl sm:text-4xl font-bold text-primary-foreground mb-3">
+            <h1 className="font-display text-3xl sm:text-4xl font-bold text-[#3A0B22] mb-3 tracking-tight">
               {t("survey.title")}
             </h1>
-            <p className="text-primary-foreground/60">
+            <p className="text-[#5E555B]">
               {t("survey.subtitle")}
             </p>
           </div>
 
-          <Card className="bg-primary-foreground/5 border border-primary-foreground/10 rounded-3xl shadow-xl">
-            <CardContent className="p-6 sm:p-10">
+          {/* Card */}
+          <div className="bg-[#FAF6F3] border border-[#E8DED5]/60 rounded-[22px] shadow-sm">
+            <div className="p-6 sm:p-10">
               <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Email */}
                 <div>
-                  <label htmlFor="survey-email" className="flex items-center gap-2 text-sm font-medium mb-2 text-primary-foreground">
-                    <Mail className="h-4 w-4" />
+                  <label htmlFor="survey-email" className="flex items-center gap-2 text-sm font-medium mb-2 text-[#3A0B22]">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
                     {t("survey.emailLabel")}
                   </label>
-                  <Input
+                  <input
                     id="survey-email"
                     type="email"
                     placeholder={t("survey.emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="h-12 bg-background/50 border-primary-foreground/20 text-foreground placeholder:text-muted-foreground"
+                    className={inputClass}
                   />
                 </div>
 
-                {QUESTIONS.map((q) => (
+                {/* Questions */}
+                {QUESTION_KEYS.map((q) => (
                   <div key={q.id}>
-                    <label className="block text-sm font-medium mb-3 text-primary-foreground">
+                    <label className="block text-sm font-medium mb-3 text-[#3A0B22]">
                       {t(q.labelKey)}
                     </label>
                     <div className="space-y-2">
@@ -167,10 +181,10 @@ const Survey = () => {
                           key={opt.value}
                           type="button"
                           onClick={() => handleAnswer(q.id, opt.value)}
-                          className={`w-full text-left px-4 py-3 rounded-xl border transition-colors ${
+                          className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all duration-200 ${
                             answers[q.id] === opt.value
-                              ? "border-primary bg-primary/20 text-primary-foreground"
-                              : "border-primary-foreground/20 text-primary-foreground/80 hover:border-primary-foreground/40 hover:bg-primary-foreground/5"
+                              ? "border-[#F27C5C] bg-[#F27C5C]/[0.08] text-[#3A0B22] font-medium"
+                              : "border-[#E8E0DA] text-[#5E555B] hover:border-[#D4C9C1] hover:bg-[#3A0B22]/[0.02]"
                           }`}
                         >
                           {t(opt.labelKey)}
@@ -180,23 +194,25 @@ const Survey = () => {
                   </div>
                 ))}
 
-                <Button
+                {/* Submit */}
+                <button
                   type="submit"
                   disabled={!canSubmit || loading}
-                  className="w-full h-12 text-base"
+                  className="w-full h-12 rounded-full bg-[#F27C5C] text-white font-semibold hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-sm shadow-[#F27C5C]/20 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {loading ? t("survey.submitting") : t("survey.submit")}
-                </Button>
+                </button>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <p className="text-center text-sm text-primary-foreground/50 mt-6">
-            <LocalizedLink to="/for-doctors" className="underline hover:text-primary-foreground/70">
+          {/* Footer links */}
+          <p className="text-center text-sm text-[#5E555B]/60 mt-6">
+            <LocalizedLink to="/for-doctors" className="underline hover:text-[#5E555B]">
               {t("survey.whyAskThis")}
             </LocalizedLink>
             {" · "}
-            <LocalizedLink to="/waitlist" className="underline hover:text-primary-foreground/70">
+            <LocalizedLink to="/waitlist" className="underline hover:text-[#5E555B]">
               {t("survey.skipWaitlist")}
             </LocalizedLink>
           </p>

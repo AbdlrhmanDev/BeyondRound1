@@ -13,18 +13,18 @@ export default function WelcomePage() {
   const params = useParams();
   const locale = (params?.locale as string) || 'en';
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [showScore, setShowScore] = useState(false);
   const [savingPending, setSavingPending] = useState(true);
 
   useEffect(() => {
     const runWelcomeFlow = async () => {
-      // Wait for auth to load
+      // Wait for auth to finish loading
+      if (authLoading) return;
+
       if (!user?.id) {
-        setTimeout(() => {
-          setSavingPending(false);
-          setShowScore(true);
-        }, 400);
+        setSavingPending(false);
+        setShowScore(true);
         return;
       }
 
@@ -40,7 +40,7 @@ export default function WelcomePage() {
       if (pendingStr) {
         try {
           const { personalInfo, answers } = JSON.parse(pendingStr);
-          const socialStyleFromGoals = answers?.goals || [];
+          const socialStyle = answers?.social_style || answers?.goals || [];
 
           await updateProfile(user.id, {
             full_name: personalInfo?.name || null,
@@ -63,17 +63,14 @@ export default function WelcomePage() {
             career_stage: answers?.stage?.[0] || null,
             sports: answers?.sports || [],
             activity_level: answers?.activity_level?.[0] || null,
-            music_preferences: answers?.music_preferences || [],
-            movie_preferences: answers?.movie_preferences || [],
+            music_preferences: answers?.music_preferences || answers?.music || [],
+            movie_preferences: answers?.movie_preferences || answers?.movies || [],
             other_interests: answers?.other_interests || [],
             meeting_activities: answers?.meeting_activities || ['coffee', 'dinner'],
-            social_energy: answers?.social_energy?.[0] || 'moderate',
-            conversation_style: answers?.conversation_style?.[0] || 'mix',
             availability_slots: answers?.availability || [],
-            meeting_frequency: answers?.meeting_frequency?.[0] || 'flexible',
             goals: answers?.goals || [],
-            social_style: socialStyleFromGoals,
-            dietary_preferences: answers?.dietary_preferences || [],
+            social_style: socialStyle,
+            dietary_preferences: answers?.dietary_preferences || answers?.dietary || [],
             life_stage: answers?.life_stage?.[0] || null,
             ideal_weekend: answers?.ideal_weekend || [],
             completed_at: new Date().toISOString(),
@@ -92,7 +89,7 @@ export default function WelcomePage() {
     };
 
     runWelcomeFlow();
-  }, [user?.id, locale, router]);
+  }, [user?.id, authLoading, locale, router]);
 
   const handleComplete = () => {
     if (user?.id && typeof window !== 'undefined') {

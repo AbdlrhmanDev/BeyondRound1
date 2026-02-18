@@ -10,6 +10,7 @@ import { Trash2, Bug, Lightbulb, MessageSquare, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getFeedback, deleteFeedback, Feedback } from "@/services/adminService";
+import { logAdminAction } from "@/lib/auditLog";
 
 const categoryConfig = {
   bug: { label: "Bug Report", icon: Bug, color: "bg-red-500/10 text-red-500" },
@@ -40,10 +41,18 @@ const AdminFeedback = () => {
   }, [filter]);
 
   const handleDelete = async (id: string) => {
+    const item = feedback.find((f) => f.id === id);
     const success = await deleteFeedback(id);
     if (!success) {
       toast({ title: t("common.error"), description: t("admin.failedToDeleteFeedback"), variant: "destructive" });
     } else {
+      await logAdminAction({
+        action: "delete_feedback",
+        targetTable: "feedback",
+        targetId: id,
+        oldValues: item ? { category: item.category, message: item.message } : undefined,
+        reason: "Feedback deleted by admin",
+      });
       toast({ title: t("admin.deleted"), description: t("admin.feedbackRemoved") });
       setFeedback((prev) => prev.filter((f) => f.id !== id));
     }

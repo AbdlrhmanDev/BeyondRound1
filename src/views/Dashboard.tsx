@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/sheet";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
+import { useAuth } from "@/hooks/useAuth";
+import { getProfile, getPublicProfile } from "@/services/profileService";
+import { getUserGroupMemberships, getGroupMembers } from "@/services/matchService";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CheckCircle2,
   Calendar,
@@ -43,6 +48,28 @@ export interface DayOption {
   spotsLeft: number;
 }
 
+interface UserProfile {
+  full_name: string;
+  initials: string;
+  avatar_url: string | null;
+  city: string;
+}
+
+interface GroupMemberInfo {
+  id: string;
+  name: string;
+  initials: string;
+  avatar_url: string | null;
+  specialty: string;
+}
+
+function getInitials(name: string | null): string {
+  if (!name) return "?";
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  return name.trim().slice(0, 2).toUpperCase();
+}
+
 // ─── localStorage helpers ───────────────────────────────
 const GATHERING_STATE_KEY = "gathering_state";
 const GATHERING_DAY_KEY = "gathering_day";
@@ -68,31 +95,41 @@ function writeGatheringState(state: GatheringState, day: DayOption | null) {
   }
 }
 
-// ─── Mock Data ──────────────────────────────────────────
-const mockProfile = {
-  full_name: "Dr. Sarah Chen",
-  initials: "SC",
-  specialty: "Internal Medicine",
-};
+// ─── Weekend Day Options (dynamic dates) ────────────────
+function getWeekendDays(): DayOption[] {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 5=Fri, 6=Sat
 
-const weekendDays: DayOption[] = [
-  { id: "friday",   label: "Friday gathering",   date: "Feb 28", timeHint: "Evening · 7 PM",  spotsLeft: 4  },
-  { id: "saturday", label: "Saturday gathering",  date: "Mar 1",  timeHint: "Morning · 11 AM", spotsLeft: 6  },
-  { id: "sunday",   label: "Sunday gathering",    date: "Mar 2",  timeHint: "Morning · 11 AM", spotsLeft: 8  },
-];
+  // Find next Friday
+  const daysToFriday = (5 - dayOfWeek + 7) % 7 || 7;
+  const friday = new Date(now);
+  friday.setDate(now.getDate() + daysToFriday);
 
-const mockGroupMembers = [
-  { id: "1", name: "Dr. Lisa M.",  initials: "LM", specialty: "Pediatrics" },
-  { id: "2", name: "Dr. Amara K.", initials: "AK", specialty: "Neurology" },
-  { id: "3", name: "Dr. Tom W.",   initials: "TW", specialty: "Surgery" },
-];
+  const saturday = new Date(friday);
+  saturday.setDate(friday.getDate() + 1);
+
+  const sunday = new Date(friday);
+  sunday.setDate(friday.getDate() + 2);
+
+  const formatDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  return [
+    { id: "friday",   label: "Friday gathering",   date: formatDate(friday),   timeHint: "Evening · 7 PM",  spotsLeft: 4  },
+    { id: "saturday", label: "Saturday gathering",  date: formatDate(saturday), timeHint: "Morning · 11 AM", spotsLeft: 6  },
+    { id: "sunday",   label: "Sunday gathering",    date: formatDate(sunday),   timeHint: "Morning · 11 AM", spotsLeft: 8  },
+  ];
+}
 
 // ─── Choose Day Module ──────────────────────────────────
 function ChooseDayModule({
   onSelectDay,
+  city,
 }: {
   onSelectDay: (day: DayOption) => void;
+  city: string;
 }) {
+  const weekendDays = getWeekendDays();
+
   return (
     <Card className="rounded-[24px] bg-card border border-border shadow-card overflow-hidden">
       <div className="h-[3px] bg-gradient-to-r from-primary/80 via-accent to-[hsl(15,60%,82%)]" />
@@ -103,7 +140,7 @@ function ChooseDayModule({
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
             Pick the day that works best. We'll place you in a small group of verified
-            doctors in Berlin.
+            doctors in {city}.
           </p>
         </div>
 
@@ -155,7 +192,7 @@ function ChooseDayModule({
                   </span>
                   <span className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" />
-                    Berlin
+                    {city}
                   </span>
                 </div>
 
@@ -263,7 +300,7 @@ function PaymentSheet({
             Complete your reservation
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">
-            {selectedDay.label.split(" ")[0]}, {selectedDay.date} · {selectedDay.timeHint.split(" · ")[1] || selectedDay.timeHint} · Berlin
+            {selectedDay.label.split(" ")[0]}, {selectedDay.date} · {selectedDay.timeHint.split(" · ")[1] || selectedDay.timeHint}
           </SheetDescription>
         </SheetHeader>
 
@@ -408,9 +445,13 @@ function PaymentSheet({
 function ReservedCard({
   selectedDay,
   onCancel,
+  userInitials,
+  city,
 }: {
   selectedDay: DayOption;
   onCancel: () => void;
+  userInitials: string;
+  city: string;
 }) {
   const [showCancel, setShowCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -437,7 +478,7 @@ function ReservedCard({
               </h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedDay.label.split(" ")[0]}, {selectedDay.date} · Berlin
+              {selectedDay.label.split(" ")[0]}, {selectedDay.date} · {city}
             </p>
           </div>
           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
@@ -456,7 +497,7 @@ function ReservedCard({
             </div>
           ))}
           <div className="h-14 w-14 rounded-full border-[3px] border-accent bg-accent/10 flex items-center justify-center">
-            <span className="text-accent text-xs font-semibold">{mockProfile.initials}</span>
+            <span className="text-accent text-xs font-semibold">{userInitials}</span>
           </div>
         </div>
 
@@ -511,9 +552,13 @@ function ReservedCard({
 function MatchedPreviewCard({
   selectedDay,
   onViewGathering,
+  groupMembers,
+  city,
 }: {
   selectedDay: DayOption;
   onViewGathering: () => void;
+  groupMembers: GroupMemberInfo[];
+  city: string;
 }) {
   return (
     <Card className="rounded-[24px] bg-card border border-border shadow-card overflow-hidden">
@@ -528,7 +573,7 @@ function MatchedPreviewCard({
               </h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedDay.label.split(" ")[0]}, {selectedDay.date} · Berlin
+              {selectedDay.label.split(" ")[0]}, {selectedDay.date} · {city}
             </p>
           </div>
           <Badge className="bg-accent/10 text-accent border-none text-xs font-semibold">
@@ -539,17 +584,17 @@ function MatchedPreviewCard({
         {/* Compact member preview */}
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2">
-            {mockGroupMembers.map((m) => (
-              <div
-                key={m.id}
-                className="h-10 w-10 rounded-full border-[2px] border-card bg-primary/10 flex items-center justify-center"
-              >
-                <span className="text-primary text-xs font-semibold">{m.initials}</span>
-              </div>
+            {groupMembers.map((m) => (
+              <Avatar key={m.id} className="h-10 w-10 border-[2px] border-card">
+                <AvatarImage src={m.avatar_url || undefined} alt={m.name} />
+                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                  {m.initials}
+                </AvatarFallback>
+              </Avatar>
             ))}
           </div>
           <p className="text-sm text-muted-foreground">
-            {mockGroupMembers.length} doctors in your group
+            {groupMembers.length} doctors in your group
           </p>
         </div>
 
@@ -692,10 +737,81 @@ function HowItWorks() {
 // ─── Main Dashboard ─────────────────────────────────────
 export default function Dashboard() {
   const navigate = useLocalizedNavigate();
+  const { user, loading: authLoading } = useAuth();
 
   const [state, setState] = useState<GatheringState>("none");
   const [selectedDay, setSelectedDay] = useState<DayOption | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [groupMembers, setGroupMembers] = useState<GroupMemberInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load profile data from Supabase
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user?.id) { setLoading(false); return; }
+
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      const profile = await getProfile(user.id);
+      if (cancelled) return;
+
+      if (profile) {
+        setUserProfile({
+          full_name: profile.full_name || "",
+          initials: getInitials(profile.full_name),
+          avatar_url: profile.avatar_url || null,
+          city: profile.city || "Berlin",
+        });
+      }
+      setLoading(false);
+    };
+
+    loadProfile();
+    return () => { cancelled = true; };
+  }, [user?.id, authLoading]);
+
+  // Load group members when in matched state
+  useEffect(() => {
+    if (state !== "matched" || !user?.id) return;
+
+    let cancelled = false;
+
+    const loadGroupMembers = async () => {
+      const memberships = await getUserGroupMemberships(user.id);
+      if (cancelled || !memberships || memberships.length === 0) return;
+
+      // Get the most recent group
+      const latestMembership = memberships[memberships.length - 1] as { group_id: string };
+      if (!latestMembership?.group_id) return;
+
+      const members = await getGroupMembers(latestMembership.group_id);
+      if (cancelled || !members || members.length === 0) return;
+
+      // Fetch profiles for each member (excluding self)
+      const otherMembers = (members as { user_id: string }[])
+        .filter((m) => m.user_id !== user.id);
+
+      const profilePromises = otherMembers.map(async (m) => {
+        const profile = await getPublicProfile(m.user_id);
+        const name = profile?.full_name || "Doctor";
+        return {
+          id: m.user_id,
+          name,
+          initials: getInitials(name),
+          avatar_url: profile?.avatar_url || null,
+          specialty: "",
+        } satisfies GroupMemberInfo;
+      });
+
+      const memberInfos = await Promise.all(profilePromises);
+      if (!cancelled) setGroupMembers(memberInfos);
+    };
+
+    loadGroupMembers();
+    return () => { cancelled = true; };
+  }, [state, user?.id]);
 
   // Read persisted state on mount
   useEffect(() => {
@@ -713,7 +829,10 @@ export default function Dashboard() {
   // ── Greeting ──────────────────────────────────────────
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const firstName = mockProfile.full_name.split(" ").pop()?.split(".").pop()?.trim() || "there";
+  const firstName = userProfile?.full_name
+    ? userProfile.full_name.split(" ")[0]
+    : "there";
+  const city = userProfile?.city || "Berlin";
 
   const sublines: Record<GatheringState, string> = {
     none: "Your weekend starts here.",
@@ -757,6 +876,21 @@ export default function Dashboard() {
     navigate("/matches");
   }, [navigate]);
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <main className="container mx-auto px-4 py-6 max-w-lg space-y-6">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48 rounded-xl" />
+            <Skeleton className="h-4 w-64 rounded-lg" />
+          </div>
+          <Skeleton className="h-64 w-full rounded-[24px]" />
+          <Skeleton className="h-32 w-full rounded-[20px]" />
+        </main>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-6">
@@ -771,7 +905,7 @@ export default function Dashboard() {
         {/* ── State: none → Choose Day ───────────────── */}
         {state === "none" && (
           <>
-            <ChooseDayModule onSelectDay={handleSelectDay} />
+            <ChooseDayModule onSelectDay={handleSelectDay} city={city} />
             <HowItWorks />
           </>
         )}
@@ -782,6 +916,8 @@ export default function Dashboard() {
             <ReservedCard
               selectedDay={selectedDay}
               onCancel={handleCancelReservation}
+              userInitials={userProfile?.initials || "?"}
+              city={city}
             />
             {/* Dev helper */}
             <button
@@ -799,6 +935,8 @@ export default function Dashboard() {
             <MatchedPreviewCard
               selectedDay={selectedDay}
               onViewGathering={handleViewGathering}
+              groupMembers={groupMembers}
+              city={city}
             />
             {/* Dev helper */}
             <button

@@ -9,6 +9,8 @@ import { Calendar, Plus, Play, Loader2, Users, Clock, UserPlus } from "lucide-re
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useLocale } from "@/contexts/LocaleContext";
+import Link from "next/link";
 
 const MEETUP_TYPES = ["brunch", "coffee", "walk", "sports", "dinner"] as const;
 const NEIGHBORHOODS = ["mitte", "prenzlauer_berg_friedrichshain", "kreuzberg_neukoelln", "charlottenburg_schoeneberg"] as const;
@@ -31,6 +33,7 @@ export default function AdminEventsPage() {
   const [matchingLoading, setMatchingLoading] = useState(false);
   const [matchingResult, setMatchingResult] = useState<MatchingResult | null>(null);
   const { toast } = useToast();
+  const { pathWithLocale } = useLocale();
 
   const fetchEvents = async () => {
     const { data } = await (supabase as any)
@@ -210,9 +213,10 @@ export default function AdminEventsPage() {
             ) : (
               <div className="space-y-2">
                 {events.map((e) => (
-                  <div
+                  <Link
                     key={e.id}
-                    className="flex items-center justify-between p-3 rounded-lg border"
+                    href={pathWithLocale(`/admin/events/${e.id}`)}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
                     <div>
                       <span className="font-medium capitalize">{e.meetup_type}</span>
@@ -225,7 +229,7 @@ export default function AdminEventsPage() {
                     <Badge variant={e.status === "open" ? "default" : "secondary"}>
                       {e.status}
                     </Badge>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

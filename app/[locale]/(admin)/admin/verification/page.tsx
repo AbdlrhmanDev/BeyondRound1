@@ -1,13 +1,6 @@
-import type { Metadata } from 'next';
-import AdminVerificationPageContent from '@/views/admin/AdminVerification';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Admin Verification',
-  description: 'Review doctor verification requests.',
-};
-
-export const dynamic = 'force-dynamic';
-
-export default function AdminVerificationPage() {
-  return <AdminVerificationPageContent />;
+// Redirect old /verification to /verifications
+export default function VerificationRedirect({ params }: { params: { locale: string } }) {
+  redirect(`/${params.locale}/admin/verifications`);
 }

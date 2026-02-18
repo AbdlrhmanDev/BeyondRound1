@@ -50,11 +50,11 @@ export function SearchableSelect({
 
   const triggerClass =
     variant === "profile"
-      ? "h-12 rounded-xl bg-background border-border text-foreground placeholder:text-muted-foreground focus:ring-ring"
-      : "h-14 bg-background/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 rounded-2xl";
+      ? "h-12 rounded-[14px] bg-background border-border/60 text-foreground placeholder:text-muted-foreground focus:ring-coral-500"
+      : "h-14 bg-background/10 border-border/30 text-primary-foreground placeholder:text-primary-foreground/50 rounded-[18px]";
 
   const borderClass =
-    variant === "profile" ? "border-input" : "border-primary-foreground/20";
+    variant === "profile" ? "border-border/60" : "border-border/30";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -65,10 +65,10 @@ export function SearchableSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-normal border",
+            "w-full justify-between font-normal border transition-all duration-200",
             triggerClass,
             borderClass,
-            !value && variant !== "profile" && "border-primary/50",
+            !value && variant !== "profile" && "border-coral-500/40",
             !value && variant === "profile" && "text-muted-foreground",
             triggerClassName
           )}
@@ -76,34 +76,49 @@ export function SearchableSelect({
           <span className={cn("truncate", !value && "text-muted-foreground")}>
             {value ? selectedLabel : placeholder}
           </span>
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className={cn(
+            "ml-2 h-4 w-4 shrink-0 transition-transform duration-200",
+            open && "rotate-180",
+            "text-warmgray-600"
+          )} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command shouldFilter={true}>
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0 rounded-[18px] border-border/60 shadow-hover"
+        align="start"
+      >
+        <Command shouldFilter={true} className="rounded-[18px]">
           <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
+          <CommandList className="max-h-[240px]">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    onValueChange(option.value);
-                    setOpen(false);
-                  }}
-                  className="rounded-lg py-2 pl-8 pr-3 data-[selected=true]:bg-emerald-600 data-[selected=true]:text-white"
-                >
-                  <Check
+              {options.map((option) => {
+                const isActive = value === option.value;
+                return (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => {
+                      onValueChange(option.value);
+                      setOpen(false);
+                    }}
                     className={cn(
-                      "mr-2 h-4 w-4 absolute left-2",
-                      value === option.value ? "opacity-100" : "opacity-0"
+                      "rounded-xl py-2.5 pl-9 pr-3 min-h-[44px] cursor-pointer transition-colors",
+                      isActive
+                        ? "bg-coral-500/15 text-coral-500 font-medium"
+                        : "data-[selected='true']:bg-blush-200/30 data-[selected='true']:text-plum-900"
                     )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4 absolute left-2.5 text-coral-500 transition-opacity",
+                        isActive ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>
