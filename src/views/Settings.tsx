@@ -31,6 +31,7 @@ import {
 import { BillingSection } from "@/components/BillingSection";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-loader";
 import { getSettings, updateSettings } from "@/services/settingsService";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -63,6 +64,7 @@ const Settings = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<{ current?: string; new?: string; confirm?: string }>({});
   const [pushNotifications, setPushNotifications] = useState(true);
+  const { isSupported: pushSupported, isIOS, isStandalone, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications();
   const [matchNotifications, setMatchNotifications] = useState(true);
   const [eventNotifications, setEventNotifications] = useState(true);
   const [profileVisible, setProfileVisible] = useState(true);
@@ -277,14 +279,35 @@ const Settings = () => {
                   <Smartphone className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">{t("settings.pushNotifications")}</p>
-                    <p className="text-xs text-muted-foreground">{t("settings.pushNotificationsDesc")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isIOS && !isStandalone
+                        ? "Add to Home Screen first to enable push on iOS"
+                        : !pushSupported
+                        ? "Not supported in this browser"
+                        : t("settings.pushNotificationsDesc")}
+                    </p>
                   </div>
                 </div>
-                <Switch 
-                  checked={pushNotifications} 
-                  onCheckedChange={(value) => {
-                    setPushNotifications(value);
-                    saveSetting({ push_notifications: value });
+                <Switch
+                  disabled={!pushSupported || pushLoading}
+                  checked={pushSupported ? pushSubscribed : pushNotifications}
+                  onCheckedChange={async (value) => {
+                    if (!pushSupported) return;
+                    if (value) {
+                      const ok = await subscribePush();
+                      if (ok) {
+                        setPushNotifications(true);
+                        saveSetting({ push_notifications: true });
+                        toast.success("Push notifications enabled");
+                      } else {
+                        toast.error("Could not enable push notifications — check browser permissions");
+                      }
+                    } else {
+                      await unsubscribePush();
+                      setPushNotifications(false);
+                      saveSetting({ push_notifications: false });
+                      toast.success("Push notifications disabled");
+                    }
                   }}
                 />
               </div>

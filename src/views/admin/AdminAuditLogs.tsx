@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   RefreshCw, ScrollText, Pencil, Ban, UserCheck, UserX, Shield, ShieldCheck,
-  XCircle, AlertTriangle, Trash2, MessageSquare, Calendar, Settings, Download,
+  XCircle, AlertTriangle, Trash2, MessageSquare, Settings, Download,
   Search, RotateCcw, Eye
 } from "lucide-react";
 import { format } from "date-fns";
@@ -33,10 +33,6 @@ const actionConfig: Record<string, { label: string; icon: typeof Pencil; color: 
   resolve_report: { label: "Report Resolved", icon: UserCheck, color: "bg-green-500/10 text-green-500" },
   dismiss_report: { label: "Report Dismissed", icon: XCircle, color: "bg-gray-500/10 text-gray-500" },
   warn_user: { label: "User Warned", icon: AlertTriangle, color: "bg-amber-500/10 text-amber-500" },
-  cancel_event: { label: "Event Cancelled", icon: Calendar, color: "bg-red-500/10 text-red-500" },
-  close_event: { label: "Event Closed", icon: Calendar, color: "bg-gray-500/10 text-gray-500" },
-  reopen_event: { label: "Event Reopened", icon: Calendar, color: "bg-green-500/10 text-green-500" },
-  cancel_booking: { label: "Booking Cancelled", icon: Calendar, color: "bg-red-500/10 text-red-500" },
   delete_message: { label: "Message Deleted", icon: Trash2, color: "bg-red-500/10 text-red-500" },
   remove_from_group: { label: "Removed from Group", icon: UserX, color: "bg-red-500/10 text-red-500" },
   disband_group: { label: "Group Disbanded", icon: XCircle, color: "bg-red-500/10 text-red-500" },

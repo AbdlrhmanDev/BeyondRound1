@@ -1,3 +1,4 @@
+// @ts-nocheck — Deno Edge Function: processed by Deno runtime, not Node/tsc
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -197,6 +198,23 @@ serve(async (req) => {
           console.log(`✅ Inserted ${batch.length} notifications (batch ${Math.floor(i / batchSize) + 1})`);
         }
       }
+
+      // ── Also send Web Push to each unique user ──────────────────────────────
+      const uniqueUserIds = [...new Set(notificationsToInsert.map((n) => n.user_id))];
+      console.log(`📲 Firing push notifications for ${uniqueUserIds.length} users`);
+      await Promise.allSettled(
+        uniqueUserIds.map((userId) =>
+          supabase.functions.invoke("send-push-notification", {
+            body: {
+              userId,
+              title: "🎉 Your Match Group is Ready!",
+              body:  "Your match group is ready. Tap to join the conversation.",
+              url:   "/matches",
+              tag:   "match-group-ready",
+            },
+          })
+        )
+      );
     }
 
     const successMessage = `✅ Successfully sent ${notificationsSent} match notifications`;

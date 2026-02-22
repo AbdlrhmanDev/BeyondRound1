@@ -3,7 +3,7 @@
  * Following Single Responsibility Principle
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient } from '@/integrations/supabase/client';
 
 /**
  * Uploads a file to storage
@@ -31,7 +31,7 @@ export const uploadFile = async (
       return null;
     }
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await getSupabaseClient().storage
       .from(bucket)
       .upload(filePath, file, { upsert: options?.upsert ?? false });
 
@@ -40,7 +40,7 @@ export const uploadFile = async (
       return null;
     }
 
-    const { data: { publicUrl } } = supabase.storage
+    const { data: { publicUrl } } = getSupabaseClient().storage
       .from(bucket)
       .getPublicUrl(filePath);
 
@@ -136,7 +136,7 @@ export const deleteAvatar = async (userId: string): Promise<boolean> => {
 
   try {
     // List files in the user's avatar folder and delete them all
-    const { data: files, error: listError } = await supabase.storage
+    const { data: files, error: listError } = await getSupabaseClient().storage
       .from('avatars')
       .list(userId);
 
@@ -148,7 +148,7 @@ export const deleteAvatar = async (userId: string): Promise<boolean> => {
     if (!files || files.length === 0) return true;
 
     const filePaths = files.map(f => `${userId}/${f.name}`);
-    const { error: deleteError } = await supabase.storage
+    const { error: deleteError } = await getSupabaseClient().storage
       .from('avatars')
       .remove(filePaths);
 

@@ -5,9 +5,9 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users, MessageSquare, Heart, UsersRound, TrendingUp, TrendingDown,
-  ShieldCheck, AlertTriangle, Calendar, ListChecks
+  ShieldCheck, AlertTriangle, ListChecks
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient, supabase } from "@/integrations/supabase/client";
 
 interface AdminStats {
   totalUsers: number;
@@ -18,7 +18,6 @@ interface AdminStats {
   acceptedMatches: number;
   pendingVerifications: number;
   openReports: number;
-  upcomingEvents: number;
   activeGroups: number;
   verifiedUsers: number;
   waitlistCount: number;
@@ -28,24 +27,23 @@ const AdminOverview = () => {
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0, totalFeedback: 0, totalMatches: 0, totalGroups: 0,
     pendingMatches: 0, acceptedMatches: 0, pendingVerifications: 0,
-    openReports: 0, upcomingEvents: 0, activeGroups: 0, verifiedUsers: 0, waitlistCount: 0,
+    openReports: 0, activeGroups: 0, verifiedUsers: 0, waitlistCount: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       const results = await Promise.allSettled([
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase.from("feedback").select("*", { count: "exact", head: true }),
-        supabase.from("matches").select("*", { count: "exact", head: true }),
-        supabase.from("match_groups").select("*", { count: "exact", head: true }),
-        supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "accepted"),
+        getSupabaseClient().from("profiles").select("*", { count: "exact", head: true }),
+        getSupabaseClient().from("feedback").select("*", { count: "exact", head: true }),
+        getSupabaseClient().from("matches").select("*", { count: "exact", head: true }),
+        getSupabaseClient().from("match_groups").select("*", { count: "exact", head: true }),
+        getSupabaseClient().from("matches").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        getSupabaseClient().from("matches").select("*", { count: "exact", head: true }).eq("status", "accepted"),
         (supabase as any).from("verification_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
         (supabase as any).from("user_reports").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        (supabase as any).from("events").select("*", { count: "exact", head: true }).eq("status", "open"),
-        supabase.from("match_groups").select("*", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("verification_status", "approved"),
+        getSupabaseClient().from("match_groups").select("*", { count: "exact", head: true }).eq("status", "active"),
+        getSupabaseClient().from("profiles").select("*", { count: "exact", head: true }).eq("verification_status", "approved"),
         (supabase as any).from("waitlist").select("*", { count: "exact", head: true }),
       ]);
 
@@ -63,10 +61,9 @@ const AdminOverview = () => {
         acceptedMatches: getCount(results[5]),
         pendingVerifications: getCount(results[6]),
         openReports: getCount(results[7]),
-        upcomingEvents: getCount(results[8]),
-        activeGroups: getCount(results[9]),
-        verifiedUsers: getCount(results[10]),
-        waitlistCount: getCount(results[11]),
+        activeGroups: getCount(results[8]),
+        verifiedUsers: getCount(results[9]),
+        waitlistCount: getCount(results[10]),
       });
       setIsLoading(false);
     };
@@ -79,7 +76,6 @@ const AdminOverview = () => {
     { title: "Verified Users", value: stats.verifiedUsers, icon: ShieldCheck, color: "text-green-500", bgColor: "bg-green-500/10" },
     { title: "Pending Verifications", value: stats.pendingVerifications, icon: ShieldCheck, color: "text-amber-500", bgColor: "bg-amber-500/10" },
     { title: "Open Reports", value: stats.openReports, icon: AlertTriangle, color: "text-red-500", bgColor: "bg-red-500/10" },
-    { title: "Upcoming Events", value: stats.upcomingEvents, icon: Calendar, color: "text-purple-500", bgColor: "bg-purple-500/10" },
     { title: "Active Groups", value: stats.activeGroups, icon: UsersRound, color: "text-green-500", bgColor: "bg-green-500/10" },
     { title: "Total Matches", value: stats.totalMatches, icon: Heart, color: "text-red-500", bgColor: "bg-red-500/10" },
     { title: "Feedback", value: stats.totalFeedback, icon: MessageSquare, color: "text-purple-500", bgColor: "bg-purple-500/10" },

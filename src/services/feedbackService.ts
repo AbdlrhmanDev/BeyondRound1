@@ -3,7 +3,7 @@
  * Following Single Responsibility Principle
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, supabase } from '@/integrations/supabase/client';
 
 export interface FeedbackData {
   user_id: string | null;
@@ -44,7 +44,7 @@ export const submitFeedback = async (feedback: FeedbackData): Promise<boolean> =
       return false;
     }
 
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from("feedback")
       .insert({
         user_id: feedback.user_id,
@@ -89,7 +89,7 @@ export const submitSmartFeedback = async (feedback: SmartFeedbackData): Promise<
       feedback.additional_text ? `Comment: ${feedback.additional_text}` : null,
     ].filter(Boolean).join(' | ');
 
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from("feedback")
       .insert({
         user_id: feedback.user_id,

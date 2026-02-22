@@ -1,0 +1,60 @@
+'use client';
+
+/**
+ * ConsentedScripts
+ *
+ * Loads third-party tracking scripts ONLY after the user has granted consent
+ * for the corresponding category. Re-evaluates automatically whenever consent
+ * changes (e.g. after the user saves updated preferences).
+ *
+ * To activate, set these env vars in .env.local:
+ *   NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+ *   NEXT_PUBLIC_META_PIXEL_ID=XXXXXXXXXXXXXXX
+ */
+
+import Script from 'next/script';
+import { useCookieConsent } from '@/components/CookieConsentContext';
+
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? '';
+const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '';
+
+export function ConsentedScripts() {
+  const { isAllowed } = useCookieConsent();
+
+  return (
+    <>
+      {/* ── Google Analytics 4 ─────────────────────────────────────────── */}
+      {isAllowed('analytics') && GA_ID && (
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+            strategy="afterInteractive"
+          />
+          <Script id="ga4-init" strategy="afterInteractive">{`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_ID}', {
+              anonymize_ip: true,
+              cookie_flags: 'SameSite=None;Secure'
+            });
+          `}</Script>
+        </>
+      )}
+
+      {/* ── Meta Pixel ────────────────────────────────────────────────── */}
+      {isAllowed('marketing') && META_PIXEL_ID && (
+        <Script id="meta-pixel" strategy="afterInteractive">{`
+          !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){
+          n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+          if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+          n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;
+          s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+          (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+          fbq('init','${META_PIXEL_ID}');
+          fbq('track','PageView');
+        `}</Script>
+      )}
+    </>
+  );
+}

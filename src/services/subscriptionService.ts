@@ -1,284 +1,182 @@
 /**
- * Subscription Service - Handles subscription and billing operations
- * Following Single Responsibility Principle
- * When NEXT_PUBLIC_SERVY_URL is set, Stripe calls go through servy.beyondrounds.app
+ * Subscription Service — all billing operations for BeyondRounds.
+ * All Stripe calls go through /api/billing/* route handlers (server-only).
  */
 
-import { supabase } from '@/integrations/supabase/client';
-import { getServyUrl } from '@/lib/apiConfig';
+import { getSupabaseClient } from '@/integrations/supabase/client';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface Subscription {
-  id: string;
-  user_id: string;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
-  stripe_price_id: string | null;
-  status: string;
-  plan_name: string | null;
-  current_period_start: string | null;
-  current_period_end: string | null;
-  cancel_at_period_end: boolean;
-  canceled_at: string | null;
+  id:                          string;
+  user_id:                     string;
+  stripe_customer_id:          string | null;
+  stripe_subscription_id:      string | null;
+  stripe_subscription_item_id: string | null;
+  stripe_price_id:             string | null;
+  status:                      SubscriptionStatus;
+  plan_name:                   string | null;
+  interval:                    string | null;
+  current_period_start:        string | null;
+  current_period_end:          string | null;
+  cancel_at_period_end:        boolean;
+  canceled_at:                 string | null;
+  trial_end:                   string | null;
+  payment_failed_at:           string | null;
+  next_payment_attempt:        string | null;
+}
+
+export type SubscriptionStatus =
+  | 'active'
+  | 'trialing'
+  | 'past_due'
+  | 'canceled'
+  | 'unpaid'
+  | 'incomplete'
+  | 'incomplete_expired'
+  | 'one_time_paid'
+  | 'inactive';
+
+export interface Invoice {
+  id:                  string;
+  stripe_invoice_id:   string;
+  amount:              number;
+  currency:            string;
+  status:              string;
+  invoice_pdf:         string | null;
+  hosted_invoice_url:  string | null;
+  period_start:        string | null;
+  period_end:          string | null;
+  paid_at:             string | null;
 }
 
 export interface PaymentMethod {
-  id: string;
+  id:                       string;
   stripe_payment_method_id: string;
-  type: string;
-  card_brand: string | null;
-  card_last4: string | null;
-  card_exp_month: number | null;
-  card_exp_year: number | null;
-  is_default: boolean;
+  type:                     string;
+  card_brand:               string | null;
+  card_last4:               string | null;
+  card_exp_month:           number | null;
+  card_exp_year:            number | null;
+  is_default:               boolean;
 }
 
-export interface Invoice {
-  id: string;
-  stripe_invoice_id: string;
-  amount: number;
-  currency: string;
-  status: string;
-  invoice_pdf: string | null;
-  hosted_invoice_url: string | null;
-  period_start: string | null;
-  period_end: string | null;
-  paid_at: string | null;
+// ─── Private helpers ──────────────────────────────────────────────────────────
+
+async function post<T>(
+  path: string,
+  body: Record<string, unknown> = {},
+  token: string
+): Promise<T> {
+  const res = await fetch(path, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+
+  if (!res.ok) {
+    throw new Error((json as { error?: string }).error || `Request failed (${res.status})`);
+  }
+  return json as T;
 }
 
-/**
- * Gets user subscription
- */
-export const getSubscription = async (userId: string): Promise<Subscription | null> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for getSubscription:", userId);
-      return null;
-    }
+// ─── Read functions (Supabase DB — client-side, RLS protected) ────────────────
 
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching subscription:', error);
-      return null;
-    }
-
-    return (data as Subscription) || null;
-  } catch (error) {
-    console.error('Error fetching subscription:', error);
+export async function getSubscription(userId: string): Promise<Subscription | null> {
+  if (!userId?.trim()) return null;
+  const { data, error } = await getSupabaseClient()
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error && error.code !== 'PGRST116') {
+    console.error('[subscriptionService] getSubscription:', error);
     return null;
   }
-};
+  return (data as Subscription) ?? null;
+}
 
-/**
- * Gets user payment methods
- */
-export const getPaymentMethods = async (userId: string): Promise<PaymentMethod[]> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for getPaymentMethods:", userId);
-      return [];
-    }
-
-    const { data, error } = await supabase
-      .from('payment_methods')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching payment methods:', error);
-      return [];
-    }
-
-    return (data as PaymentMethod[]) || [];
-  } catch (error) {
-    console.error('Error fetching payment methods:', error);
+export async function getInvoices(userId: string, limit = 10): Promise<Invoice[]> {
+  if (!userId?.trim()) return [];
+  const safeLimit = Math.min(Math.max(limit, 1), 100);
+  const { data, error } = await getSupabaseClient()
+    .from('invoices')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+  if (error) {
+    console.error('[subscriptionService] getInvoices:', error);
     return [];
   }
-};
+  return (data as Invoice[]) ?? [];
+}
 
-/**
- * Gets user invoices
- */
-export const getInvoices = async (userId: string, limit: number = 10): Promise<Invoice[]> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for getInvoices:", userId);
-      return [];
-    }
-
-    if (limit < 1 || limit > 100) {
-      console.warn("Invalid limit for getInvoices, using default:", limit);
-      limit = 10;
-    }
-
-    const { data, error } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error fetching invoices:', error);
-      return [];
-    }
-
-    return (data as Invoice[]) || [];
-  } catch (error) {
-    console.error('Error fetching invoices:', error);
+export async function getPaymentMethods(userId: string): Promise<PaymentMethod[]> {
+  if (!userId?.trim()) return [];
+  const { data, error } = await getSupabaseClient()
+    .from('payment_methods')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('[subscriptionService] getPaymentMethods:', error);
     return [];
   }
-};
+  return (data as PaymentMethod[]) ?? [];
+}
 
-/**
- * Creates Stripe checkout session
- */
-export const createCheckoutSession = async (
-  userId: string,
+// ─── Billing actions (proxied through Next.js → Supabase Edge Functions) ──────
+
+/** Creates a Stripe Checkout session and redirects the user. */
+export async function createCheckoutSession(
+  _userId: string,  // kept for backward compat, not used in new flow
   priceId: string,
   accessToken: string
-): Promise<{ sessionId: string } | null> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for createCheckoutSession:", userId);
-      return null;
-    }
-
-    if (!priceId?.trim()) {
-      console.error("Invalid priceId for createCheckoutSession:", priceId);
-      return null;
-    }
-
-    if (!accessToken?.trim()) {
-      console.error("Invalid accessToken for createCheckoutSession");
-      return null;
-    }
-
-    const body = {
+): Promise<{ sessionId: string; url: string }> {
+  // Return to current page after checkout so the billing sheet can show the new state
+  const returnBase = `${window.location.origin}${window.location.pathname}`;
+  return post<{ sessionId: string; url: string }>(
+    '/api/billing/checkout',
+    {
       priceId,
-      successUrl: `${window.location.origin}/settings?success=true`,
-      cancelUrl: `${window.location.origin}/settings?canceled=true`,
-    };
+      successUrl: `${returnBase}?billing_success=true`,
+      cancelUrl:  returnBase,
+    },
+    accessToken
+  );
+}
 
-    let data: { sessionId?: string; url?: string } | null = null;
-    let error: Error | null = null;
+/** Opens the Stripe Customer Portal (payment method, invoices, history). */
+export async function openBillingPortal(accessToken: string): Promise<string> {
+  const returnBase = `${window.location.origin}${window.location.pathname}`;
+  const { url } = await post<{ url: string }>(
+    '/api/billing/portal',
+    { returnUrl: returnBase },
+    accessToken
+  );
+  return url;
+}
 
-    const servyUrl = getServyUrl();
-    if (servyUrl) {
-      const base = servyUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/stripe-checkout`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        error = new Error(json.error || 'Checkout failed');
-      } else {
-        data = json;
-      }
-    } else {
-      const base = typeof window !== 'undefined' ? window.location.origin : '';
-      const res = await fetch(`${base}/api/stripe/checkout`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        error = new Error((json as { error?: string }).error || 'Checkout failed');
-      } else {
-        data = json as { sessionId?: string; url?: string };
-      }
-    }
-
-    if (error) {
-      console.error('Error creating checkout session:', error);
-      return null;
-    }
-
-    if (!data?.sessionId) {
-      console.error('No session ID returned from checkout');
-      return null;
-    }
-
-    return { sessionId: data.sessionId };
-  } catch (error) {
-    console.error('Error creating checkout session:', error);
-    return null;
-  }
-};
-
-/**
- * Cancels user subscription
- */
-export const cancelSubscription = async (
-  userId: string,
+/** Cancels the active subscription at the end of the current period. */
+export async function cancelSubscription(
+  _userId: string,  // kept for backward compat
   accessToken: string
-): Promise<boolean> => {
-  try {
-    // Input validation
-    if (!userId?.trim()) {
-      console.error("Invalid userId for cancelSubscription:", userId);
-      return false;
-    }
+): Promise<void> {
+  await post('/api/billing/cancel', {}, accessToken);
+}
 
-    if (!accessToken?.trim()) {
-      console.error("Invalid accessToken for cancelSubscription");
-      return false;
-    }
+/** Resumes a subscription that was set to cancel_at_period_end. */
+export async function resumeSubscription(accessToken: string): Promise<void> {
+  await post('/api/billing/resume', {}, accessToken);
+}
 
-    const servyUrl = getServyUrl();
-    if (servyUrl) {
-      const base = servyUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/stripe-cancel`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: '{}',
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        console.error('Error canceling subscription:', (json as { error?: string }).error || res.statusText);
-        return false;
-      }
-      return true;
-    }
-
-    const base = typeof window !== 'undefined' ? window.location.origin : '';
-    const res = await fetch(`${base}/api/stripe/cancel`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: '{}',
-    });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      console.error('Error canceling subscription:', (json as { error?: string }).error || res.statusText);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error('Error canceling subscription:', error);
-    return false;
-  }
-};
+/** Switches the subscription to a different Stripe Price ID. */
+export async function switchPlan(newPriceId: string, accessToken: string): Promise<void> {
+  await post('/api/billing/switch', { newPriceId }, accessToken);
+}

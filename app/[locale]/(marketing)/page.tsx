@@ -9,6 +9,7 @@ import { LandingHowItWorks } from '@/components/landing/LandingHowItWorks';
 import { LandingValueProps } from '@/components/landing/LandingValueProps';
 import { LandingFoundingMember } from '@/components/landing/LandingFoundingMember';
 import { LandingTestimonialsNew } from '@/components/landing/LandingTestimonialsNew';
+import { LandingPricing } from '@/components/landing/LandingPricing';
 import { LandingFAQNew } from '@/components/landing/LandingFAQNew';
 
 const LandingHero = nextDynamic(() => import('@/components/landing/LandingHero').then(m => ({ default: m.LandingHero })), { ssr: false });
@@ -53,7 +54,10 @@ export default async function HomePage({ params }: HomePageProps) {
         {/* G: Testimonials */}
         <LandingTestimonialsNew t={t} />
 
-        {/* H: FAQ */}
+        {/* H: Pricing */}
+        <LandingPricing t={t} />
+
+        {/* I: FAQ */}
         <LandingFAQNew t={t} />
 
         <StickyMobileCTA label="Reserve my spot" />

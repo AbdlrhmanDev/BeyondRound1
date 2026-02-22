@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react';
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@/integrations/supabase/client';
 import {
   getSubscription,
-  getPaymentMethods,
   getInvoices,
+  getPaymentMethods,
   createCheckoutSession,
   cancelSubscription,
-  Subscription,
-  PaymentMethod,
-  Invoice,
+  resumeSubscription,
+  openBillingPortal,
+  switchPlan,
+  type Subscription,
+  type Invoice,
+  type PaymentMethod,
 } from '@/services/subscriptionService';
 
-// Lazy load Stripe only when checkout is needed (saves ~50KB on initial load)
+// Lazy-load Stripe JS (browser SDK) only when redirectToCheckout is needed
 let stripePromise: Promise<import('@stripe/stripe-js').Stripe | null> | null = null;
 const getStripe = () => {
   if (!stripePromise) {
@@ -23,200 +28,171 @@ const getStripe = () => {
   return stripePromise;
 };
 
-// Types are now imported from subscriptionService
+export type { Subscription, Invoice, PaymentMethod };
 
 export const useSubscription = () => {
   const { user } = useAuth();
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const supabase = createClient();
+
+  const [subscription,   setSubscription]   = useState<Subscription | null>(null);
+  const [invoices,       setInvoices]       = useState<Invoice[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    fetchSubscription();
-    fetchPaymentMethods();
-    fetchInvoices();
-
-    // Subscribe to subscription changes with error handling
-    let subscriptionChannel: ReturnType<typeof supabase.channel> | null = null;
-    
+  // ── Data fetchers ──────────────────────────────────────────────────────────
+  const fetchSubscription = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      subscriptionChannel = supabase
-        .channel('subscription-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'subscriptions',
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            try {
-              fetchSubscription();
-            } catch (err) {
-              // Silently handle errors in subscription callback
-            }
-          }
-        );
-      
-      // Subscribe with error handling
-      try {
-        subscriptionChannel.subscribe();
-      } catch (subscribeError) {
-        // Silently catch subscription errors - they're often from browser extensions
-      }
+      const data = await getSubscription(user.id);
+      setSubscription(data);
     } catch (err) {
-      // Silently handle channel creation errors
-    }
-
-    return () => {
-      if (subscriptionChannel) {
-        try {
-          subscriptionChannel.unsubscribe();
-        } catch (err) {
-          // Silently handle cleanup errors
-        }
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const fetchSubscription = async () => {
-    if (!user) return;
-
-    try {
-      const subscription = await getSubscription(user.id);
-      setSubscription(subscription);
-    } catch (err) {
-      const error = err as Error;
-      console.error('Error fetching subscription:', error);
-      setError(error.message);
+      console.error('[useSubscription] fetchSubscription:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const fetchPaymentMethods = async () => {
-    if (!user) return;
-
+  const fetchInvoices = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const methods = await getPaymentMethods(user.id);
-      setPaymentMethods(methods);
-    } catch (err) {
-      console.error('Error fetching payment methods:', err);
-    }
-  };
+      setInvoices(await getInvoices(user.id, 10));
+    } catch { /* non-critical */ }
+  }, [user?.id]);
 
-  const fetchInvoices = async () => {
-    if (!user) return;
-
+  const fetchPaymentMethods = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const invoiceList = await getInvoices(user.id, 10);
-      setInvoices(invoiceList);
-    } catch (err) {
-      console.error('Error fetching invoices:', err);
+      setPaymentMethods(await getPaymentMethods(user.id));
+    } catch { /* non-critical */ }
+  }, [user?.id]);
+
+  // ── Load on mount + real-time subscription changes ─────────────────────────
+  useEffect(() => {
+    if (!user?.id) { setLoading(false); return; }
+
+    fetchSubscription();
+    fetchInvoices();
+    fetchPaymentMethods();
+
+    // Real-time: subscription row changes (webhook updates)
+    const channel = supabase
+      .channel(`billing:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'subscriptions', filter: `user_id=eq.${user.id}` },
+        () => { fetchSubscription(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'invoices', filter: `user_id=eq.${user.id}` },
+        () => { fetchInvoices(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Auth token helper ──────────────────────────────────────────────────────
+  const getToken = async (): Promise<string> => {
+    // Use refreshSession() to guarantee a non-expired access token.
+    // @supabase/ssr's getSession() reads from cookie storage and may return a
+    // stale token if the background-tab auto-refresh timer was throttled.
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError && refreshed.session?.access_token) {
+      return refreshed.session.access_token;
     }
+    // Fallback: use existing session (covers cases where refresh fails but
+    // the current token is still valid, e.g. transient network error).
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Not authenticated');
+    return session.access_token;
   };
 
-  const handleCreateCheckoutSession = async (priceId: string) => {
-    if (!user) {
-      throw new Error('User must be authenticated');
+  // ── Billing actions ────────────────────────────────────────────────────────
+
+  const handleCheckout = async (priceId: string) => {
+    if (!user) throw new Error('Not authenticated');
+    const token = await getToken();
+
+    const result = await createCheckoutSession(user.id, priceId, token);
+
+    // If the API returned a direct URL (payment link style) use it
+    if (result.url) {
+      window.location.href = result.url;
+      return;
     }
 
-    try {
-      const session = await supabase.auth.getSession();
-      if (!session.data.session) {
-        throw new Error('No active session');
-      }
-
-      const result = await createCheckoutSession(
-        user.id,
-        priceId,
-        session.data.session.access_token
-      );
-
-      if (!result) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const stripe = await getStripe();
-      if (!stripe) {
-        throw new Error('Stripe failed to load');
-      }
-
-      // redirectToCheckout is available on Stripe instance from loadStripe
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: redirectError } = await (stripe as any).redirectToCheckout({
-        sessionId: result.sessionId,
-      });
-
-      if (redirectError) throw redirectError;
-    } catch (err) {
-      const error = err as Error;
-      console.error('Error creating checkout session:', error);
-      setError(error.message);
-      throw err;
-    }
+    // Otherwise use Stripe.js redirectToCheckout
+    const stripe = await getStripe();
+    if (!stripe) throw new Error('Stripe.js failed to load');
+    const { error: redirectError } = await (stripe as unknown as {
+      redirectToCheckout: (opts: { sessionId: string }) => Promise<{ error?: Error }>;
+    }).redirectToCheckout({ sessionId: result.sessionId });
+    if (redirectError) throw redirectError;
   };
 
-  const handleCancelSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) {
-      throw new Error('No active subscription to cancel');
-    }
-
-    if (!user) {
-      throw new Error('User must be authenticated');
-    }
-
-    try {
-      const session = await supabase.auth.getSession();
-      if (!session.data.session) {
-        throw new Error('No active session');
-      }
-
-      const success = await cancelSubscription(
-        user.id,
-        session.data.session.access_token
-      );
-
-      if (!success) {
-        throw new Error('Failed to cancel subscription');
-      }
-
-      // Refresh subscription data
-      await fetchSubscription();
-    } catch (err) {
-      const error = err as Error;
-      console.error('Error canceling subscription:', error);
-      setError(error.message);
-      throw err;
-    }
+  const handleCancel = async () => {
+    if (!user) throw new Error('Not authenticated');
+    const token = await getToken();
+    await cancelSubscription(user.id, token);
+    // Optimistic update — webhook will confirm
+    setSubscription((s) => s ? { ...s, cancel_at_period_end: true } : s);
   };
 
-  const isActive = subscription?.status === 'active' || subscription?.status === 'trialing';
-  const isCanceled = subscription?.cancel_at_period_end || subscription?.status === 'canceled';
+  const handleResume = async () => {
+    if (!user) throw new Error('Not authenticated');
+    const token = await getToken();
+    await resumeSubscription(token);
+    setSubscription((s) => s ? { ...s, cancel_at_period_end: false, canceled_at: null } : s);
+  };
+
+  const handleOpenPortal = async () => {
+    if (!user) throw new Error('Not authenticated');
+    const token = await getToken();
+    const url = await openBillingPortal(token);
+    window.open(url, '_blank', 'noopener');
+  };
+
+  const handleSwitchPlan = async (newPriceId: string) => {
+    if (!user) throw new Error('Not authenticated');
+    const token = await getToken();
+    await switchPlan(newPriceId, token);
+    await fetchSubscription();
+  };
+
+  // ── Derived state ──────────────────────────────────────────────────────────
+  const isActive      = subscription?.status === 'active' || subscription?.status === 'trialing';
+  const isPastDue     = subscription?.status === 'past_due' || subscription?.status === 'unpaid';
+  const isCanceled    = subscription?.status === 'canceled';
+  const isPendingEnd  = !!(subscription?.cancel_at_period_end && isActive);
+  const hasOneTime    = subscription?.status === 'one_time_paid';
+  const hasAnyAccess  = isActive || isPendingEnd || hasOneTime;
 
   return {
+    // Data
     subscription,
-    paymentMethods,
     invoices,
+    paymentMethods,
     loading,
     error,
+    // Derived
     isActive,
+    isPastDue,
     isCanceled,
-    createCheckoutSession: handleCreateCheckoutSession,
-    cancelSubscription: handleCancelSubscription,
+    isPendingEnd,
+    hasOneTime,
+    hasAnyAccess,
+    // Actions
+    createCheckoutSession: handleCheckout,
+    cancelSubscription:    handleCancel,
+    resumeSubscription:    handleResume,
+    openPortal:            handleOpenPortal,
+    switchPlan:            handleSwitchPlan,
     refetch: () => {
       fetchSubscription();
-      fetchPaymentMethods();
       fetchInvoices();
+      fetchPaymentMethods();
     },
   };
 };

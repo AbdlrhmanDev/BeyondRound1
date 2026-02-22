@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import Script from 'next/script';
 import { DM_Sans, Space_Grotesk, Playfair_Display } from 'next/font/google';
 import { DeferredSpeedInsights } from '@/components/DeferredSpeedInsights';
+import { CookieConsentProvider } from '@/components/CookieConsentContext';
+import { CookieBanner } from '@/components/CookieBanner';
+import { ConsentedScripts } from '@/components/analytics/ConsentedScripts';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -62,10 +64,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#050508' },
-  ],
+  themeColor: '#F7F2EE',
 };
 
 export default function RootLayout({
@@ -89,11 +88,14 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body className={`${dmSans.variable} ${spaceGrotesk.variable} ${playfairDisplay.variable} font-sans antialiased`} suppressHydrationWarning>
-        {children}
+        <CookieConsentProvider>
+          {children}
+          {/* Banner + preferences modal — rendered once at the root */}
+          <CookieBanner />
+          {/* Third-party scripts gated behind consent */}
+          <ConsentedScripts />
+        </CookieConsentProvider>
         <DeferredSpeedInsights />
-        <Script id="theme-init" strategy="beforeInteractive">
-          {`try{var t=localStorage.getItem('theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}`}
-        </Script>
       </body>
     </html>
   );

@@ -1,40 +1,66 @@
 {
-  "membershipPlans": "Membership Plans",
-  "simpleTransparent": "Simple, Transparent Pricing",
-  "noHiddenFees": "No hidden fees. No long-term contracts. Just meaningful connections backed by our 30-Day Friendship Guarantee.",
-  "mostPopular": "Most Popular",
-  "oneTimeTrial": "One-Time Trial",
+  "pageTitle": "Pricing",
+  "badge": "BEYONDROUNDS · DOCTOR MATCHING",
+  "simpleTransparent": "Simple, Honest Pricing",
+  "noHiddenFees": "No hidden fees. No long-term traps. Start with a single match.",
+
+  "oneTimeTrial": "One-Time Match",
   "trialPrice": "€9.99",
-  "trialDesc": "Try BeyondRounds once — no recurring commitment",
+  "trialDesc": "Try once. No commitment.",
   "trialFeatures": [
-    "Weekly curated group matches",
-    "Access to private group chat",
-    "RoundsBot icebreaker prompts",
-    "Basic compatibility matching"
+    "One curated group match",
+    "Weekend group chat",
+    "Verified doctors only",
+    "30-day guarantee"
   ],
-  "startTrial": "Start One-Time Trial",
-  "monthly": "Monthly",
-  "monthlyPrice": "€14.99",
+  "startTrial": "Try One Match",
+
+  "monthly": "Monthly Membership",
+  "monthlyPrice": "€19.99",
   "perMonth": "/month",
-  "monthlyDesc": "Full experience with monthly subscription",
+  "monthlyDesc": "Unlimited matches. Cancel anytime.",
   "monthlyFeatures": [
-    "Everything in One-Time Trial",
-    "Priority in matching algorithm",
-    "Expanded profile & interests",
-    "Early access to new features",
-    "Priority customer support"
+    "Curated group matching every weekend",
+    "Group chat with RoundsBot",
+    "Verified doctors only",
+    "Real-life meetup support",
+    "30-day guarantee"
   ],
   "subscribeMonthly": "Subscribe Monthly",
-  "premium": "Premium",
-  "premiumPrice": "€29.99",
-  "premiumDesc": "Maximum control & personalization",
-  "premiumFeatures": [
-    "Everything in Monthly",
-    "Advanced lifestyle compatibility",
-    "AI-powered activity suggestions",
-    "Filter by specialty, age & more",
-    "Smaller group preference (2-3)",
-    "Exclusive member events"
+
+  "threeMonth": "3-Month Membership",
+  "threeMonthBadge": "Best Value",
+  "threeMonthPrice": "€14.99",
+  "threeMonthTotal": "€44.97 total",
+  "threeMonthSave": "Save 25% vs monthly",
+  "threeMonthDesc": "Commit to real friendships.",
+  "threeMonthFeatures": [
+    "Curated group matching every weekend",
+    "Group chat with RoundsBot",
+    "Verified doctors only",
+    "Real-life meetup support",
+    "30-day guarantee"
   ],
-  "goPremium": "Go Premium"
+  "getThreeMonths": "Get 3 Months",
+
+  "sixMonth": "6-Month Membership",
+  "sixMonthBadge": "Save Most",
+  "sixMonthPrice": "€10",
+  "sixMonthTotal": "€59.94 total",
+  "sixMonthSave": "Save 50% vs monthly",
+  "sixMonthDesc": "All-in. Best value by far.",
+  "sixMonthFeatures": [
+    "Curated group matching every weekend",
+    "Group chat with RoundsBot",
+    "Verified doctors only",
+    "Real-life meetup support",
+    "30-day guarantee"
+  ],
+  "getSixMonths": "Get 6 Months",
+
+  "guaranteeTitle": "The 30-Day Guarantee",
+  "guaranteeDesc": "Subscribe to BeyondRounds. If you don't meet up with at least one group in your first 30 days:",
+  "guaranteeChoice1": "Full refund",
+  "guaranteeChoice2": "Extra month free",
+  "guaranteeNote": "Your choice. Simple as that."
 }

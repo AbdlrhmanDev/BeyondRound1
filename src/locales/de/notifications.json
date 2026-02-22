@@ -28,5 +28,7 @@
   "welcome": {
     "title": "Willkommen bei BeyondRounds!",
     "message": "Vervollständige dein Profil, um dich mit Ärzt:innen zu vernetzen, die deine Interessen teilen."
-  }
+  },
+  "emptyTitle": "Keine neuen Updates",
+  "emptySub": "Wir melden uns, sobald es etwas Neues gibt."
 }

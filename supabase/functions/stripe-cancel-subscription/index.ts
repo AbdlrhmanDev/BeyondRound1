@@ -10,6 +10,7 @@ const ALLOWED_ORIGINS = [
   "https://app.beyondrounds.app",
   "https://admin.beyondrounds.app",
   "https://whitelist.beyondrounds.app",
+  "http://localhost:3000",
 ];
 
 function getCorsHeaders(req: Request): Record<string, string> {
@@ -50,12 +51,13 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    // Verify the user
+    // Verify the user via anon client (consistent with other edge functions)
     const token = authHeader.replace("Bearer ", "");
+    const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser(token);
+    } = await supabaseAuth.auth.getUser(token);
 
     if (authError || !user) {
       throw new Error("Unauthorized");

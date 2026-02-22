@@ -1,7 +1,6 @@
 'use client';
 
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useTranslation } from 'react-i18next';
 
 interface CompletedCardProps {
   dayLabel: string;
@@ -16,35 +15,50 @@ export default function CompletedCard({
   onChooseNext,
   hasRated,
 }: CompletedCardProps) {
+  const { t } = useTranslation('dashboard');
+
   return (
-    <Card className="rounded-[24px] bg-card border border-border shadow-card overflow-hidden">
+    <div
+      className="rounded-[24px] overflow-hidden bg-white"
+      style={{
+        border: '1px solid rgba(58,11,34,0.10)',
+        boxShadow: '0 10px 30px rgba(26,10,18,0.08)',
+      }}
+    >
       <div className="py-10 px-6 text-center space-y-5">
-        <h2 className="font-heading font-semibold text-xl text-foreground tracking-tight">
-          How was {dayLabel}?
+        <h2 className="font-heading font-semibold text-xl text-[#1A0A12] tracking-tight">
+          {t('howWasDay', { dayLabel })}
         </h2>
 
         {!hasRated && (
-          <Button
+          <button
             onClick={onRate}
-            variant="outline"
-            className="w-full h-12 text-base font-medium text-primary border-primary hover:bg-primary/5 rounded-full transition-all active:scale-[0.98]"
+            className="w-full h-12 rounded-full text-sm font-semibold border-2 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6B4A8] focus-visible:ring-offset-2"
+            style={{ borderColor: '#3A0B22', color: '#3A0B22', background: 'transparent' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(58,11,34,0.05)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
           >
-            Rate your experience
-          </Button>
+            {t('rateExperience')}
+          </button>
         )}
 
         <div className="space-y-2">
           {!hasRated && (
-            <p className="text-sm text-muted-foreground">Ready for next weekend?</p>
+            <p className="text-sm text-[#5E555B]">
+              {t('readyForNextWeekend')}
+            </p>
           )}
-          <Button
+          <button
             onClick={onChooseNext}
-            className="w-full h-12 text-base font-medium bg-accent hover:bg-accent/90 text-white rounded-full shadow-sm transition-all active:scale-[0.98]"
+            className="w-full h-12 rounded-full text-white text-sm font-semibold shadow-sm transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6B4A8] focus-visible:ring-offset-2"
+            style={{ background: '#F27C5C' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#e56d4d'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F27C5C'; }}
           >
-            Choose your next meetup
-          </Button>
+            {t('chooseNextMeetup')}
+          </button>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

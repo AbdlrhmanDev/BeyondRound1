@@ -1,40 +1,66 @@
 {
-  "membershipPlans": "Mitgliedschaftspläne",
-  "simpleTransparent": "Einfach, transparente Preise",
-  "noHiddenFees": "Keine versteckten Gebühren. Keine Langzeitverträge. Nur echte Verbindungen mit unserer 30-Tage-Freundschafts-Garantie.",
-  "mostPopular": "Am beliebtesten",
-  "oneTimeTrial": "Einmal-Test",
-  "trialPrice": "9,99 €",
-  "trialDesc": "BeyondRounds einmal testen – ohne Abo",
+  "pageTitle": "Preise",
+  "badge": "BEYONDROUNDS · ARZT-MATCHING",
+  "simpleTransparent": "Faire, transparente Preise",
+  "noHiddenFees": "Keine versteckten Gebühren. Kein langer Vertrag. Fang mit einem Match an.",
+
+  "oneTimeTrial": "Einmaliges Match",
+  "trialPrice": "€9,99",
+  "trialDesc": "Einmal ausprobieren. Kein Abo.",
   "trialFeatures": [
-    "Wöchentliche kuratierte Gruppen-Matches",
-    "Zugang zum privaten Gruppen-Chat",
-    "RoundsBot Eisbrecher-Fragen",
-    "Grundlegendes Kompatibilitäts-Matching"
+    "Ein kuratiertes Gruppen-Match",
+    "Wochenend-Gruppen-Chat",
+    "Nur verifizierte Ärzt:innen",
+    "30-Tage-Garantie"
   ],
-  "startTrial": "Einmal-Test starten",
-  "monthly": "Monatlich",
-  "monthlyPrice": "14,99 €",
+  "startTrial": "Jetzt ausprobieren",
+
+  "monthly": "Monatliche Mitgliedschaft",
+  "monthlyPrice": "€19,99",
   "perMonth": "/Monat",
-  "monthlyDesc": "Volles Erlebnis mit Monatsabo",
+  "monthlyDesc": "Unbegrenzte Matches. Jederzeit kündbar.",
   "monthlyFeatures": [
-    "Alles aus dem Einmal-Test",
-    "Priorität im Matching",
-    "Erweitertes Profil & Interessen",
-    "Früher Zugang zu neuen Features",
-    "Prioritäts-Support"
+    "Kuratiertes Gruppen-Matching jedes Wochenende",
+    "Gruppen-Chat mit RoundsBot",
+    "Nur verifizierte Ärzt:innen",
+    "Support für echte Treffen",
+    "30-Tage-Garantie"
   ],
-  "subscribeMonthly": "Monatlich abonnieren",
-  "premium": "Premium",
-  "premiumPrice": "29,99 €",
-  "premiumDesc": "Maximale Kontrolle & Personalisierung",
-  "premiumFeatures": [
-    "Alles aus Monatlich",
-    "Erweiterte Lifestyle-Kompatibilität",
-    "KI-gestützte Aktivitätsvorschläge",
-    "Filter nach Fachrichtung, Alter & mehr",
-    "Kleinere Gruppen (2–3)",
-    "Exklusive Mitglieder-Events"
+  "subscribeMonthly": "Monat abonnieren",
+
+  "threeMonth": "3-Monats-Mitgliedschaft",
+  "threeMonthBadge": "Bestes Angebot",
+  "threeMonthPrice": "€14,99",
+  "threeMonthTotal": "€44,97 gesamt",
+  "threeMonthSave": "25 % günstiger als monatlich",
+  "threeMonthDesc": "Investiere in echte Freundschaften.",
+  "threeMonthFeatures": [
+    "Kuratiertes Gruppen-Matching jedes Wochenende",
+    "Gruppen-Chat mit RoundsBot",
+    "Nur verifizierte Ärzt:innen",
+    "Support für echte Treffen",
+    "30-Tage-Garantie"
   ],
-  "goPremium": "Premium wählen"
+  "getThreeMonths": "3 Monate wählen",
+
+  "sixMonth": "6-Monats-Mitgliedschaft",
+  "sixMonthBadge": "Meiste Ersparnis",
+  "sixMonthPrice": "€10",
+  "sixMonthTotal": "€59,94 gesamt",
+  "sixMonthSave": "50 % günstiger als monatlich",
+  "sixMonthDesc": "Alles inklusive. Größte Ersparnis.",
+  "sixMonthFeatures": [
+    "Kuratiertes Gruppen-Matching jedes Wochenende",
+    "Gruppen-Chat mit RoundsBot",
+    "Nur verifizierte Ärzt:innen",
+    "Support für echte Treffen",
+    "30-Tage-Garantie"
+  ],
+  "getSixMonths": "6 Monate wählen",
+
+  "guaranteeTitle": "Die 30-Tage-Garantie",
+  "guaranteeDesc": "Abonniere BeyondRounds. Wenn du dich in den ersten 30 Tagen nicht mit mindestens einer Gruppe triffst:",
+  "guaranteeChoice1": "Volle Rückerstattung",
+  "guaranteeChoice2": "Einen Extra-Monat gratis",
+  "guaranteeNote": "Deine Wahl. So einfach ist das."
 }

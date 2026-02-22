@@ -23,6 +23,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import DashboardLayout from "@/components/DashboardLayout";
+import { BillingSection } from "@/components/BillingSection";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import { getProfile, updateProfile } from "@/services/profileService";
@@ -57,6 +58,7 @@ import {
   BellRing,
   HelpCircle,
   ImageOff,
+  CreditCard,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────
@@ -659,6 +661,7 @@ export default function Profile() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
+  const [billingSheetOpen, setBillingSheetOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [emailNotifLoading, setEmailNotifLoading] = useState(false);
   const [pushNotifLoading, setPushNotifLoading] = useState(false);
@@ -947,6 +950,7 @@ export default function Profile() {
             <div className="divide-y divide-border/60">
               <SettingsRow icon={Pencil} label="Edit profile" description="Name, specialty, interests" onClick={() => setEditProfileOpen(true)} />
               <SettingsRow icon={ShieldCheck} label="Doctor verification" description={verificationHelper[profile.verification_status]} onClick={() => setVerificationSheetOpen(true)} />
+              <SettingsRow icon={CreditCard} label="Subscription & Billing" description="Plan, invoices, payment method" onClick={() => setBillingSheetOpen(true)} />
               <SettingsRow icon={MessageSquare} label="Feedback & suggestions" description="Help us improve BeyondRounds" onClick={() => setFeedbackSheetOpen(true)} />
               <SettingsRow icon={Shield} label="Privacy policy" onClick={() => navigate("/privacy")} external />
               <SettingsRow icon={FileText} label="Terms of service" onClick={() => navigate("/terms")} external />
@@ -969,6 +973,17 @@ export default function Profile() {
 
       {/* ── Modals & Sheets ──────────────────────────── */}
       <AvatarSheet open={avatarSheetOpen} onOpenChange={setAvatarSheetOpen} hasAvatar={!!profile.avatar_url} onUpload={handleAvatarUpload} onRemove={handleAvatarRemove} uploading={avatarUploading} />
+      <Sheet open={billingSheetOpen} onOpenChange={setBillingSheetOpen}>
+        <SheetContent side="bottom" className="rounded-t-[24px] max-h-[92vh] overflow-y-auto">
+          <SheetHeader className="text-left pb-4">
+            <SheetTitle className="font-display text-xl font-bold text-foreground">Subscription &amp; Billing</SheetTitle>
+            <SheetDescription className="text-sm text-muted-foreground">Manage your plan, payment method, and invoices.</SheetDescription>
+          </SheetHeader>
+          <div className="pb-8">
+            <BillingSection />
+          </div>
+        </SheetContent>
+      </Sheet>
       <EditProfileSheet open={editProfileOpen} onOpenChange={setEditProfileOpen} profile={profile} onSave={handleProfileSave} />
       <EditCitySheet open={editCityOpen} onOpenChange={setEditCityOpen} currentCity={profile.city} onSave={handleCitySave} />
       <EditLanguageSheet open={editLanguageOpen} onOpenChange={setEditLanguageOpen} currentLanguages={profile.languages} onSave={handleLanguageSave} />

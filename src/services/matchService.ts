@@ -3,7 +3,7 @@
  * Following Dependency Inversion Principle - components depend on abstractions, not concrete implementations
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getSupabaseClient } from '@/integrations/supabase/client';
 import { MatchGroup, GroupMember } from '@/types/match';
 import { calculateAverageMatchScore } from '@/utils/matchCalculations';
 
@@ -30,7 +30,7 @@ export const fetchUserGroups = async (userId: string): Promise<MatchGroup[]> => 
     }
 
     // Fetch user's group memberships
-    const { data: memberRes, error: memberError } = await supabase
+    const { data: memberRes, error: memberError } = await getSupabaseClient()
       .from("group_members")
       .select("group_id")
       .eq("user_id", userId);
@@ -44,7 +44,7 @@ export const fetchUserGroups = async (userId: string): Promise<MatchGroup[]> => 
 
     // Fetch group details
     let groupsData: GroupData[] | null = null;
-    const { data, error: groupsError } = await supabase
+    const { data, error: groupsError } = await getSupabaseClient()
       .from("match_groups")
       .select("*")
       .in("id", groupIds)
@@ -54,7 +54,7 @@ export const fetchUserGroups = async (userId: string): Promise<MatchGroup[]> => 
     if (groupsError) {
       // Fallback if is_partial_group column doesn't exist
       if (groupsError.message?.includes("is_partial_group")) {
-        const { data: fallbackData, error: fallbackError } = await supabase
+        const { data: fallbackData, error: fallbackError } = await getSupabaseClient()
           .from("match_groups")
           .select("id, name, group_type, gender_composition, status, match_week, created_at")
           .in("id", groupIds)
@@ -80,15 +80,15 @@ export const fetchUserGroups = async (userId: string): Promise<MatchGroup[]> => 
     const allGroupIds = groupsData.map(g => g.id);
     
     const [membersRes, conversationsRes, matchesRes] = await Promise.all([
-      supabase
+      getSupabaseClient()
         .from("group_members")
         .select("group_id, user_id")
         .in("group_id", allGroupIds),
-      supabase
+      getSupabaseClient()
         .from("group_conversations")
         .select("id, group_id")
         .in("group_id", allGroupIds),
-      supabase
+      getSupabaseClient()
         .from("matches")
         .select("matched_user_id, match_score, status")
         .eq("user_id", userId),
@@ -126,11 +126,11 @@ export const fetchUserGroups = async (userId: string): Promise<MatchGroup[]> => 
 
     if (allMemberIds.length > 0) {
       const [profilesResult, prefsResult] = await Promise.all([
-        supabase
+        getSupabaseClient()
           .from("profiles")
           .select("user_id, full_name, avatar_url, city, neighborhood, gender")
           .in("user_id", allMemberIds),
-        supabase
+        getSupabaseClient()
           .from("onboarding_preferences")
           .select("user_id, specialty, sports, social_style, culture_interests, lifestyle, availability_slots")
           .in("user_id", allMemberIds),
@@ -269,7 +269,7 @@ export const shouldShowEvaluationSurvey = async (
  */
 export const checkProfileCompletion = async (userId: string): Promise<boolean> => {
   try {
-    const { data: preferences } = await supabase
+    const { data: preferences } = await getSupabaseClient()
       .from("onboarding_preferences")
       .select("completed_at")
       .eq("user_id", userId)
@@ -293,7 +293,7 @@ export const getGroupInfo = async (groupId: string) => {
       return null;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from("match_groups")
       .select("name, id, match_week")
       .eq("id", groupId)
@@ -322,7 +322,7 @@ export const getGroupMembers = async (groupId: string) => {
       return [];
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from("group_members")
       .select("user_id")
       .eq("group_id", groupId);
@@ -350,7 +350,7 @@ export const getUserGroupMemberships = async (userId: string) => {
       return [];
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from("group_members")
       .select("group_id")
       .eq("user_id", userId);
@@ -383,7 +383,7 @@ export const getGroupsByIds = async (groupIds: string[], limit?: number) => {
       limit = undefined;
     }
 
-    let query = supabase
+    let query = getSupabaseClient()
       .from("match_groups")
       .select("*")
       .in("id", groupIds)
@@ -407,3 +407,4 @@ export const getGroupsByIds = async (groupIds: string[], limit?: number) => {
     return [];
   }
 };
+

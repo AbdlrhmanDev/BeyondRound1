@@ -105,6 +105,14 @@ const nextConfig = {
         source: '/:locale(de|en)/privacy',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=60, stale-while-revalidate=300' }],
       },
+      // Service Worker — must not be cached by the browser (always re-check)
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
       {
         source: '/hero-doctors-friendship-mobile.webp',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
@@ -195,7 +203,7 @@ const nextConfig = {
       '@radix-ui/react-tooltip',
     ],
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'beyondrounds.app', 'app.beyondrounds.app', 'whitelist.beyondrounds.app'],
+      allowedOrigins: ['localhost:3000', 'beyondrounds.app', 'app.beyondrounds.app', 'whitelist.beyondrounds.app', 'checkout.beyondrounds.app'],
     },
   },
 };

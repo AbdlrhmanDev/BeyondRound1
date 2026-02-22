@@ -84,47 +84,6 @@
     --interest-pill-foreground: 0 0% 100%;
   }
 
-  .dark {
-    --background: 330 20% 6%;
-    --foreground: 0 0% 98%;
-
-    --card: 330 15% 8%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 330 15% 8%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 14 85% 65%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 330 15% 15%;
-    --secondary-foreground: 0 0% 90%;
-
-    --muted: 330 15% 15%;
-    --muted-foreground: 330 10% 60%;
-
-    --accent: 14 75% 55%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 330 15% 18%;
-    --input: 330 15% 18%;
-    --ring: 14 85% 65%;
-
-    --sidebar-background: 330 20% 5%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 14 85% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 330 15% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 330 15% 18%;
-    --sidebar-ring: 14 85% 65%;
-
-    --interest-pill: 330 10% 25%;
-    --interest-pill-foreground: 0 0% 95%;
-  }
 }
 
 @layer base {
@@ -185,11 +144,6 @@
     @apply text-muted-foreground;
   }
 
-  .dark input,
-  .dark textarea {
-    color: hsl(0 0% 98%);
-  }
-
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
@@ -197,12 +151,6 @@
     -webkit-text-fill-color: hsl(330 35% 10%);
   }
 
-  .dark input:-webkit-autofill,
-  .dark input:-webkit-autofill:hover,
-  .dark input:-webkit-autofill:focus,
-  .dark input:-webkit-autofill:active {
-    -webkit-text-fill-color: hsl(0 0% 98%);
-  }
 }
 
 @layer components {
@@ -259,14 +207,6 @@
     @apply bg-background/80 backdrop-blur-xl border border-border/50;
   }
 
-  .glass-dark {
-    @apply bg-foreground/90 backdrop-blur-xl;
-  }
-
-  .dark .glass-dark {
-    @apply bg-background/90;
-  }
-
   /* Modern card styles */
   .card-modern {
     @apply bg-card rounded-2xl border border-border/50 shadow-lg shadow-foreground/5 transition-all duration-300;
@@ -276,20 +216,8 @@
     @apply shadow-xl shadow-foreground/10 -translate-y-1 border-border;
   }
 
-  .dark .card-modern {
-    @apply shadow-black/20;
-  }
-
-  .dark .card-modern:hover {
-    @apply shadow-black/30;
-  }
-
   .card-elevated {
     @apply bg-card rounded-3xl border-0 shadow-2xl shadow-foreground/10;
-  }
-
-  .dark .card-elevated {
-    @apply shadow-black/25;
   }
 
   .card-glass {

@@ -719,10 +719,9 @@ export const changeUserRole = async (userId: string, newRole: string, reason: st
 
 export const getUserDetail = async (userId: string): Promise<any | null> => {
   try {
-    const [profileRes, prefsRes, bookingsRes, groupsRes, reportsRes, verRes] = await Promise.allSettled([
+    const [profileRes, prefsRes, groupsRes, reportsRes, verRes] = await Promise.allSettled([
       supabase.from("profiles").select("*").eq("user_id", userId).single(),
       supabase.from("onboarding_preferences").select("*").eq("user_id", userId).single(),
-      (supabase as any).from("bookings").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
       supabase.from("group_members").select("*, match_groups(*)").eq("user_id", userId),
       (supabase as any).from("user_reports").select("*").or(`reporter_id.eq.${userId},reported_id.eq.${userId}`).order("created_at", { ascending: false }),
       (supabase as any).from("verification_requests").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(1),
@@ -734,7 +733,6 @@ export const getUserDetail = async (userId: string): Promise<any | null> => {
     return {
       profile,
       preferences: prefsRes.status === "fulfilled" ? prefsRes.value.data : null,
-      bookings: bookingsRes.status === "fulfilled" ? (bookingsRes.value as any).data || [] : [],
       groups: groupsRes.status === "fulfilled" ? groupsRes.value.data || [] : [],
       reports: reportsRes.status === "fulfilled" ? (reportsRes.value as any).data || [] : [],
       verification: verRes.status === "fulfilled" ? (verRes.value as any).data?.[0] || null : null,
@@ -825,57 +823,6 @@ export const sendSystemMessage = async (groupId: string, content: string): Promi
     if (error) { console.error("Error sending system message:", error); return false; }
     return (data as any)?.success === true;
   } catch (error) { console.error("Error sending system message:", error); return false; }
-};
-
-// ============================================================
-// EVENTS (RPC-based)
-// ============================================================
-
-export const getEventDetail = async (eventId: string): Promise<any | null> => {
-  try {
-    const [eventRes, bookingsRes] = await Promise.allSettled([
-      (supabase as any).from("events").select("*").eq("id", eventId).single(),
-      (supabase as any).from("bookings").select("*, profiles:user_id(full_name, avatar_url)").eq("event_id", eventId).order("created_at", { ascending: false }),
-    ]);
-
-    const event = eventRes.status === "fulfilled" ? (eventRes.value as any).data : null;
-    if (!event) return null;
-
-    const bookings = bookingsRes.status === "fulfilled" ? (bookingsRes.value as any).data || [] : [];
-    return { event, bookings };
-  } catch (error) { console.error("Error fetching event detail:", error); return null; }
-};
-
-export const cancelEvent = async (eventId: string, reason: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase.rpc('admin_cancel_event' as any, { p_event_id: eventId, p_reason: reason });
-    if (error) { console.error("Error cancelling event:", error); return false; }
-    return (data as any)?.success === true;
-  } catch (error) { console.error("Error cancelling event:", error); return false; }
-};
-
-export const closeEvent = async (eventId: string, reason?: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase.rpc('admin_close_event' as any, { p_event_id: eventId, p_reason: reason || 'Closed by admin' });
-    if (error) { console.error("Error closing event:", error); return false; }
-    return (data as any)?.success === true;
-  } catch (error) { console.error("Error closing event:", error); return false; }
-};
-
-export const reopenEvent = async (eventId: string, reason?: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase.rpc('admin_reopen_event' as any, { p_event_id: eventId, p_reason: reason || 'Reopened by admin' });
-    if (error) { console.error("Error reopening event:", error); return false; }
-    return (data as any)?.success === true;
-  } catch (error) { console.error("Error reopening event:", error); return false; }
-};
-
-export const cancelBooking = async (bookingId: string, reason: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase.rpc('admin_cancel_booking' as any, { p_booking_id: bookingId, p_reason: reason });
-    if (error) { console.error("Error cancelling booking:", error); return false; }
-    return (data as any)?.success === true;
-  } catch (error) { console.error("Error cancelling booking:", error); return false; }
 };
 
 // ============================================================

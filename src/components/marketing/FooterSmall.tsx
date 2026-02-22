@@ -6,6 +6,7 @@ import { Mail, MapPin } from 'lucide-react';
 import { getT } from '@/lib/i18n/t';
 import { EMAILS } from '@/constants/emails';
 import type { Locale } from '@/lib/i18n/settings';
+import { CookieSettingsButton } from '@/components/CookieBanner';
 
 const footerLinks = {
   product: [
@@ -94,6 +95,9 @@ export function FooterSmall({ dict, locale }: FooterSmallProps) {
                   </Link>
                 </li>
               ))}
+              <li>
+                <CookieSettingsButton className={linkClass} />
+              </li>
             </ul>
           </div>
 

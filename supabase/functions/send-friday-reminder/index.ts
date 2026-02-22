@@ -160,6 +160,22 @@ serve(async (req) => {
           },
         });
 
+        // Also send a push notification as a reminder
+        await supabase.functions.invoke("send-push-notification", {
+          body: {
+            userId: booking.user_id,
+            title:  "🩺 Your meetup is this weekend!",
+            body:   groupMembers.length > 0
+              ? `You'll be meeting ${groupMembers.slice(0, 2).join(" & ")}${groupMembers.length > 2 ? " and others" : ""}. Check the group chat!`
+              : "Your BeyondRounds meetup is coming up. Check the details.",
+            url:  chatUrl,
+            tag:  "friday-reminder",
+          },
+        }).catch((e: unknown) => {
+          // Don't fail the whole run if push fails
+          console.warn("Push notification failed:", e instanceof Error ? e.message : String(e));
+        });
+
         emailsSent++;
         console.log(`✅ Sent reminder to ${authUser.user.email}`);
       } catch (userError) {

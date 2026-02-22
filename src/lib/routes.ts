@@ -20,8 +20,6 @@ export const APP_ROUTES = [
   '/auth',
   '/forgot-password',
   '/welcome',
-  '/events',
-  '/book',
   '/edit-profile',
 ] as const;
 

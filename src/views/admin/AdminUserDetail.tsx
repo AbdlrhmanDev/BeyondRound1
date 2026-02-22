@@ -85,7 +85,7 @@ export default function AdminUserDetailPage() {
     );
   }
 
-  const { profile, preferences, bookings, groups, reports, verification } = detail;
+  const { profile, preferences, groups, reports, verification } = detail;
   const isBanned = profile.status === "banned" || profile.status === "suspended";
   const isSoftDeleted = profile.soft_delete;
 
@@ -190,24 +190,6 @@ export default function AdminUserDetailPage() {
             </Button>
           </CardContent>
         </Card>
-
-        {/* Bookings History */}
-        {bookings.length > 0 && (
-          <Card>
-            <CardHeader><CardTitle>Booking History ({bookings.length})</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {bookings.map((b: any) => (
-                  <div key={b.id} className="flex justify-between items-center p-2 rounded border text-sm">
-                    <span>Event: {b.event_id?.slice(0, 8)}</span>
-                    <Badge variant={b.status === "confirmed" ? "default" : "secondary"}>{b.status}</Badge>
-                    <span className="text-muted-foreground">{format(new Date(b.created_at), "MMM d, yyyy")}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Groups */}
         {groups.length > 0 && (

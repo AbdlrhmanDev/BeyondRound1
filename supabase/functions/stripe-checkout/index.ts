@@ -1,210 +1,171 @@
-// Deno Edge Function for creating Stripe checkout sessions
-// @ts-expect-error - Deno types are available at runtime
+// @ts-nocheck — Deno Edge Function: processed by Deno runtime, not Node/tsc
+// Supabase Edge Function: stripe-checkout
+// Creates a Stripe Checkout Session for subscriptions OR one-time payments.
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// @ts-expect-error - Deno types are available at runtime
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-// @ts-expect-error - Stripe SDK for Deno
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 
+const APP_URL      = "https://app.beyondrounds.app";
+const CHECKOUT_URL = "https://checkout.beyondrounds.app"; // Stripe custom domain
+
 const ALLOWED_ORIGINS = [
-  "https://app.beyondrounds.app",
+  APP_URL,
   "https://admin.beyondrounds.app",
   "https://whitelist.beyondrounds.app",
+  "http://localhost:3000",
 ];
 
-function getCorsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get("Origin") || "";
-  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+// Price IDs that are one-time payments (not subscriptions)
+const ONE_TIME_PRICE_IDS = new Set([
+  Deno.env.get("STRIPE_PRICE_ID_ONE_TIME") ?? "",
+].filter(Boolean));
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  const allow  = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
-    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Origin":  allow,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 }
 
+async function getOrCreateCustomer(
+  stripe: Stripe,
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  userEmail: string,
+  userName?: string
+): Promise<string> {
+  // Check existing row
+  const { data } = await supabase
+    .from("subscriptions")
+    .select("stripe_customer_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (data?.stripe_customer_id) return data.stripe_customer_id;
+
+  // Create new Stripe customer with userId in metadata for fast webhook lookups
+  const customer = await stripe.customers.create({
+    email:    userEmail,
+    name:     userName ?? undefined,
+    metadata: { userId },
+  });
+
+  // Persist immediately (webhook may arrive before redirect)
+  await supabase.from("subscriptions").upsert(
+    {
+      user_id:            userId,
+      stripe_customer_id: customer.id,
+      status:             "inactive",
+      updated_at:         new Date().toISOString(),
+    },
+    { onConflict: "user_id" }
+  );
+
+  return customer.id;
+}
+
 serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const headers = corsHeaders(req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers });
 
   try {
-    // @ts-expect-error - Deno global is available at runtime
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    // @ts-expect-error - Deno global is available at runtime
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    // @ts-expect-error - Deno global is available at runtime
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    // @ts-expect-error - Deno global is available at runtime
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-
-    if (!supabaseUrl || !supabaseServiceKey || !stripeSecretKey) {
-      throw new Error("Missing required environment variables");
-    }
-    
-    const stripe = new Stripe(stripeSecretKey, {
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
       apiVersion: "2023-10-16",
+      httpClient: Stripe.createFetchHttpClient(),
     });
 
-    // Get the authorization header
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("Missing authorization header");
-    }
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")             ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
 
-    // Verify the user token
-    const token = authHeader.replace("Bearer ", "");
-    
-    // Create supabase client with service role for database operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Verify user token - try multiple methods
-    let user;
-    
-    // Method 1: Try with anon key if available
-    if (supabaseAnonKey) {
-      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
-      const authResult = await supabaseAuth.auth.getUser(token);
-      if (!authResult.error && authResult.data.user) {
-        user = authResult.data.user;
-      }
-    }
-    
-    // Method 2: If anon key method failed, decode JWT and use admin API
-    if (!user) {
-      try {
-        // Decode JWT payload (without verification - we'll verify via admin API)
-        const parts = token.split('.');
-        if (parts.length !== 3) {
-          console.error("Invalid token format - expected 3 parts, got:", parts.length);
-          throw new Error("Invalid token format");
-        }
-        
-        // Decode base64 URL-safe JWT payload
-        const base64Url = parts[1];
-        // Add padding if needed
-        let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        while (base64.length % 4) {
-          base64 += '=';
-        }
-        const payload = JSON.parse(atob(base64));
-        
-        const userId = payload.sub;
-        
-        if (!userId) {
-          console.error("No user ID (sub) in token payload");
-          throw new Error("No user ID in token");
-        }
-        
-        console.log("Extracted user ID from token:", userId);
-        
-        // Verify user exists using admin API
-        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
-        
-        if (userError) {
-          console.error("Admin API error:", userError);
-          throw new Error("Unauthorized");
-        }
-        
-        if (!userData || !userData.user) {
-          console.error("No user data returned from admin API");
-          throw new Error("Unauthorized");
-        }
-        
-        user = userData.user;
-        console.log("Successfully verified user:", user.id);
-      } catch (err) {
-        console.error("Token verification failed:", err);
-        console.error("Error details:", err instanceof Error ? err.message : String(err));
-        throw new Error("Unauthorized");
-      }
-    }
-    
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
+    // ── Auth ────────────────────────────────────────────────────────────────
+    const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
+    if (!token) throw Object.assign(new Error("Unauthorized"), { status: 401 });
 
-    // Parse request body
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")      ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
+    const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser(token);
+    if (authErr || !user) throw Object.assign(new Error("Unauthorized"), { status: 401 });
+
+    // ── Body ────────────────────────────────────────────────────────────────
     const { priceId, successUrl, cancelUrl } = await req.json();
+    if (!priceId) throw new Error("priceId is required");
 
-    if (!priceId) {
-      throw new Error("Missing priceId");
-    }
+    // Detect mode: one-time vs subscription
+    const isOneTime = ONE_TIME_PRICE_IDS.has(priceId);
+    const mode = isOneTime ? "payment" : "subscription";
 
-    // Get or create Stripe customer
-    const { data: subscription } = await supabase
-      .from("subscriptions")
-      .select("stripe_customer_id")
+    // Get user profile for customer name
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    let customerId = subscription?.stripe_customer_id;
+    const customerId = await getOrCreateCustomer(
+      stripe, supabase, user.id, user.email!, profile?.full_name
+    );
 
-    if (!customerId) {
-      // Get user email for customer creation
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
+    // For subscriptions: ensure only one active subscription (prevent duplicates)
+    if (!isOneTime) {
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("status, stripe_subscription_id")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      // Create Stripe customer
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: profile?.full_name || undefined,
-        metadata: {
-          supabase_user_id: user.id,
-        },
-      });
-
-      customerId = customer.id;
-
-      // Save customer ID to database
-      await supabase.from("subscriptions").upsert({
-        user_id: user.id,
-        stripe_customer_id: customerId,
-        status: "inactive",
-      });
+      if (sub?.status === "active" || sub?.status === "trialing") {
+        throw new Error("You already have an active subscription. Use the switch plan option instead.");
+      }
     }
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      success_url:
-        successUrl ||
-        `${req.headers.get("origin") || "http://localhost:5173"}/settings?success=true`,
-      cancel_url:
-        cancelUrl ||
-        `${req.headers.get("origin") || "http://localhost:5173"}/settings?canceled=true`,
-      metadata: {
-        user_id: user.id,
-      },
-    });
+    // ── Build session params ─────────────────────────────────────────────────
+    const baseSuccess = successUrl || `${APP_URL}/settings?tab=billing&success=true`;
+    const baseCancel  = cancelUrl  || `${APP_URL}/settings?tab=billing&canceled=true`;
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      customer:    customerId,
+      mode,
+      line_items:  [{ price: priceId, quantity: 1 }],
+      success_url: baseSuccess,
+      cancel_url:  baseCancel,
+      // Embed userId so webhook can resolve user without a DB lookup
+      metadata:    { userId: user.id },
+      // Allow Apple Pay / Google Pay / Link
+      payment_method_types: undefined, // let Stripe choose based on dashboard settings
+      allow_promotion_codes: true,
+    };
+
+    // Subscription-only options
+    if (mode === "subscription") {
+      sessionParams.subscription_data = {
+        metadata:                 { userId: user.id },
+        trial_settings:           undefined,
+      };
+      // Use checkout.beyondrounds.app custom domain (set in Stripe Dashboard)
+      // The URL is controlled by Stripe; we just create the session normally.
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
+      { headers: { ...headers, "Content-Type": "application/json" }, status: 200 }
     );
-  } catch (error) {
-    console.error("Error creating checkout session:", error);
+  } catch (err) {
+    const msg    = err instanceof Error ? err.message : String(err);
+    const status = (err as { status?: number }).status ?? 400;
+    console.error("[stripe-checkout]", msg);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error occurred" 
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: error instanceof Error && error.message === "Unauthorized" ? 401 : 400,
-      }
+      JSON.stringify({ error: msg }),
+      { headers: { ...headers, "Content-Type": "application/json" }, status }
     );
   }
 });

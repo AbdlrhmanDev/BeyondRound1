@@ -28,5 +28,7 @@
   "welcome": {
     "title": "Welcome to BeyondRounds!",
     "message": "Complete your profile to start connecting with physicians who share your interests."
-  }
+  },
+  "emptyTitle": "No new updates",
+  "emptySub": "We'll let you know when something needs your attention."
 }

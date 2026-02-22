@@ -5,17 +5,33 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, RefreshCw, Users } from "lucide-react";
+import { MessageSquare, RefreshCw, Users, Shuffle, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { getGroups } from "@/services/adminService";
 import { useLocale } from "@/contexts/LocaleContext";
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+
+interface MatchingResult {
+  ok: boolean;
+  matchWeek: string;
+  totalGroupsCreated: number;
+  totalUsersMatched: number;
+  totalSkipped: number;
+  message: string;
+  byDay: Record<string, { booked: number; grouped: number }>;
+  groupsCreated: { day: string; groupId: string; memberCount: number; genderComposition: string; groupType: string; isPartial: boolean }[];
+}
 
 export default function AdminGroupsPage() {
   const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [matching, setMatching] = useState(false);
+  const [matchResult, setMatchResult] = useState<MatchingResult | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
   const { pathWithLocale } = useLocale();
+  const { session } = useAuth();
 
   const fetchGroups = async () => {
     setLoading(true);
@@ -28,6 +44,36 @@ export default function AdminGroupsPage() {
     fetchGroups();
   }, [statusFilter]);
 
+  const handleRunMatching = async () => {
+    if (!session?.access_token) return;
+    setMatching(true);
+    setMatchResult(null);
+    setMatchError(null);
+
+    try {
+      const res = await fetch('/api/admin/run-matching', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const data = await res.json() as MatchingResult & { error?: string };
+
+      if (!res.ok) {
+        setMatchError(data.error ?? 'Matching failed. Please try again.');
+      } else {
+        setMatchResult(data);
+        // Refresh group list to include new groups
+        fetchGroups();
+      }
+    } catch (err) {
+      setMatchError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setMatching(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -39,11 +85,81 @@ export default function AdminGroupsPage() {
             </h1>
             <p className="text-muted-foreground">{groups.length} groups</p>
           </div>
-          <Button variant="outline" onClick={fetchGroups}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="default"
+              onClick={handleRunMatching}
+              disabled={matching}
+            >
+              {matching
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Running…</>
+                : <><Shuffle className="h-4 w-4 mr-2" />Run Weekend Matching</>
+              }
+            </Button>
+            <Button variant="outline" onClick={fetchGroups}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
+
+        {/* Matching result banner */}
+        {matchResult && (
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-green-800">{matchResult.message}</p>
+                  <p className="text-sm text-green-700">
+                    {matchResult.totalGroupsCreated} group{matchResult.totalGroupsCreated !== 1 ? 's' : ''} created
+                    · {matchResult.totalUsersMatched} users matched
+                    {matchResult.totalSkipped > 0 && ` · ${matchResult.totalSkipped} skipped`}
+                    · Week of {matchResult.matchWeek}
+                  </p>
+                </div>
+              </div>
+
+              {/* Per-day breakdown */}
+              {matchResult.byDay && (
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  {(['friday', 'saturday', 'sunday'] as const).map((day) => {
+                    const d = matchResult.byDay[day];
+                    if (!d) return null;
+                    return (
+                      <div key={day} className="bg-white border border-green-200 rounded-lg px-3 py-2 text-center">
+                        <p className="text-xs font-semibold text-green-700 capitalize">{day}</p>
+                        <p className="text-lg font-bold text-green-900">{d.grouped}</p>
+                        <p className="text-[11px] text-green-600">of {d.booked} booked</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Group badges */}
+              <div className="flex flex-wrap gap-2">
+                {matchResult.groupsCreated.map((g) => (
+                  <Badge key={g.groupId} variant="outline" className="capitalize border-green-300 text-green-700 text-xs">
+                    {g.day} · {g.memberCount} · {g.genderComposition}
+                    {g.isPartial && ' · partial'}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {matchError && (
+          <Card className="border-destructive bg-destructive/5">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+                <p className="text-sm text-destructive">{matchError}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex gap-2">
           {["all", "active", "disbanded"].map((status) => (

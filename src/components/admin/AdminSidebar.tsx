@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, ShieldCheck, Users, AlertTriangle, Calendar,
+  LayoutDashboard, ShieldCheck, Users, AlertTriangle,
   MessageSquare, MessageCircle, ListChecks, ScrollText, Settings, LogOut
 } from "lucide-react";
 import Link from "next/link";
@@ -27,7 +27,6 @@ const navItems: NavItem[] = [
   { title: "Verification Queue", url: "/admin/verifications", icon: ShieldCheck, badgeKey: "pendingVerifications" },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Reports & Safety", url: "/admin/reports", icon: AlertTriangle, badgeKey: "openReports" },
-  { title: "Events & Bookings", url: "/admin/events", icon: Calendar },
   { title: "Groups & Chats", url: "/admin/groups", icon: MessageSquare },
   { title: "Feedback", url: "/admin/feedback", icon: MessageCircle },
   { title: "Waitlist & Surveys", url: "/admin/waitlist", icon: ListChecks },
