@@ -2,15 +2,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient, createAdminClient } from '@/integrations/supabase/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2026-01-28.clover',
-});
-
-const ONE_TIME_PRICE_IDS = new Set([
-  process.env.STRIPE_PRICE_ID_ONE_TIME ?? '',
-].filter(Boolean));
-
 async function getOrCreateCustomer(
+  stripe: Stripe,
   userId: string,
   userEmail: string,
   userName?: string | null
@@ -46,7 +39,14 @@ async function getOrCreateCustomer(
 
 export async function POST(req: NextRequest) {
   try {
-    // Auth: use cookie-based session (set by @supabase/ssr in the browser)
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2026-01-28.clover',
+    });
+
+    const ONE_TIME_PRICE_IDS = new Set([
+      process.env.STRIPE_PRICE_ID_ONE_TIME ?? '',
+    ].filter(Boolean));
+
     const supabase = await createClient();
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
@@ -60,20 +60,14 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Get user profile for Stripe customer name
     const { data: profile } = await admin
       .from('profiles')
       .select('full_name')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    const customerId = await getOrCreateCustomer(
-      user.id,
-      user.email!,
-      profile?.full_name
-    );
+    const customerId = await getOrCreateCustomer(stripe, user.id, user.email!, profile?.full_name);
 
-    // Prevent duplicate active subscriptions
     const isOneTime = ONE_TIME_PRICE_IDS.has(priceId);
     if (!isOneTime) {
       const { data: sub } = await admin

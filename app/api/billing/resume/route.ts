@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient, createAdminClient } from '@/integrations/supabase/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2026-01-28.clover',
-});
-
 export async function POST() {
   try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2026-01-28.clover',
+    });
+
     const supabase = await createClient();
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
