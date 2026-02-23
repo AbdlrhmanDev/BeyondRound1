@@ -1,6 +1,6 @@
 'use client';
 
-import { useModal } from './LandingModalProvider';
+import { WAITLIST_URL } from '@/lib/waitlist';
 
 function getUpcomingWeekend() {
   const now = new Date();
@@ -24,7 +24,6 @@ function getUpcomingWeekend() {
 }
 
 export function LandingWeekendPicker() {
-  const { openModal } = useModal();
   const options = getUpcomingWeekend();
 
   return (
@@ -36,7 +35,7 @@ export function LandingWeekendPicker() {
             Choose your next Berlin meetup
           </h2>
           <p className="text-[#5E555B] text-base max-w-xl mx-auto leading-relaxed">
-            Pick one weekend option. After you register and choose a day, you&apos;ll confirm your spot.
+            Tell us which day works for you. We&apos;ll notify you when your spot is confirmed.
           </p>
         </div>
 
@@ -78,13 +77,13 @@ export function LandingWeekendPicker() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={openModal}
-                className="w-full rounded-full py-3 text-sm font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-sm"
+              <a
+                href={`${WAITLIST_URL}?day=${day.toLowerCase()}`}
+                className="w-full rounded-full py-3 text-sm font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-sm text-center block"
+                aria-label={`Join the waitlist — ${day} preference`}
               >
                 {label}
-              </button>
+              </a>
             </div>
           ))}
         </div>

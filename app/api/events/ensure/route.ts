@@ -34,16 +34,33 @@ function getWeekendDayDate(day: string): Date | null {
 }
 
 export async function POST(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  if (!supabaseUrl || !serviceKey || !anonKey) {
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
+  // Auth: require a valid authenticated session
+  // (this endpoint is called during the user booking flow)
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-  if (!supabaseUrl || !serviceKey) {
-    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  // Cryptographically verify the JWT — getUser validates the signature server-side
+  const authClient = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data: { user }, error: authErr } = await authClient.auth.getUser(token);
+  if (authErr || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   let body: { city?: string; day?: string };
@@ -54,21 +71,26 @@ export async function POST(request: NextRequest) {
   }
 
   const { city, day } = body;
-  if (!city || !day) {
-    return NextResponse.json({ error: 'Missing city or day' }, { status: 400 });
+  if (!city || typeof city !== 'string' || city.trim().length === 0) {
+    return NextResponse.json({ error: 'Missing or invalid city' }, { status: 400 });
+  }
+  if (!day) {
+    return NextResponse.json({ error: 'Missing day' }, { status: 400 });
   }
 
   const dayDate = getWeekendDayDate(day);
   if (!dayDate) {
-    return NextResponse.json({ error: 'Invalid day — must be friday, saturday, or sunday' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid day — must be friday, saturday, or sunday' },
+      { status: 400 }
+    );
   }
 
-  // Use service role key to bypass RLS
+  // Use service role key to bypass RLS for event creation
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Check for an existing open event for this city+day this weekend
   const dayStart = new Date(dayDate);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayDate);
@@ -77,7 +99,7 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await supabase
     .from('events')
     .select('id')
-    .eq('city', city)
+    .eq('city', city.trim())
     .gte('date_time', dayStart.toISOString())
     .lte('date_time', dayEnd.toISOString())
     .in('status', ['open', 'full'])
@@ -88,11 +110,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ eventId: existing.id });
   }
 
-  // Create a new event for this day
   const { data: created, error } = await supabase
     .from('events')
     .insert({
-      city,
+      city: city.trim(),
       meetup_type: day === 'sunday' ? 'brunch' : 'dinner',
       date_time: dayDate.toISOString(),
       neighborhood: null,
@@ -103,11 +124,8 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error || !created) {
-    console.error('ensure event error:', error);
-    return NextResponse.json(
-      { error: error?.message ?? 'Failed to create event slot' },
-      { status: 500 },
-    );
+    console.error('[events/ensure] create error:', error?.message);
+    return NextResponse.json({ error: 'Failed to create event slot' }, { status: 500 });
   }
 
   return NextResponse.json({ eventId: (created as { id: string }).id });

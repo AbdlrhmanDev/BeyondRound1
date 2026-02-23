@@ -1,7 +1,8 @@
 'use client';
 
-import Link from "next/link";
-import { Clock, Users, Heart, Shield, CheckCircle2, MapPin, Coffee } from "lucide-react";
+import Image from "next/image";
+import { Clock, Users, Heart, Shield, MapPin, Coffee } from "lucide-react";
+import { WAITLIST_URL } from "@/lib/waitlist";
 
 const ForDoctors = () => {
   return (
@@ -98,12 +99,36 @@ const ForDoctors = () => {
         </div>
       </section>
 
-      {/* Image Grid */}
+      {/* Photo Grid */}
       <section className="container mx-auto px-5 sm:px-8 max-w-4xl pb-16">
         <div className="grid grid-cols-3 gap-4">
-          <div className="aspect-[4/3] rounded-[18px] bg-[#E8DED5] flex items-center justify-center text-[#5E555B]/40 text-xs">[Image: coffee meetup]</div>
-          <div className="aspect-[4/3] rounded-[18px] bg-[#E8DED5] flex items-center justify-center text-[#5E555B]/40 text-xs">[Image: canal walk]</div>
-          <div className="aspect-[4/3] rounded-[18px] bg-[#E8DED5] flex items-center justify-center text-[#5E555B]/40 text-xs">[Image: brunch table]</div>
+          <div className="relative aspect-[4/3] rounded-[18px] overflow-hidden">
+            <Image
+              src="https://images.unsplash.com/photo-1623120893483-0e9d83ebbfe1?w=600&q=80&auto=format&fit=crop"
+              alt="Friends having coffee at a café"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 33vw, 290px"
+            />
+          </div>
+          <div className="relative aspect-[4/3] rounded-[18px] overflow-hidden">
+            <Image
+              src="https://images.unsplash.com/photo-1758613171813-56eef6b4fc51?w=600&q=80&auto=format&fit=crop"
+              alt="Friends on a relaxed outdoor walk"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 33vw, 290px"
+            />
+          </div>
+          <div className="relative aspect-[4/3] rounded-[18px] overflow-hidden">
+            <Image
+              src="https://images.unsplash.com/photo-1714038918910-daa51af9fccd?w=600&q=80&auto=format&fit=crop"
+              alt="Friends laughing at a brunch table"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 33vw, 290px"
+            />
+          </div>
         </div>
       </section>
 
@@ -112,12 +137,12 @@ const ForDoctors = () => {
         <div className="container mx-auto px-5 sm:px-8 max-w-xl text-center">
           <h2 className="font-display text-3xl font-bold text-white mb-4">Ready to meet your group?</h2>
           <p className="text-white/60 mb-8">Join a curated group of doctors in Berlin this weekend.</p>
-          <Link
-            href="/en/auth"
+          <a
+            href={WAITLIST_URL}
             className="inline-flex items-center justify-center h-14 px-10 rounded-full bg-[#F27C5C] hover:bg-[#e06d4d] text-white font-display font-semibold text-base transition-all active:scale-[0.98] shadow-sm"
           >
-            Get started
-          </Link>
+            Join the waitlist
+          </a>
         </div>
       </section>
     </div>

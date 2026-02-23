@@ -1,29 +1,42 @@
 import type { Metadata } from 'next';
-import PricingPageContent from '@/views/Pricing';
-import TranslationsProvider from '@/components/TranslationsProvider';
-import initTranslations from '@/i18n';
+import { getDictionary } from '@/lib/i18n/get-dictionary';
+import { getT } from '@/lib/i18n/t';
+import type { Locale } from '@/lib/i18n/settings';
+import { LandingPricing } from '@/components/landing/LandingPricing';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Pricing',
-  description: 'BeyondRounds pricing plans for physicians.',
+  description: 'Simple, honest pricing. No hidden fees, no long-term contracts. Start with a single match.',
+  openGraph: {
+    title: 'BeyondRounds Pricing',
+    description: 'Simple, honest pricing. No hidden fees, no long-term contracts. Start with a single match or save with a bundle.',
+    images: [{ url: '/hero-doctors-friendship.jpg', width: 1200, height: 800, alt: 'Doctors enjoying a relaxed dinner together — BeyondRounds' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/hero-doctors-friendship.jpg'],
+  },
 };
 
-// Force static generation
-export const dynamic = 'force-static';
-export const revalidate = 3600;
+export default async function PricingPage({ params }: { params: { locale: string } }) {
+  const locale = params.locale as Locale;
 
-const i18nNamespaces = ['pricing'];
+  const [dict, supabase] = await Promise.all([
+    getDictionary(locale),
+    Promise.resolve(createClient()),
+  ]);
 
-export default async function PricingPage({ params: { locale } }: { params: { locale: string } }) {
-  const { resources } = await initTranslations(locale, i18nNamespaces);
+  const { data: { user } } = await supabase.auth.getUser();
+  const t = getT(dict);
+
+  const ctaHref = user
+    ? `/${locale}/dashboard`
+    : `/${locale}/onboarding`;
 
   return (
-    <TranslationsProvider
-      locale={locale}
-      namespaces={i18nNamespaces}
-      resources={resources}
-    >
-      <PricingPageContent />
-    </TranslationsProvider>
+    <div className="pt-16 sm:pt-[60px]">
+      <LandingPricing t={t} ctaHref={ctaHref} />
+    </div>
   );
 }

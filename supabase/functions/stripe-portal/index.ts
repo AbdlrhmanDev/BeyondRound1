@@ -62,11 +62,31 @@ serve(async (req) => {
       throw new Error("No billing account found. Please subscribe first.");
     }
 
-    // ── Parse optional return_url ────────────────────────────────────────────
-    let returnUrl = `${APP_URL}/settings?tab=billing`;
+    // ── Parse optional return_url — validated against allowlist ─────────────
+    const ALLOWED_RETURN_HOSTS = new Set([
+      "app.beyondrounds.app",
+      "admin.beyondrounds.app",
+      "whitelist.beyondrounds.app",
+      "localhost",
+    ]);
+
+    function validateReturnUrl(raw: unknown, fallback: string): string {
+      if (typeof raw !== "string" || !raw.trim()) return fallback;
+      try {
+        const url = new URL(raw);
+        if (url.protocol !== "https:" && url.hostname !== "localhost") return fallback;
+        if (!ALLOWED_RETURN_HOSTS.has(url.hostname)) return fallback;
+        return raw;
+      } catch {
+        return fallback;
+      }
+    }
+
+    const defaultReturn = `${APP_URL}/settings?tab=billing`;
+    let returnUrl = defaultReturn;
     try {
       const body = await req.json();
-      if (body?.returnUrl) returnUrl = body.returnUrl;
+      returnUrl = validateReturnUrl(body?.returnUrl, defaultReturn);
     } catch { /* body is optional */ }
 
     // ── Create portal session ────────────────────────────────────────────────

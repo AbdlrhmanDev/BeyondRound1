@@ -2,6 +2,7 @@ import { LandingCTAButton } from './LandingCTAButton';
 
 interface Props {
   t: (key: string) => string;
+  ctaHref?: string;
 }
 
 // ─── Shared feature list (plans 2-4 only) ────────────────────────────────────
@@ -39,6 +40,7 @@ interface PlanCardProps {
   save?: string;         // "Save 25% vs monthly"
   desc: string;
   cta: string;
+  ctaHref?: string;
   showFeatures: boolean;
   t: Props['t'];
 }
@@ -53,6 +55,7 @@ function PlanCard({
   save,
   desc,
   cta,
+  ctaHref,
   showFeatures,
   t,
 }: PlanCardProps) {
@@ -140,6 +143,7 @@ function PlanCard({
         <div className="mt-auto pt-5">
           <LandingCTAButton
             label={cta}
+            href={ctaHref}
             className={[
               'w-full flex items-center justify-center rounded-full py-3 text-[14px] font-semibold',
               'transition-all duration-200 active:scale-[0.98] focus-visible:outline-none',
@@ -230,13 +234,14 @@ function GuaranteeBanner({ t }: { t: Props['t'] }) {
 
 // ─── Main section ─────────────────────────────────────────────────────────────
 
-export function LandingPricing({ t }: Props) {
+export function LandingPricing({ t, ctaHref }: Props) {
   const plans: PlanCardProps[] = [
     {
       name:         t('landing.plan1Name'),
       price:        t('landing.plan1Price'),
       desc:         t('landing.plan1Desc'),
       cta:          t('landing.plan1CTA'),
+      ctaHref,
       showFeatures: false,
       t,
     },
@@ -246,6 +251,7 @@ export function LandingPricing({ t }: Props) {
       priceNote:    t('landing.plan2PriceNote'),
       desc:         t('landing.plan2Desc'),
       cta:          t('landing.plan2CTA'),
+      ctaHref,
       showFeatures: true,
       t,
     },
@@ -259,6 +265,7 @@ export function LandingPricing({ t }: Props) {
       save:         t('landing.plan3Save'),
       desc:         t('landing.plan3Desc'),
       cta:          t('landing.plan3CTA'),
+      ctaHref,
       showFeatures: true,
       t,
     },
@@ -271,6 +278,7 @@ export function LandingPricing({ t }: Props) {
       save:         t('landing.plan4Save'),
       desc:         t('landing.plan4Desc'),
       cta:          t('landing.plan4CTA'),
+      ctaHref,
       showFeatures: true,
       t,
     },

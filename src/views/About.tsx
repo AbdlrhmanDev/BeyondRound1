@@ -1,30 +1,73 @@
 'use client';
 
-import Link from "next/link";
-import { Shield, Users, Heart, CalendarCheck, MessageCircle, CheckCircle2 } from "lucide-react";
+import Image from "next/image";
+import { Shield, Users, Heart, CalendarCheck, MessageCircle } from "lucide-react";
+import { WAITLIST_URL } from "@/lib/waitlist";
 
 const About = () => {
   return (
     <div className="min-h-screen bg-[#F6F1EC]">
       {/* Hero */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#3A0B22]/5 to-transparent" />
-        <div className="container mx-auto px-5 sm:px-8 max-w-3xl relative z-10 text-center">
-          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#F27C5C] mb-4">About BeyondRounds</p>
-          <h1 className="font-display text-4xl sm:text-5xl font-bold text-[#3A0B22] tracking-tight leading-[1.15] mb-6">
+      <section className="relative min-h-[480px] sm:min-h-[580px] flex items-center overflow-hidden">
+        {/* Background image */}
+        <div className="absolute inset-0">
+          <Image
+            src="https://images.unsplash.com/photo-1764079648275-a37d1f5104ae?w=1400&q=85&auto=format&fit=crop"
+            alt="Friends gathered inside a warmly lit café"
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1A0A12]/70 via-[#3A0B22]/60 to-[#1A0A12]/85" />
+        </div>
+        {/* Content */}
+        <div className="container mx-auto px-5 sm:px-8 max-w-3xl relative z-10 text-center pt-32 pb-20">
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#F6B4A8] mb-4">About BeyondRounds</p>
+          <h1 className="font-display text-4xl sm:text-5xl font-bold text-white tracking-tight leading-[1.15] mb-6">
             A calmer way for doctors to make real friends.
           </h1>
-          <p className="text-lg text-[#5E555B] max-w-xl mx-auto leading-relaxed">
+          <p className="text-lg text-white/75 max-w-xl mx-auto leading-relaxed">
             Medicine is demanding. Friendships shouldn't be. BeyondRounds gives doctors the structure to show up, connect, and build lasting relationships — without the effort of organizing everything yourself.
           </p>
         </div>
       </section>
 
-      {/* Image Grid */}
+      {/* Photo Gallery — editorial layout */}
       <section className="container mx-auto px-5 sm:px-8 max-w-4xl pb-16">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="aspect-[4/3] rounded-[22px] bg-[#E8DED5] flex items-center justify-center text-[#5E555B]/40 text-sm">[Image: caf&eacute; laughter]</div>
-          <div className="aspect-[4/3] rounded-[22px] bg-[#E8DED5] flex items-center justify-center text-[#5E555B]/40 text-sm">[Image: casual walk]</div>
+        <div className="grid grid-cols-3 grid-rows-2 gap-3 h-[240px] sm:h-[420px]">
+          {/* Main feature image — left, spans full height */}
+          <div className="col-span-2 row-span-2 relative rounded-[18px] sm:rounded-[24px] overflow-hidden">
+            <Image
+              src="https://images.unsplash.com/photo-1731475761027-0b6b33b74547?w=900&q=85&auto=format&fit=crop"
+              alt="Group of friends sitting around a dinner table together"
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 66vw, (max-width: 1024px) 580px, 600px"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1A0A12]/20 to-transparent" />
+          </div>
+          {/* Top right */}
+          <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden">
+            <Image
+              src="https://images.unsplash.com/photo-1764079648275-a37d1f5104ae?w=500&q=80&auto=format&fit=crop"
+              alt="Friends gathered inside a warmly lit café"
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 33vw, 290px"
+            />
+          </div>
+          {/* Bottom right */}
+          <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden">
+            <Image
+              src="https://images.unsplash.com/photo-1758525225816-8dd1901ef6ec?w=500&q=80&auto=format&fit=crop"
+              alt="Two women laughing at a café table"
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 33vw, 290px"
+            />
+          </div>
         </div>
       </section>
 
@@ -109,12 +152,12 @@ const About = () => {
         <div className="container mx-auto px-5 sm:px-8 max-w-xl text-center">
           <h2 className="font-display text-3xl font-bold text-white mb-4">Choose a weekend meetup</h2>
           <p className="text-white/60 mb-8">Join a curated group of doctors in Berlin this weekend.</p>
-          <Link
-            href="/en/auth"
+          <a
+            href={WAITLIST_URL}
             className="inline-flex items-center justify-center h-14 px-10 rounded-full bg-[#F27C5C] hover:bg-[#e06d4d] text-white font-display font-semibold text-base transition-all active:scale-[0.98] shadow-sm"
           >
-            Join Berlin
-          </Link>
+            Join the waitlist
+          </a>
         </div>
       </section>
     </div>

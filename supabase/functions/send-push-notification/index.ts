@@ -19,10 +19,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webPush from "https://esm.sh/web-push@3.6.7";
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// This function is only called from our /api/push/send Next.js route (server-side).
+// It must NOT be callable directly from the browser. Restrict CORS accordingly.
+const ALLOWED_ORIGINS = [
+  "https://app.beyondrounds.app",
+  "http://localhost:3000",
+];
+
+function buildCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
+  };
+}
 
 // ── Init VAPID once at module level (not per request) ────────────────────────
 // Supabase Edge Functions are warm-started — module-level init is safe and
@@ -63,8 +74,30 @@ const TTL_BY_URGENCY: Record<string, number> = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // ── Caller authentication ────────────────────────────────────────────────
+  // This endpoint must only be called from our own server-side code, never
+  // directly from a browser. Require either:
+  //   A) The INTERNAL_API_SECRET header (set by /api/push/send Next.js route)
+  //   B) The Supabase service role key in the Authorization header
+  const internalSecret = req.headers.get("x-internal-secret") ?? "";
+  const expectedSecret = Deno.env.get("INTERNAL_API_SECRET") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const authHeader     = req.headers.get("Authorization") ?? "";
+
+  const isInternalSecret = expectedSecret && internalSecret === expectedSecret;
+  const isServiceRole    = authHeader === `Bearer ${serviceRoleKey}`;
+
+  if (!isInternalSecret && !isServiceRole) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   // ── Validate VAPID config ────────────────────────────────────────────────

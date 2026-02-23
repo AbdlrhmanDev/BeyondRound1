@@ -274,6 +274,37 @@ serve(async (req) => {
 
   console.log(`[webhook] ${event.type}`);
 
+  // ── Idempotency: skip already-processed events ────────────────────────────
+  // Stripe retries events for up to 3 days on non-2xx. Without this, every
+  // retry would re-process the event (duplicate invoices, flapping status, etc.)
+  const { data: alreadyProcessed } = await supabase
+    .from("stripe_processed_events")
+    .select("event_id")
+    .eq("event_id", event.id)
+    .maybeSingle();
+
+  if (alreadyProcessed) {
+    console.log(`[webhook] Duplicate event ${event.id} — skipping`);
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // Mark as processed BEFORE handling to prevent parallel-retry race conditions
+  const { error: insertErr } = await supabase
+    .from("stripe_processed_events")
+    .insert({ event_id: event.id, event_type: event.type });
+
+  if (insertErr) {
+    // Unique constraint violation = another instance already claimed this event
+    console.warn(`[webhook] Race on event ${event.id} — skipping`);
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   try {
     switch (event.type) {
       case "checkout.session.completed":

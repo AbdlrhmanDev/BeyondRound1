@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient, createAdminClient } from '@/integrations/supabase/server';
+import { getAllowedPriceIds, sanitizeError } from '@/lib/securityUtils';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 async function getOrCreateCustomer(
   stripe: Stripe,
@@ -53,9 +55,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { priceId, successUrl, cancelUrl } = await req.json();
-    if (!priceId) {
-      return NextResponse.json({ error: 'priceId is required' }, { status: 400 });
+    // Rate limit: 10 checkout sessions per minute per user
+    const rlRes = checkRateLimit(user.id, 'billing');
+    if (rlRes) return rlRes;
+
+    const body = await req.json();
+    const { priceId, successUrl, cancelUrl } = body as {
+      priceId?: string;
+      successUrl?: string;
+      cancelUrl?: string;
+    };
+
+    // Validate priceId against our known price IDs — reject anything else
+    const allowedPriceIds = getAllowedPriceIds();
+    if (!priceId || !allowedPriceIds.has(priceId)) {
+      return NextResponse.json({ error: 'Invalid plan selected' }, { status: 400 });
     }
 
     const admin = createAdminClient();
@@ -105,8 +119,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[api/billing/checkout]', msg);
-    return NextResponse.json({ error: msg }, { status: 400 });
+    console.error('[api/billing/checkout]', err instanceof Error ? err.message : err);
+    const { message, status } = sanitizeError(err);
+    return NextResponse.json({ error: message }, { status });
   }
 }

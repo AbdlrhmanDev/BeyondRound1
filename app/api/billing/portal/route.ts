@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient, createAdminClient } from '@/integrations/supabase/server';
+import { validateReturnUrl, sanitizeError } from '@/lib/securityUtils';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +15,10 @@ export async function POST(req: NextRequest) {
     if (authErr || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Rate limit: 10 portal sessions per minute per user
+    const rlRes = checkRateLimit(user.id, 'billing');
+    if (rlRes) return rlRes;
 
     const admin = createAdminClient();
     const { data: sub } = await admin
@@ -29,10 +35,12 @@ export async function POST(req: NextRequest) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-    let returnUrl = `${appUrl}/settings?tab=billing`;
+    const defaultReturn = `${appUrl}/settings?tab=billing`;
+    // Validate returnUrl against allowlist — prevents open redirect attacks
+    let returnUrl = defaultReturn;
     try {
       const body = await req.json();
-      if (body?.returnUrl) returnUrl = body.returnUrl;
+      returnUrl = validateReturnUrl(body?.returnUrl, defaultReturn);
     } catch { /* body is optional */ }
 
     const portalSession = await stripe.billingPortal.sessions.create({
@@ -42,8 +50,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: portalSession.url });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[api/billing/portal]', msg);
-    return NextResponse.json({ error: msg }, { status: 400 });
+    console.error('[api/billing/portal]', err instanceof Error ? err.message : err);
+    const { message, status } = sanitizeError(err);
+    return NextResponse.json({ error: message }, { status });
   }
 }

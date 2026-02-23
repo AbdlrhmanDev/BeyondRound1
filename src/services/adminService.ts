@@ -763,10 +763,11 @@ export const getGroups = async (statusFilter?: string): Promise<any[]> => {
 
 export const getGroupDetail = async (groupId: string): Promise<any | null> => {
   try {
-    const [groupRes, membersRes, convRes] = await Promise.allSettled([
+    const [groupRes, membersRes, convRes, verifRes] = await Promise.allSettled([
       supabase.from("match_groups").select("*").eq("id", groupId).single(),
-      supabase.from("group_members").select("*, profiles(user_id, full_name, avatar_url)").eq("group_id", groupId),
+      supabase.from("group_members").select("*, profiles(user_id, full_name, avatar_url, city)").eq("group_id", groupId),
       (supabase as any).from("group_conversations").select("id").eq("group_id", groupId).single(),
+      (supabase as any).from("group_member_verifications").select("*").eq("group_id", groupId),
     ]);
 
     const group = groupRes.status === "fulfilled" ? groupRes.value.data : null;
@@ -774,8 +775,37 @@ export const getGroupDetail = async (groupId: string): Promise<any | null> => {
 
     const members = membersRes.status === "fulfilled" ? membersRes.value.data || [] : [];
     const conversationId = convRes.status === "fulfilled" ? (convRes.value as any).data?.id : null;
+    const verifications: any[] = verifRes.status === "fulfilled" ? (verifRes.value as any).data || [] : [];
 
-    return { group, members, conversationId };
+    // Attach verification record to each member
+    const verifMap = new Map(verifications.map((v: any) => [v.user_id, v]));
+    const membersWithVerif = members.map((m: any) => ({
+      ...m,
+      verification: verifMap.get(m.user_id) || null,
+    }));
+
+    // Fetch per-member scores from group_evaluations
+    const userIds = members.map((m: any) => m.user_id);
+    let memberScores: Record<string, number | null> = {};
+    if (userIds.length > 0) {
+      const { data: evals } = await supabase
+        .from('group_evaluations')
+        .select('user_id, meeting_rating')
+        .in('user_id', userIds)
+        .not('meeting_rating', 'is', null);
+      const scoreMap: Record<string, { sum: number; count: number }> = {};
+      (evals || []).forEach((e: any) => {
+        if (!scoreMap[e.user_id]) scoreMap[e.user_id] = { sum: 0, count: 0 };
+        scoreMap[e.user_id].sum += e.meeting_rating;
+        scoreMap[e.user_id].count += 1;
+      });
+      userIds.forEach((uid: string) => {
+        const s = scoreMap[uid];
+        memberScores[uid] = s ? Math.round((s.sum / s.count) * 10) / 10 : null;
+      });
+    }
+
+    return { group, members: membersWithVerif, memberScores, conversationId };
   } catch (error) { console.error("Error fetching group detail:", error); return null; }
 };
 
@@ -870,6 +900,117 @@ export const updateAppConfig = async (key: string, value: string, reason?: strin
 // ============================================================
 // AUDIT LOGS
 // ============================================================
+
+// ============================================================
+// GROUP MEMBER MANAGEMENT (admin_add_group_member flow)
+// ============================================================
+
+/** Search users by name or email. Returns profiles + their avg meeting score. */
+export const searchUsers = async (query: string): Promise<any[]> => {
+  try {
+    if (!query?.trim() || query.trim().length < 2) return [];
+
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('id, user_id, full_name, avatar_url, city, status')
+      .ilike('full_name', `%${query.trim()}%`)
+      .not('status', 'eq', 'banned')
+      .limit(20);
+
+    if (error || !profiles?.length) return [];
+
+    // Fetch avg meeting score for each user
+    const userIds = profiles.map((p) => p.user_id);
+    const { data: evals } = await supabase
+      .from('group_evaluations')
+      .select('user_id, meeting_rating')
+      .in('user_id', userIds)
+      .not('meeting_rating', 'is', null);
+
+    const scoreMap: Record<string, { sum: number; count: number }> = {};
+    (evals || []).forEach((e) => {
+      if (!scoreMap[e.user_id]) scoreMap[e.user_id] = { sum: 0, count: 0 };
+      scoreMap[e.user_id].sum += e.meeting_rating;
+      scoreMap[e.user_id].count += 1;
+    });
+
+    return profiles.map((p) => {
+      const s = scoreMap[p.user_id];
+      return {
+        ...p,
+        score: s ? Math.round((s.sum / s.count) * 10) / 10 : null,
+        score_count: s?.count ?? 0,
+      };
+    });
+  } catch (error) {
+    console.error('Error searching users:', error);
+    return [];
+  }
+};
+
+/** Add a user to a group (pending verification). Returns error code on failure. */
+export const addGroupMember = async (
+  groupId: string,
+  userId: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_add_group_member' as any, {
+      p_group_id: groupId,
+      p_user_id: userId,
+      p_reason: reason || null,
+    });
+    if (error) {
+      console.error('Error adding group member:', error);
+      return { success: false, error: error.message };
+    }
+    const result = data as any;
+    if (result?.error) return { success: false, error: result.error };
+    return { success: true };
+  } catch (error) {
+    console.error('Error adding group member:', error);
+    return { success: false, error: 'unexpected_error' };
+  }
+};
+
+/** Approve or reject a pending group membership. */
+export const verifyGroupMember = async (
+  groupId: string,
+  userId: string,
+  decision: 'verified' | 'rejected',
+  reason?: string
+): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_verify_group_member' as any, {
+      p_group_id: groupId,
+      p_user_id: userId,
+      p_decision: decision,
+      p_reason: reason || null,
+    });
+    if (error) { console.error('Error verifying group member:', error); return false; }
+    return !(data as any)?.error;
+  } catch (error) {
+    console.error('Error verifying group member:', error);
+    return false;
+  }
+};
+
+/** Get a single user's average score from their group evaluations. */
+export const getUserScore = async (userId: string): Promise<number | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('group_evaluations')
+      .select('meeting_rating')
+      .eq('user_id', userId)
+      .not('meeting_rating', 'is', null);
+    if (error || !data?.length) return null;
+    const avg = data.reduce((s, e) => s + e.meeting_rating, 0) / data.length;
+    return Math.round(avg * 10) / 10;
+  } catch (error) {
+    console.error('Error getting user score:', error);
+    return null;
+  }
+};
 
 export const getAuditLogs = async (limit: number = 100): Promise<AuditLog[]> => {
   try {

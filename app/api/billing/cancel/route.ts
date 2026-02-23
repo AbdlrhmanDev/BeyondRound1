@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient, createAdminClient } from '@/integrations/supabase/server';
+import { sanitizeError } from '@/lib/securityUtils';
 
 export async function POST() {
   try {
@@ -42,8 +43,8 @@ export async function POST() {
         : null,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[api/billing/cancel]', msg);
-    return NextResponse.json({ error: msg }, { status: 400 });
+    console.error('[api/billing/cancel]', err instanceof Error ? err.message : err);
+    const { message, status } = sanitizeError(err);
+    return NextResponse.json({ error: message }, { status });
   }
 }

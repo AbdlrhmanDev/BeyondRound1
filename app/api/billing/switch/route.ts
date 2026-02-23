@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient, createAdminClient } from '@/integrations/supabase/server';
+import { getAllowedPriceIds, sanitizeError } from '@/lib/securityUtils';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,9 +16,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { newPriceId } = await req.json();
-    if (!newPriceId) {
-      return NextResponse.json({ error: 'newPriceId is required' }, { status: 400 });
+    // Rate limit: 10 plan switches per minute per user
+    const rlRes = checkRateLimit(user.id, 'billing');
+    if (rlRes) return rlRes;
+
+    const body = await req.json();
+    const { newPriceId } = body as { newPriceId?: string };
+
+    // Validate newPriceId against our known price IDs — reject anything else
+    const allowedPriceIds = getAllowedPriceIds();
+    if (!newPriceId || !allowedPriceIds.has(newPriceId)) {
+      return NextResponse.json({ error: 'Invalid plan selected' }, { status: 400 });
     }
 
     const admin = createAdminClient();
@@ -67,8 +77,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Plan switched successfully.' });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[api/billing/switch]', msg);
-    return NextResponse.json({ error: msg }, { status: 400 });
+    console.error('[api/billing/switch]', err instanceof Error ? err.message : err);
+    const { message, status } = sanitizeError(err);
+    return NextResponse.json({ error: message }, { status });
   }
 }

@@ -1,22 +1,18 @@
-'use client';
-
-import { useModal } from './LandingModalProvider';
+import { WAITLIST_URL } from '@/lib/waitlist';
 
 interface LandingCTAButtonProps {
   label: string;
   className?: string;
+  href?: string;
 }
 
-export function LandingCTAButton({ label, className }: LandingCTAButtonProps) {
-  const { openModal } = useModal();
-
+export function LandingCTAButton({ label, className, href = WAITLIST_URL }: LandingCTAButtonProps) {
   return (
-    <button
-      type="button"
-      onClick={openModal}
+    <a
+      href={href}
       className={className ?? 'inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-sm'}
     >
       {label}
-    </button>
+    </a>
   );
 }

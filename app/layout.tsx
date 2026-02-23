@@ -30,13 +30,21 @@ const playfairDisplay = Playfair_Display({
   adjustFontFallback: true,
 });
 
+const OG_IMAGE = {
+  url: '/hero-doctors-friendship.jpg',
+  width: 1200,
+  height: 800,
+  alt: 'Doctors enjoying a relaxed dinner together — BeyondRounds',
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL('https://beyondrounds.app'),
   title: {
-    default: 'BeyondRounds - Connect with Fellow Physicians',
+    default: 'BeyondRounds — Weekly Meetups for Doctors in Berlin',
     template: '%s | BeyondRounds',
   },
-  description: 'BeyondRounds helps physicians build meaningful friendships beyond the hospital. Join a community of doctors who share your interests.',
-  keywords: ['physicians', 'doctors', 'networking', 'medical community', 'friendship', 'healthcare'],
+  description: 'BeyondRounds matches verified doctors in small curated groups for real weekend meetups. No swiping. No networking. Just genuine friendships.',
+  keywords: ['physicians', 'doctors', 'Berlin', 'doctor meetups', 'medical community', 'friendship', 'healthcare'],
   authors: [{ name: 'BeyondRounds' }],
   creator: 'BeyondRounds',
   openGraph: {
@@ -45,13 +53,15 @@ export const metadata: Metadata = {
     alternateLocale: 'en_US',
     url: 'https://beyondrounds.app',
     siteName: 'BeyondRounds',
-    title: 'BeyondRounds - Connect with Fellow Physicians',
-    description: 'Build meaningful friendships beyond the hospital.',
+    title: 'BeyondRounds — Weekly Meetups for Doctors in Berlin',
+    description: 'We match verified doctors in small curated groups for real weekend meetups.',
+    images: [OG_IMAGE],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BeyondRounds',
-    description: 'Connect with fellow physicians who share your interests.',
+    title: 'BeyondRounds — Weekly Meetups for Doctors',
+    description: 'Verified doctors. Small groups. Real friendships.',
+    images: ['/hero-doctors-friendship.jpg'],
   },
   robots: {
     index: true,
@@ -83,8 +93,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="BeyondRounds" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" href="/br-icon.jpg" type="image/jpeg" />
+        <link rel="apple-touch-icon" href="/br-icon.jpg" />
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body className={`${dmSans.variable} ${spaceGrotesk.variable} ${playfairDisplay.variable} font-sans antialiased`} suppressHydrationWarning>

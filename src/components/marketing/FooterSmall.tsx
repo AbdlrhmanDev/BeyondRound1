@@ -7,6 +7,7 @@ import { getT } from '@/lib/i18n/t';
 import { EMAILS } from '@/constants/emails';
 import type { Locale } from '@/lib/i18n/settings';
 import { CookieSettingsButton } from '@/components/CookieBanner';
+import { WAITLIST_URL } from '@/lib/waitlist';
 
 const footerLinks = {
   product: [
@@ -75,6 +76,15 @@ export function FooterSmall({ dict, locale }: FooterSmallProps) {
           <div>
             <h4 className="font-display font-bold text-[#3A0B22] mb-6">{t('common.product')}</h4>
             <ul className="space-y-4">
+              <li>
+                <a
+                  href={WAITLIST_URL}
+                  className="text-[#F27C5C] hover:text-[#e06a4a] font-semibold transition-colors inline-flex items-center gap-1 min-h-[44px] py-2 -my-2"
+                  aria-label="Join the BeyondRounds waitlist"
+                >
+                  Join the waitlist
+                </a>
+              </li>
               {footerLinks.product.map((link) => (
                 <li key={link.href}>
                   <Link href={`/${locale}${link.href}`} prefetch={true} className={linkClass}>

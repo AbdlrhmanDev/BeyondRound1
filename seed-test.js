@@ -1,603 +1,382 @@
-import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+const { createClient } = require('@supabase/supabase-js');
+const { readFileSync }  = require('fs');
+const { join }          = require('path');
 
-// Get environment variables from .env.local
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// ── Env ─────────────────────────────────────────────────────────────────────
+// __dirname is available in CJS automatically
 
 function loadEnvFile() {
   try {
-    const envPath = join(__dirname, '.env.local');
-    const envContent = readFileSync(envPath, 'utf-8');
+    const content = readFileSync(join(__dirname, '.env.local'), 'utf-8');
     const env = {};
-    
-    envContent.split('\n').forEach(line => {
-      const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#')) {
-        const [key, ...valueParts] = trimmed.split('=');
-        if (key && valueParts.length > 0) {
-          env[key.trim()] = valueParts.join('=').trim().replace(/^["']|["']$/g, '');
-        }
-      }
+    content.split('\n').forEach(line => {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) return;
+      const [key, ...rest] = t.split('=');
+      if (key) env[key.trim()] = rest.join('=').trim().replace(/^["']|["']$/g, '');
     });
-    
     return env;
-  } catch (error) {
-    console.warn('⚠️  Could not read .env.local, using process.env');
-    return {};
-  }
+  } catch { return {}; }
 }
 
 const env = loadEnvFile();
-const SUPABASE_URL = env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL || env.VITE_SUPABASE_URL;
+const SERVICE_KEY  = env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables');
-  console.error('Please set SUPABASE_SERVICE_ROLE_KEY in .env.local');
+if (!SUPABASE_URL || !SERVICE_KEY) {
+  console.error('❌  Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
   process.exit(1);
 }
 
-// Create Supabase admin client (bypasses RLS)
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
+const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
 });
 
-// ============================================
-// إعدادات قابلة للتخصيص
-// ============================================
-const CONFIG = {
-  // عدد المستخدمين المراد إنشاؤهم
-  USER_COUNT: parseInt(process.argv[2]) || 30,
-  
-  // هل ننشئ matches؟
-  CREATE_MATCHES: process.argv.includes('--no-matches') ? false : true,
-  
-  // هل ننشئ groups؟
-  CREATE_GROUPS: process.argv.includes('--no-groups') ? false : true,
-  
-  // هل ننظف البيانات القديمة؟
-  CLEAN_OLD_DATA: process.argv.includes('--clean') ? true : false,
-  
-  // الحد الأدنى لنقاط المطابقة
-  MIN_MATCH_SCORE: 20,
-  
-  // عدد المستخدمين في كل مجموعة
-  GROUP_SIZE: 5
-};
+// ── Constants ────────────────────────────────────────────────────────────────
+const CITY = 'Berlin';
+const PASSWORD = 'Test1234!';
 
-console.log('⚙️  Configuration:');
-console.log(`   - User count: ${CONFIG.USER_COUNT}`);
-console.log(`   - Create matches: ${CONFIG.CREATE_MATCHES}`);
-console.log(`   - Create groups: ${CONFIG.CREATE_GROUPS}`);
-console.log(`   - Clean old data: ${CONFIG.CLEAN_OLD_DATA}`);
-console.log('');
-
-// ============================================
-// البيانات
-// ============================================
-const specialties = [
-  'Internal Medicine', 'Surgery', 'Pediatrics', 'Cardiology', 'Neurology',
-  'Psychiatry', 'Emergency Medicine', 'Anesthesiology', 'Radiology',
-  'Dermatology', 'Orthopedics', 'Ophthalmology', 'Gynecology', 'General Practice',
-  'Pulmonology', 'Gastroenterology', 'Nephrology', 'Endocrinology'
+/**
+ * 3 test accounts — one per dashboard state.
+ * Login with any of them to test that state instantly.
+ */
+const MAIN_ACCOUNTS = [
+  {
+    email: 'none@test.com',
+    fullName: 'Dr. Lena Becker',
+    specialty: 'Cardiology',
+    careerStage: 'attending_senior',
+    gender: 'female',
+    birthYear: 1986,
+    state: 'none',        // sees 3 day cards → can go through full booking flow
+  },
+  {
+    email: 'reserved@test.com',
+    fullName: 'Dr. Kai Richter',
+    specialty: 'Surgery',
+    careerStage: 'attending_early',
+    gender: 'male',
+    birthYear: 1989,
+    state: 'reserved',    // already has a paid Friday booking → "You're in!" card
+  },
+  {
+    email: 'matched@test.com',
+    fullName: 'Dr. Anna Weber',
+    specialty: 'Neurology',
+    careerStage: 'fellow',
+    gender: 'female',
+    birthYear: 1991,
+    state: 'matched',     // is in a group this week → group reveal card
+  },
 ];
 
-const careerStages = [
-  'medical_student', 'resident_junior', 'resident_senior', 'fellow',
-  'attending_early', 'attending_senior', 'private_practice', 'academic'
+/** 8 real Berlin doctors to fill groups and matches */
+const BERLIN_DOCTORS = [
+  { fullName: 'Dr. Marcus Hoffmann', specialty: 'Internal Medicine',  gender: 'male',   careerStage: 'attending_senior', birthYear: 1980 },
+  { fullName: 'Dr. Elena Braun',     specialty: 'Pediatrics',         gender: 'female', careerStage: 'fellow',           birthYear: 1990 },
+  { fullName: 'Dr. Felix Wagner',    specialty: 'Emergency Medicine', gender: 'male',   careerStage: 'resident_senior',  birthYear: 1992 },
+  { fullName: 'Dr. Sophie Müller',   specialty: 'Dermatology',        gender: 'female', careerStage: 'attending_early',  birthYear: 1988 },
+  { fullName: 'Dr. Jan Fischer',     specialty: 'Orthopedics',        gender: 'male',   careerStage: 'attending_senior', birthYear: 1979 },
+  { fullName: 'Dr. Nina Schulz',     specialty: 'Psychiatry',         gender: 'female', careerStage: 'resident_junior',  birthYear: 1994 },
+  { fullName: 'Dr. Tom Keller',      specialty: 'Radiology',          gender: 'male',   careerStage: 'attending_early',  birthYear: 1987 },
+  { fullName: 'Dr. Mia Schneider',   specialty: 'Gynecology',         gender: 'female', careerStage: 'attending_senior', birthYear: 1982 },
 ];
 
-const sports = ['running', 'cycling', 'swimming', 'gym', 'tennis', 'football', 'basketball', 'hiking', 'yoga', 'golf', 'volleyball', 'badminton'];
-const socialStyles = ['introverted', 'extroverted', 'ambivert', 'social_butterfly', 'selective'];
-const cultureInterests = ['art', 'music', 'theater', 'museums', 'literature', 'cinema', 'photography', 'poetry', 'dance'];
-const lifestyles = ['minimalist', 'active', 'balanced', 'work_focused', 'family_oriented', 'adventure_seeker'];
-const cities = ['Riyadh', 'Jeddah', 'Dammam', 'Mecca', 'Medina', 'Khobar', 'Abha', 'Tabuk', 'Buraidah', 'Khamis Mushait'];
-const neighborhoods = ['Al Olaya', 'Al Malaz', 'Al Naseem', 'Al Wurud', 'Al Faisaliyah', 'Al Hamra', 'Al Rawdah', 'Al Aziziyah'];
-const genders = ['male', 'female'];
-const availabilitySlots = [
-  'weekend_morning', 'weekend_evening', 'weekday_evening', 
-  'weekday_afternoon', 'friday_morning', 'saturday_evening'
+const NEIGHBORHOODS = [
+  'Mitte', 'Prenzlauer Berg', 'Friedrichshain', 'Kreuzberg',
+  'Charlottenburg', 'Schöneberg', 'Neukölln', 'Tempelhof',
 ];
 
-// ============================================
-// Helper Functions
-// ============================================
-function getRandomItem(array) {
-  return array[Math.floor(Math.random() * array.length)];
+// ── Date helpers ─────────────────────────────────────────────────────────────
+
+function getUpcomingWeekend() {
+  const now = new Date();
+  const dow = now.getDay();
+  const daysToFriday = dow === 0 ? 5 : dow === 6 ? 6 : 5 - dow;
+
+  const friday = new Date(now);
+  friday.setDate(now.getDate() + daysToFriday);
+  friday.setHours(19, 0, 0, 0);
+
+  const saturday = new Date(friday);
+  saturday.setDate(friday.getDate() + 1);
+  saturday.setHours(19, 0, 0, 0);
+
+  const sunday = new Date(friday);
+  sunday.setDate(friday.getDate() + 2);
+  sunday.setHours(12, 0, 0, 0);
+
+  return { friday, saturday, sunday };
 }
 
-function getRandomItems(array, min = 2, max = 4) {
-  const count = Math.floor(Math.random() * (max - min + 1)) + min;
-  const shuffled = [...array].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
+/** Returns this week's Thursday — used as match_week for the 'matched' state */
+function getThisThursday() {
+  const now = new Date();
+  const diff = 4 - now.getDay(); // positive = ahead, negative = last week
+  const thu = new Date(now);
+  thu.setDate(now.getDate() + (diff >= 0 ? diff : diff + 7));
+  thu.setHours(0, 0, 0, 0);
+  return thu.toISOString().split('T')[0];
 }
 
-// ============================================
-// تنظيف البيانات القديمة (اختياري)
-// ============================================
-async function cleanOldData() {
-  if (!CONFIG.CLEAN_OLD_DATA) return;
+// ── DB helpers ───────────────────────────────────────────────────────────────
 
-  console.log('🧹 Cleaning old test data...');
-  
-  try {
-    // حذف المستخدمين الاختبارين القديمين
-    const { data: oldUsers } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .like('email', 'test_user_%@connectthrive.com');
-
-    if (oldUsers && oldUsers.length > 0) {
-      const userIds = oldUsers.map(u => u.user_id);
-      
-      // حذف من جداول مرتبطة
-      await supabase.from('group_members').delete().in('user_id', userIds);
-      await supabase.from('matches').delete().or(`user_id.in.(${userIds.join(',')}),matched_user_id.in.(${userIds.join(',')})`);
-      await supabase.from('onboarding_preferences').delete().in('user_id', userIds);
-      await supabase.from('profiles').delete().in('user_id', userIds);
-      
-      // حذف من auth
-      for (const userId of userIds) {
-        await supabase.auth.admin.deleteUser(userId);
-      }
-      
-      console.log(`   ✅ Deleted ${oldUsers.length} old test users`);
-    }
-  } catch (error) {
-    console.warn('   ⚠️  Could not clean old data:', error.message);
-  }
+function toEmail(fullName) {
+  return `${fullName.toLowerCase().replace(/[^a-z]/g, '.')}@test.com`;
 }
 
-// ============================================
-// إنشاء مستخدم
-// ============================================
-async function createUser(userNumber) {
-  const email = `test_user_${userNumber}@connectthrive.com`;
-  const password = 'password123';
-  const fullName = `Dr. Test User ${userNumber}`;
-  
-  // إنشاء بيانات واقعية مع تجميع للمطابقة الأفضل
-  const groupIndex = Math.floor((userNumber - 1) / CONFIG.GROUP_SIZE);
-  
-  const specialty = getRandomItem(specialties);
-  const careerStage = getRandomItem(careerStages);
-  const gender = getRandomItem(genders);
-  
-  // تجميع المستخدمين في نفس المدينة للمطابقة الأفضل
-  const city = cities[groupIndex % cities.length];
-  const neighborhood = Math.random() > 0.5 ? getRandomItem(neighborhoods) : null;
-  const birthYear = 1975 + Math.floor(Math.random() * 25); // أعمار 30-55
-  
-  // إنشاء اهتمامات متداخلة داخل المجموعات
-  const baseSports = sports.slice(0, 6); // رياضات أساسية مشتركة
-  const userSports = [...getRandomItems(baseSports, 3, 5), ...getRandomItems(sports.slice(6), 0, 2)];
-  
-  const userSocial = getRandomItems(socialStyles, 1, 2);
-  const userCulture = getRandomItems(cultureInterests, 2, 5);
-  const userLifestyle = getRandomItems(lifestyles, 1, 3);
-  const userAvailability = getRandomItems(availabilitySlots, 2, 4);
+async function deleteByEmail(email) {
+  // Look up uid via auth (profiles table has no email column)
+  let uid = null;
+  const { data: list } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const found = list?.users?.find(u => u.email === email);
+  uid = found?.id ?? null;
 
-  try {
-    // إنشاء مستخدم auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: fullName
-      }
+  if (!uid) return;
+
+  await supabase.from('group_members').delete().eq('user_id', uid);
+  await supabase.from('bookings').delete().eq('user_id', uid);
+  await supabase.from('matches').delete().or(`user_id.eq.${uid},matched_user_id.eq.${uid}`);
+  await supabase.from('onboarding_preferences').delete().eq('user_id', uid);
+  await supabase.from('profiles').delete().eq('user_id', uid);
+  await supabase.auth.admin.deleteUser(uid);
+}
+
+async function createUser({ email, fullName, specialty, careerStage, gender, birthYear, neighborhood }) {
+  // Auth
+  const { data: auth, error: authErr } = await supabase.auth.admin.createUser({
+    email,
+    password: PASSWORD,
+    email_confirm: true,
+    user_metadata: { full_name: fullName },
+  });
+  if (authErr) { console.error(`  ❌ auth: ${email} — ${authErr.message}`); return null; }
+  const uid = auth.user.id;
+
+  // Profile (upsert because a DB trigger may auto-create a bare row on auth.users insert)
+  const { error: profErr } = await supabase.from('profiles').upsert({
+    user_id: uid, full_name: fullName,
+    city: CITY, neighborhood: neighborhood ?? null,
+    gender, date_of_birth: `${birthYear}-06-15`,
+    languages: ['German', 'English'],
+    status: 'active',
+  }, { onConflict: 'user_id' });
+  if (profErr) { console.error(`  ❌ profile: ${email} — ${profErr.message}`); return null; }
+
+  // Onboarding prefs
+  await supabase.from('onboarding_preferences').insert({
+    user_id: uid, specialty, career_stage: careerStage,
+    sports: ['running', 'cycling', 'gym', 'yoga'],
+    social_style: ['ambivert'],
+    culture_interests: ['art', 'music', 'cinema', 'theater'],
+    lifestyle: ['active', 'balanced'],
+    goals: ['networking', 'friendship'],
+    availability_slots: ['weekend_morning', 'weekend_evening', 'friday_morning'],
+    open_to_business: false,
+    completed_at: new Date().toISOString(),
+  });
+
+  return uid;
+}
+
+// ── Steps ────────────────────────────────────────────────────────────────────
+
+async function step1_clean() {
+  console.log('\n🧹 Step 1 — Cleaning previous test data...');
+
+  // Remove main accounts
+  for (const acc of MAIN_ACCOUNTS) await deleteByEmail(acc.email);
+  // Remove supporting doctors
+  for (const doc of BERLIN_DOCTORS) await deleteByEmail(toEmail(doc.fullName));
+  // Remove this weekend's Berlin events
+  const { friday } = getUpcomingWeekend();
+  const wStart = new Date(friday); wStart.setHours(0, 0, 0, 0);
+  const wEnd   = new Date(friday); wEnd.setDate(friday.getDate() + 3); wEnd.setHours(23, 59, 59, 999);
+  await supabase.from('events').delete().eq('city', CITY)
+    .gte('date_time', wStart.toISOString()).lte('date_time', wEnd.toISOString());
+  // Remove test groups
+  await supabase.from('match_groups').delete().like('name', 'BeyondRounds Test%');
+
+  console.log('   ✅ Done');
+}
+
+async function step2_supportingDoctors() {
+  console.log('\n👥 Step 2 — Creating 8 Berlin supporting doctors...');
+  const ids = [];
+  for (let i = 0; i < BERLIN_DOCTORS.length; i++) {
+    const doc = BERLIN_DOCTORS[i];
+    const uid = await createUser({
+      email: toEmail(doc.fullName),
+      fullName: doc.fullName,
+      specialty: doc.specialty,
+      careerStage: doc.careerStage,
+      gender: doc.gender,
+      birthYear: doc.birthYear,
+      neighborhood: NEIGHBORHOODS[i % NEIGHBORHOODS.length],
     });
+    if (uid) {
+      ids.push(uid);
+      console.log(`   ✅ ${doc.fullName.padEnd(26)} ${doc.specialty}`);
+    }
+  }
+  return ids;
+}
 
-    if (authError) {
-      console.error(`❌ Error creating user ${userNumber}:`, authError.message);
-      return null;
+async function step3_weekendEvents() {
+  console.log('\n📅 Step 3 — Creating Berlin weekend events...');
+  const { friday, saturday, sunday } = getUpcomingWeekend();
+
+  const { data, error } = await supabase.from('events').insert([
+    { city: CITY, meetup_type: 'dinner', date_time: friday.toISOString(),   neighborhood: 'Mitte',           max_participants: 24, status: 'open' },
+    { city: CITY, meetup_type: 'dinner', date_time: saturday.toISOString(), neighborhood: 'Prenzlauer Berg', max_participants: 24, status: 'open' },
+    { city: CITY, meetup_type: 'brunch', date_time: sunday.toISOString(),   neighborhood: 'Friedrichshain',  max_participants: 24, status: 'open' },
+  ]).select('id, date_time');
+
+  if (error) { console.error('   ❌', error.message); return {}; }
+
+  const [fri, sat, sun] = data;
+  console.log(`   ✅ Friday   ${friday.toDateString()}  19:00  → id: ${fri.id}`);
+  console.log(`   ✅ Saturday ${saturday.toDateString()} 19:00  → id: ${sat.id}`);
+  console.log(`   ✅ Sunday   ${sunday.toDateString()}  12:00  → id: ${sun.id}`);
+  return { friday: fri.id, saturday: sat.id, sunday: sun.id };
+}
+
+async function step4_mainAccounts(supportingIds, eventIds) {
+  console.log('\n🧑‍⚕️ Step 4 — Creating 3 main test accounts...');
+  const uids = {};
+
+  for (const acc of MAIN_ACCOUNTS) {
+    const uid = await createUser({
+      email: acc.email,
+      fullName: acc.fullName,
+      specialty: acc.specialty,
+      careerStage: acc.careerStage,
+      gender: acc.gender,
+      birthYear: acc.birthYear,
+      neighborhood: NEIGHBORHOODS[0],
+    });
+    if (!uid) continue;
+    uids[acc.state] = uid;
+
+    // ── Wire: reserved → paid Friday booking ────────────────────────────────
+    if (acc.state === 'reserved') {
+      if (!eventIds.friday) { console.warn('   ⚠️  No Friday event ID, skipping booking'); }
+      else {
+        const { data: bk, error: bkErr } = await supabase.from('bookings').insert({
+          user_id: uid,
+          event_id: eventIds.friday,
+          status: 'confirmed',
+          paid: true,
+          preferences: { day: 'friday' },
+        }).select('id').single();
+        if (bkErr) console.error('   ❌ Booking:', bkErr.message);
+        else       console.log(`   ✅ [reserved]  ${acc.fullName} — booked Friday (booking: ${bk.id})`);
+      }
     }
 
-    const userId = authData.user.id;
+    // ── Wire: matched → group this week with 3 supporting doctors ───────────
+    if (acc.state === 'matched') {
+      const matchWeek = getThisThursday();
 
-    // إنشاء profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        user_id: userId,
-        full_name: fullName,
-        city,
-        neighborhood,
-        gender,
-        birth_year: birthYear,
-        languages: ['Arabic', 'English'],
-        status: 'active'
+      const { data: grp, error: grpErr } = await supabase.from('match_groups').insert({
+        name: 'BeyondRounds Test Group – Berlin',
+        group_type: 'mixed',
+        gender_composition: '2F2M',
+        status: 'active',
+        match_week: matchWeek,
+      }).select('id').single();
+
+      if (grpErr) { console.error('   ❌ Group:', grpErr.message); continue; }
+      const groupId = grp.id;
+
+      // Add Anna + first 3 supporting doctors to the group
+      const memberIds = [uid, ...supportingIds.slice(0, 3)];
+      const { error: mErr } = await supabase.from('group_members').insert(
+        memberIds.map(mid => ({ group_id: groupId, user_id: mid }))
+      );
+      if (mErr) console.error('   ❌ group_members:', mErr.message);
+
+      // Create group conversation row (group_conversations has only group_id + id)
+      const { error: cErr } = await supabase.from('group_conversations').insert({
+        group_id: groupId,
       });
+      if (cErr && !cErr.message?.includes('does not exist') && !cErr.message?.includes('relation')) {
+        console.warn('   ⚠️  group_conversations:', cErr.message);
+      }
 
-    if (profileError) {
-      console.error(`❌ Error creating profile for user ${userNumber}:`, profileError.message);
-      return null;
+      console.log(`   ✅ [matched]   ${acc.fullName} — group created (week: ${matchWeek}, ${memberIds.length} members)`);
     }
 
-    // إنشاء onboarding preferences
-    const { error: prefsError } = await supabase
-      .from('onboarding_preferences')
-      .insert({
-        user_id: userId,
-        specialty,
-        career_stage: careerStage,
-        sports: userSports,
-        social_style: userSocial,
-        culture_interests: userCulture,
-        lifestyle: userLifestyle,
-        goals: ['networking', 'friendship', 'activity_partners'],
-        availability_slots: userAvailability,
-        open_to_business: Math.random() > 0.7, // 30% مهتمين بالأعمال
-        completed_at: new Date().toISOString()
+    if (acc.state === 'none') {
+      console.log(`   ✅ [none]      ${acc.fullName} — no booking (will see 3 day cards)`);
+    }
+  }
+
+  return uids;
+}
+
+async function step5_matches(allIds) {
+  console.log('\n💘 Step 5 — Creating matches between all Berlin doctors...');
+  const rows = [];
+  for (let i = 0; i < allIds.length; i++) {
+    for (let j = i + 1; j < allIds.length; j++) {
+      rows.push({
+        user_id: allIds[i],
+        matched_user_id: allIds[j],
+        match_score: 60 + Math.floor(Math.random() * 35), // 60–95
+        status: 'accepted',
       });
-
-    if (prefsError) {
-      console.error(`❌ Error creating preferences for user ${userNumber}:`, prefsError.message);
-      return null;
     }
-
-    console.log(`✅ Created user ${userNumber}: ${fullName} (${specialty}, ${city})`);
-    return { userId, gender, specialty, city };
-  } catch (error) {
-    console.error(`❌ Unexpected error creating user ${userNumber}:`, error.message);
-    return null;
   }
+  const { error } = await supabase.from('matches').insert(rows);
+  if (error) console.error('   ❌ Matches:', error.message);
+  else       console.log(`   ✅ Created ${rows.length} matches (${allIds.length} doctors)`);
 }
 
-// ============================================
-// حساب المطابقات
-// ============================================
-async function calculateMatches() {
-  if (!CONFIG.CREATE_MATCHES) {
-    console.log('⏭️  Skipping matches calculation (--no-matches flag)');
-    return;
-  }
+// ── Main ─────────────────────────────────────────────────────────────────────
 
-  console.log('\n📊 Calculating matches...');
-  console.log('   This may take a few minutes...\n');
-  
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select('user_id')
-    .eq('status', 'active');
-
-  if (error || !profiles) {
-    console.error('❌ Error fetching profiles:', error);
-    return;
-  }
-
-  const userIds = profiles.map(p => p.user_id);
-  const totalPairs = (userIds.length * (userIds.length - 1)) / 2;
-  let matchesCreated = 0;
-  let processedPairs = 0;
-  const batchSize = 20;
-
-  console.log(`   Processing ${totalPairs} potential matches...\n`);
-
-  for (let i = 0; i < userIds.length; i++) {
-    const batch = [];
-    
-    for (let j = i + 1; j < userIds.length; j++) {
-      const userA = userIds[i];
-      const userB = userIds[j];
-      
-      batch.push({ userA, userB });
-      
-      if (batch.length >= batchSize || j === userIds.length - 1) {
-        const batchResults = await Promise.all(
-          batch.map(async ({ userA, userB }) => {
-            const { data: existingMatch } = await supabase
-              .from('matches')
-              .select('id')
-              .or(`and(user_id.eq.${userA},matched_user_id.eq.${userB}),and(user_id.eq.${userB},matched_user_id.eq.${userA})`)
-              .maybeSingle();
-
-            if (existingMatch) return null;
-
-            const { data: score, error: scoreError } = await supabase.rpc('calculate_match_score', {
-              user_a_id: userA,
-              user_b_id: userB
-            });
-
-            if (scoreError || !score || score < CONFIG.MIN_MATCH_SCORE) return null;
-
-            return {
-              user_id: userA,
-              matched_user_id: userB,
-              match_score: score,
-              status: 'pending'
-            };
-          })
-        );
-
-        const validMatches = batchResults.filter(m => m !== null);
-        
-        if (validMatches.length > 0) {
-          const { error: batchError } = await supabase
-            .from('matches')
-            .insert(validMatches);
-
-          if (!batchError) {
-            matchesCreated += validMatches.length;
-          }
-        }
-
-        processedPairs += batch.length;
-        
-        if (processedPairs % 100 === 0 || processedPairs === totalPairs) {
-          const progress = ((processedPairs / totalPairs) * 100).toFixed(1);
-          console.log(`   Progress: ${progress}% (${processedPairs}/${totalPairs} pairs, ${matchesCreated} matches created)`);
-        }
-
-        batch.length = 0;
-      }
-    }
-  }
-
-  console.log(`\n✅ Created ${matchesCreated} matches`);
-
-  // قبول أفضل المطابقات
-  const { error: acceptError } = await supabase
-    .from('matches')
-    .update({ status: 'accepted' })
-    .gte('match_score', 60)
-    .limit(20);
-
-  if (!acceptError) {
-    console.log('✅ Accepted top 20 matches (score ≥ 60)');
-  }
-}
-
-// ============================================
-// إنشاء المجموعات
-// ============================================
-async function createGroups() {
-  if (!CONFIG.CREATE_GROUPS) {
-    console.log('⏭️  Skipping groups creation (--no-groups flag)');
-    return;
-  }
-
-  console.log('\n👥 Creating groups...');
-
-  // حساب تاريخ الخميس القادم
-  const today = new Date();
-  const dayOfWeek = today.getUTCDay();
-  const daysUntilThursday = (4 - dayOfWeek + 7) % 7 || 7;
-  const nextThursday = new Date(today);
-  nextThursday.setUTCDate(today.getUTCDate() + daysUntilThursday);
-  nextThursday.setUTCHours(0, 0, 0, 0);
-  const weekDate = nextThursday.toISOString().split('T')[0];
-
-  console.log(`   Match week: ${weekDate} (Next Thursday)`);
-
-  const { data: users, error } = await supabase
-    .from('profiles')
-    .select('user_id, gender')
-    .eq('status', 'active');
-
-  if (error || !users) {
-    console.error('❌ Error fetching users:', error);
-    return;
-  }
-
-  const shuffledUsers = users.sort(() => Math.random() - 0.5);
-  const usersInGroups = new Set();
-  const totalUsers = shuffledUsers.length;
-  let processedUsers = 0;
-  let groupNumber = 1;
-
-  console.log(`   Distributing ${totalUsers} users into groups...\n`);
-
-  for (const user of shuffledUsers) {
-    if (usersInGroups.has(user.user_id)) continue;
-    processedUsers++;
-    
-    if (processedUsers % 10 === 0) {
-      const progress = ((processedUsers / totalUsers) * 100).toFixed(1);
-      console.log(`   Progress: ${progress}% (${processedUsers}/${totalUsers} users processed)`);
-    }
-
-    let targetGroup = null;
-
-    // محاولة إيجاد مجموعة مناسبة
-    if (user.gender === 'female') {
-      const { data: sameGenderGroups } = await supabase
-        .from('match_groups')
-        .select('id')
-        .eq('status', 'active')
-        .eq('match_week', weekDate)
-        .eq('group_type', 'same_gender')
-        .eq('gender_composition', 'all_female');
-
-      for (const group of sameGenderGroups || []) {
-        const { data: members } = await supabase
-          .from('group_members')
-          .select('user_id')
-          .eq('group_id', group.id);
-        
-        if (members && members.length < CONFIG.GROUP_SIZE) {
-          targetGroup = group.id;
-          break;
-        }
-      }
-
-      if (!targetGroup) {
-        const { data: mixedGroups } = await supabase
-          .from('match_groups')
-          .select('id')
-          .eq('status', 'active')
-          .eq('match_week', weekDate)
-          .eq('group_type', 'mixed');
-
-        for (const group of mixedGroups || []) {
-          const { data: members } = await supabase
-            .from('group_members')
-            .select('user_id')
-            .eq('group_id', group.id);
-          
-          if (members && members.length < CONFIG.GROUP_SIZE) {
-            targetGroup = group.id;
-            break;
-          }
-        }
-      }
-    } else {
-      const { data: sameGenderGroups } = await supabase
-        .from('match_groups')
-        .select('id')
-        .eq('status', 'active')
-        .eq('match_week', weekDate)
-        .eq('group_type', 'same_gender')
-        .eq('gender_composition', 'all_male');
-
-      for (const group of sameGenderGroups || []) {
-        const { data: members } = await supabase
-          .from('group_members')
-          .select('user_id')
-          .eq('group_id', group.id);
-        
-        if (members && members.length < CONFIG.GROUP_SIZE) {
-          targetGroup = group.id;
-          break;
-        }
-      }
-
-      if (!targetGroup) {
-        const { data: mixedGroups } = await supabase
-          .from('match_groups')
-          .select('id')
-          .eq('status', 'active')
-          .eq('match_week', weekDate)
-          .eq('group_type', 'mixed');
-
-        for (const group of mixedGroups || []) {
-          const { data: members } = await supabase
-            .from('group_members')
-            .select('user_id')
-            .eq('group_id', group.id);
-          
-          if (members && members.length < CONFIG.GROUP_SIZE) {
-            targetGroup = group.id;
-            break;
-          }
-        }
-      }
-    }
-
-    // إنشاء مجموعة جديدة إذا لزم الأمر
-    if (!targetGroup) {
-      const { data: existingGroups } = await supabase
-        .from('match_groups')
-        .select('group_type')
-        .eq('match_week', weekDate)
-        .eq('status', 'active');
-
-      const mixedCount = existingGroups?.filter(g => g.group_type === 'mixed').length || 0;
-      const sameCount = existingGroups?.filter(g => g.group_type === 'same_gender').length || 0;
-
-      const groupType = sameCount <= mixedCount ? 'same_gender' : 'mixed';
-      const genderComp = groupType === 'same_gender'
-        ? (user.gender === 'female' ? 'all_female' : 'all_male')
-        : (Math.random() < 0.5 ? '2F3M' : '3F2M');
-
-      const { data: newGroup, error: groupError } = await supabase
-        .from('match_groups')
-        .insert({
-          name: `Group ${groupNumber}`,
-          group_type: groupType,
-          gender_composition: genderComp,
-          status: 'active',
-          match_week: weekDate
-        })
-        .select()
-        .single();
-
-      if (groupError || !newGroup) {
-        console.error('❌ Error creating group:', groupError);
-        continue;
-      }
-
-      targetGroup = newGroup.id;
-      groupNumber++;
-    }
-
-    // إضافة المستخدم للمجموعة
-    if (targetGroup) {
-      const { error: memberError } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: targetGroup,
-          user_id: user.user_id
-        });
-
-      if (!memberError) {
-        usersInGroups.add(user.user_id);
-      }
-    }
-  }
-
-  console.log(`✅ Created groups for ${usersInGroups.size} users`);
-  
-  // إحصائيات المجموعات
-  const { data: groups } = await supabase
-    .from('match_groups')
-    .select('id, group_type, gender_composition')
-    .eq('match_week', weekDate)
-    .eq('status', 'active');
-  
-  if (groups) {
-    const mixedCount = groups.filter(g => g.group_type === 'mixed').length;
-    const sameCount = groups.filter(g => g.group_type === 'same_gender').length;
-    console.log(`   - ${mixedCount} mixed groups`);
-    console.log(`   - ${sameCount} same-gender groups`);
-    console.log(`   - Total: ${groups.length} groups`);
-  }
-}
-
-// ============================================
-// التنفيذ الرئيسي
-// ============================================
 async function main() {
-  console.log('🚀 Starting test seed process...\n');
+  const { friday } = getUpcomingWeekend();
 
-  // تنظيف البيانات القديمة
-  await cleanOldData();
+  console.log('╔══════════════════════════════════════════════════════╗');
+  console.log('║      BeyondRounds — Full System Seed                 ║');
+  console.log('╚══════════════════════════════════════════════════════╝');
+  console.log(`   City:    ${CITY}`);
+  console.log(`   Weekend: ${friday.toDateString()} → Sunday`);
 
-  // الخطوة 1: إنشاء المستخدمين
-  console.log(`👤 Creating ${CONFIG.USER_COUNT} users...`);
-  const createdUsers = [];
-  for (let i = 1; i <= CONFIG.USER_COUNT; i++) {
-    const user = await createUser(i);
-    if (user) {
-      createdUsers.push(user);
-    }
-    // تأخير صغير لتجنب rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  await step1_clean();
+  const supportingIds = await step2_supportingDoctors();
+  const eventIds      = await step3_weekendEvents();
+  const mainIds       = await step4_mainAccounts(supportingIds, eventIds);
 
-  console.log(`\n✅ Created ${createdUsers.length} users`);
+  const allIds = [...Object.values(mainIds), ...supportingIds].filter(Boolean);
+  await step5_matches(allIds);
 
-  // الخطوة 2: حساب المطابقات
-  await calculateMatches();
+  // ── Summary ──────────────────────────────────────────────────────────────
+  console.log('\n╔══════════════════════════════════════════════════════╗');
+  console.log('║  ✅  SEED COMPLETE                                    ║');
+  console.log('╚══════════════════════════════════════════════════════╝');
+  console.log('\n  Password for ALL accounts: Test1234!\n');
 
-  // الخطوة 3: إنشاء المجموعات
-  await createGroups();
+  console.log('  ┌─────────────────────────────────────────────────────────────┐');
+  console.log('  │  DASHBOARD STATE   NAME              EMAIL                  │');
+  console.log('  ├─────────────────────────────────────────────────────────────┤');
+  console.log('  │  3 day cards  →   Dr. Lena Becker    none@test.com          │');
+  console.log('  │  "You\'re in!" →   Dr. Kai Richter    reserved@test.com      │');
+  console.log('  │  Group reveal →   Dr. Anna Weber     matched@test.com       │');
+  console.log('  └─────────────────────────────────────────────────────────────┘');
 
-  console.log('\n🎉 Seed process completed!');
-  console.log(`\n📝 Login credentials:`);
-  console.log(`   Email: test_user_1@connectthrive.com through test_user_${CONFIG.USER_COUNT}@connectthrive.com`);
-  console.log(`   Password: password123`);
-  console.log(`\n💡 Tips:`);
-  console.log(`   - Use --clean to clean old test data before seeding`);
-  console.log(`   - Use --no-matches to skip match calculation`);
-  console.log(`   - Use --no-groups to skip group creation`);
-  console.log(`   - Specify user count: node seed-test.js 50`);
+  console.log('\n  Supporting Berlin doctors (password: Test1234!):');
+  BERLIN_DOCTORS.forEach(d => {
+    console.log(`    • ${d.fullName.padEnd(26)} ${toEmail(d.fullName)}`);
+  });
+
+  console.log('\n  Weekend events created:');
+  const { friday: fri, saturday: sat, sunday: sun } = getUpcomingWeekend();
+  console.log(`    • Friday   — ${fri.toDateString()} 19:00  Mitte`);
+  console.log(`    • Saturday — ${sat.toDateString()} 19:00  Prenzlauer Berg`);
+  console.log(`    • Sunday   — ${sun.toDateString()} 12:00  Friedrichshain`);
+  console.log('');
 }
 
 main().catch(console.error);

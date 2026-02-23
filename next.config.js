@@ -55,14 +55,41 @@ const nextConfig = {
 
   // Headers for security + cache
   async headers() {
+    // Content-Security-Policy:
+    // - 'unsafe-inline' for scripts is required by Next.js hydration and inline styles (Radix, Tailwind).
+    //   To remove it, upgrade to nonce-based CSP (requires middleware to inject nonces per request).
+    // - Adjust connect-src wss:// pattern if your Supabase project URL changes.
+    const cspDirectives = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://connect.facebook.net",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com",
+      "font-src 'self'",
+      "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com",
+      "frame-src https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
+      "media-src 'self'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "upgrade-insecure-requests",
+    ].join('; ');
+
+    const securityHeaders = [
+      // HSTS: force HTTPS for 2 years, include subdomains, eligible for preload list
+      { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self "https://js.stripe.com")' },
+      { key: 'Content-Security-Policy', value: cspDirectives },
+    ];
+
     return [
       {
         source: '/:path*',
-        headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-        ],
+        headers: securityHeaders,
       },
       // Static marketing pages: allow bfcache (avoid no-store)
       {

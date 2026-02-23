@@ -1,11 +1,7 @@
-'use client';
-
 import Image from 'next/image';
-import { useModal } from './LandingModalProvider';
+import { WAITLIST_URL } from '@/lib/waitlist';
 
 export function LandingFinalCTANew() {
-  const { openModal } = useModal();
-
   return (
     <section className="relative py-20 sm:py-28 overflow-hidden">
       {/* Background photo with plum overlay */}
@@ -26,13 +22,13 @@ export function LandingFinalCTANew() {
 
         {/* Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-          <button
-            type="button"
-            onClick={openModal}
+          <a
+            href={WAITLIST_URL}
             className="inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-[#F27C5C]/30"
+            aria-label="Join the BeyondRounds waitlist"
           >
-            Reserve my Friday spot
-          </button>
+            Join the waitlist
+          </a>
           <a
             href="#how-it-works"
             className="inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-semibold text-white/80 border border-white/20 hover:border-white/40 hover:text-white transition-all duration-200"

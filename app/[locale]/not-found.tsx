@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
 const messages = {
   de: {
     title: 'Seite nicht gefunden',
@@ -18,8 +19,14 @@ const messages = {
 } as const;
 
 export default function NotFound() {
-  const pathname = usePathname() ?? '';
-  const locale = pathname.startsWith('/en') ? 'en' : 'de';
+  // Avoid usePathname() — it requires Router context which may be null
+  // when this component is rendered inside Next.js's internal ErrorBoundary.
+  const [locale, setLocale] = useState<'de' | 'en'>('de');
+
+  useEffect(() => {
+    setLocale(window.location.pathname.startsWith('/en') ? 'en' : 'de');
+  }, []);
+
   const t = messages[locale];
 
   return (

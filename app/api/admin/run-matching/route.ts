@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 // ── Date helpers ────────────────────────────────────────────────────────────
 
@@ -21,9 +22,6 @@ function getWeekendBounds(): { start: Date; end: Date; friday: Date; matchWeek: 
   end.setHours(23, 59, 59, 999);
 
   // match_week is the Thursday of the same week (Thu reveal day)
-  const thursday = new Date(friday);
-  thursday.setDate(friday.getDate() + 6); // Mon=+3, Thu=+6 from prev Mon. Actually Thu = Fri - 1
-  // Thursday = Friday - 1
   const thu = new Date(friday);
   thu.setDate(friday.getDate() - 1);
   const matchWeek = thu.toISOString().split('T')[0];
@@ -46,20 +44,85 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
+// ── Auth helper ─────────────────────────────────────────────────────────────
+
+/**
+ * Validates the request is from:
+ *   A) An automated cron caller via INTERNAL_API_SECRET header, OR
+ *   B) An authenticated admin user (has 'admin' role in user_roles table)
+ *
+ * Returns the validated caller identity string, or null if unauthorized.
+ */
+async function validateAdminRequest(
+  request: NextRequest,
+  supabaseUrl: string,
+  serviceKey: string
+): Promise<{ ok: true; callerId: string } | { ok: false; status: number; error: string }> {
+  // Option A: Internal cron/automation via shared secret
+  const internalSecret = request.headers.get('x-internal-secret');
+  const expectedSecret = process.env.INTERNAL_API_SECRET;
+  if (expectedSecret && internalSecret === expectedSecret) {
+    return { ok: true, callerId: 'internal-cron' };
+  }
+
+  // Option B: Authenticated admin user
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { ok: false, status: 401, error: 'Unauthorized' };
+  }
+
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    return { ok: false, status: 401, error: 'Unauthorized' };
+  }
+
+  // Cryptographically verify the JWT using the anon key (getUser makes a network call)
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const authClient = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data: { user }, error: authErr } = await authClient.auth.getUser(token);
+
+  if (authErr || !user) {
+    return { ok: false, status: 401, error: 'Unauthorized' };
+  }
+
+  // Check admin role using service role (bypasses RLS)
+  const adminClient = createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data: roleRow } = await adminClient
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (roleRow?.role !== 'admin') {
+    return { ok: false, status: 403, error: 'Forbidden: admin role required' };
+  }
+
+  return { ok: true, callerId: user.id };
+}
+
 // ── Main route ──────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  // Auth: require service role or admin session (check for bearer token)
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   }
+
+  // Auth: require internal secret OR admin JWT
+  const auth = await validateAdminRequest(request, supabaseUrl, serviceKey);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  // Rate limit: 20 calls per minute per caller
+  const rlRes = checkRateLimit(auth.callerId, 'admin');
+  if (rlRes) return rlRes;
 
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -76,10 +139,14 @@ export async function POST(request: NextRequest) {
     .in('status', ['open', 'full']);
 
   if (eventsErr) {
-    return NextResponse.json({ error: eventsErr.message }, { status: 500 });
+    console.error('[run-matching] events query error:', eventsErr.message);
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
   if (!events || events.length === 0) {
-    return NextResponse.json({ error: 'No open events found for this weekend. Create events first.' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'No open events found for this weekend. Create events first.' },
+      { status: 404 }
+    );
   }
 
   const eventIds = (events as { id: string; date_time: string }[]).map(e => e.id);
@@ -93,10 +160,14 @@ export async function POST(request: NextRequest) {
     .eq('status', 'confirmed');
 
   if (bookingsErr) {
-    return NextResponse.json({ error: bookingsErr.message }, { status: 500 });
+    console.error('[run-matching] bookings query error:', bookingsErr.message);
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
   if (!bookings || bookings.length === 0) {
-    return NextResponse.json({ error: 'No paid confirmed bookings found for this weekend.' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'No paid confirmed bookings found for this weekend.' },
+      { status: 404 }
+    );
   }
 
   // 3. Find users already in a group this week
@@ -115,7 +186,9 @@ export async function POST(request: NextRequest) {
       .select('user_id')
       .in('group_id', existingGroupIds);
 
-    (existingMembers ?? []).forEach((m: { user_id: string }) => alreadyMatchedUserIds.add(m.user_id));
+    (existingMembers ?? []).forEach((m: { user_id: string }) =>
+      alreadyMatchedUserIds.add(m.user_id)
+    );
   }
 
   // 4. Build per-day user lists (exclude already matched users)
@@ -133,14 +206,13 @@ export async function POST(request: NextRequest) {
   for (const b of bookings as { user_id: string; event_id: string; preferences: Record<string, string> | null }[]) {
     if (alreadyMatchedUserIds.has(b.user_id)) continue;
 
-    // Prefer the day stored in preferences; fall back to event's day
     const prefDay = b.preferences?.day as 'friday' | 'saturday' | 'sunday' | undefined;
-    const day = prefDay && usersByDay[prefDay] !== undefined
-      ? prefDay
-      : eventDayMap.get(b.event_id);
+    const day =
+      prefDay && usersByDay[prefDay] !== undefined
+        ? prefDay
+        : eventDayMap.get(b.event_id);
 
     if (day) {
-      // Avoid duplicate user on same day
       if (!usersByDay[day].includes(b.user_id)) {
         usersByDay[day].push(b.user_id);
       }
@@ -154,12 +226,10 @@ export async function POST(request: NextRequest) {
   for (const day of ['friday', 'saturday', 'sunday'] as const) {
     const users = usersByDay[day];
     if (users.length < 2) {
-      // Not enough to form a group; skip
       skippedUsers.push(...users);
       continue;
     }
 
-    // Chunk into groups of 4; if remainder is 1 merge with previous group instead
     const chunks = chunkArray(users, 4);
     if (chunks.length > 1 && chunks[chunks.length - 1].length === 1) {
       const lonely = chunks.pop()!;
@@ -170,7 +240,6 @@ export async function POST(request: NextRequest) {
       const members = chunks[i];
       const groupNum = groupsCreated.length + 1;
 
-      // Create match_group
       const { data: grp, error: grpErr } = await supabase
         .from('match_groups')
         .insert({
@@ -184,21 +253,19 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (grpErr || !grp) {
-        console.error('Failed to create group:', grpErr?.message);
+        console.error('[run-matching] Failed to create group:', grpErr?.message);
         skippedUsers.push(...members);
         continue;
       }
 
       const groupId = (grp as { id: string }).id;
 
-      // Add members
       const { error: membErr } = await supabase
         .from('group_members')
         .insert(members.map(uid => ({ group_id: groupId, user_id: uid })));
 
-      if (membErr) console.error('group_members insert error:', membErr.message);
+      if (membErr) console.error('[run-matching] group_members insert error:', membErr.message);
 
-      // Create conversation
       await supabase.from('group_conversations').insert({ group_id: groupId });
 
       groupsCreated.push({ day, groupId, memberCount: members.length });
@@ -212,8 +279,9 @@ export async function POST(request: NextRequest) {
     totalGroupsCreated: groupsCreated.length,
     totalUsersMatched: groupsCreated.reduce((s, g) => s + g.memberCount, 0),
     skippedUsers: skippedUsers.length,
-    message: groupsCreated.length === 0
-      ? 'No groups created — all users may already be matched or there are not enough users per day.'
-      : `Created ${groupsCreated.length} group(s) for ${matchWeek} weekend.`,
+    message:
+      groupsCreated.length === 0
+        ? 'No groups created — all users may already be matched or there are not enough users per day.'
+        : `Created ${groupsCreated.length} group(s) for ${matchWeek} weekend.`,
   });
 }

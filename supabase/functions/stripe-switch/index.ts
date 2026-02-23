@@ -51,6 +51,17 @@ serve(async (req) => {
     const { newPriceId } = await req.json();
     if (!newPriceId) throw new Error("newPriceId is required");
 
+    // Validate newPriceId against our known price IDs — reject anything else
+    const ALLOWED_PRICE_IDS = new Set([
+      Deno.env.get("STRIPE_PRICE_ID_MONTHLY"),
+      Deno.env.get("STRIPE_PRICE_ID_THREE_MONTH"),
+      Deno.env.get("STRIPE_PRICE_ID_SIX_MONTH"),
+    ].filter((id): id is string => typeof id === "string" && id.startsWith("price_")));
+
+    if (!ALLOWED_PRICE_IDS.has(newPriceId)) {
+      throw Object.assign(new Error("Invalid plan selected"), { status: 400 });
+    }
+
     // ── Get subscription ─────────────────────────────────────────────────────
     const { data: sub } = await supabase
       .from("subscriptions")

@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { LanguageLinks } from './LanguageLinks';
+import { WAITLIST_URL } from '@/lib/waitlist';
 
 interface NavLink {
   href: string;
@@ -133,14 +134,14 @@ export function MarketingMobileMenu({
                 >
                   {logInLabel}
                 </Link>
-                <Link
-                  href={`/${locale}/onboarding`}
-                  prefetch={false}
+                <a
+                  href={WAITLIST_URL}
                   onClick={close}
                   className="flex min-h-[48px] items-center justify-center rounded-2xl font-semibold text-[0.9375rem] tracking-[0.01em] bg-[#F27C5C] text-white hover:bg-[#e8694d] active:bg-[#d8603f] active:scale-[0.98] transition-all duration-200 shadow-sm shadow-[#F27C5C]/20"
+                  aria-label="Join the BeyondRounds waitlist"
                 >
                   {joinNowLabel}
-                </Link>
+                </a>
               </>
             )}
           </div>

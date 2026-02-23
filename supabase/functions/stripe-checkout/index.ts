@@ -98,6 +98,18 @@ serve(async (req) => {
     const { priceId, successUrl, cancelUrl } = await req.json();
     if (!priceId) throw new Error("priceId is required");
 
+    // Validate priceId against our known price IDs — reject anything else
+    const ALLOWED_PRICE_IDS = new Set([
+      Deno.env.get("STRIPE_PRICE_ID_ONE_TIME"),
+      Deno.env.get("STRIPE_PRICE_ID_MONTHLY"),
+      Deno.env.get("STRIPE_PRICE_ID_THREE_MONTH"),
+      Deno.env.get("STRIPE_PRICE_ID_SIX_MONTH"),
+    ].filter((id): id is string => typeof id === "string" && id.startsWith("price_")));
+
+    if (!ALLOWED_PRICE_IDS.has(priceId)) {
+      throw Object.assign(new Error("Invalid plan selected"), { status: 400 });
+    }
+
     // Detect mode: one-time vs subscription
     const isOneTime = ONE_TIME_PRICE_IDS.has(priceId);
     const mode = isOneTime ? "payment" : "subscription";
