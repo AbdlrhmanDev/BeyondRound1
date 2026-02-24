@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { getT } from '@/lib/i18n/t';
 import { LanguageLinks } from './LanguageLinks';
 import { ScrollHeader } from './ScrollHeader';
-import { WAITLIST_URL } from '@/lib/waitlist';
 
 const MarketingMobileMenu = dynamic(() => import('./MarketingMobileMenu').then((m) => ({ default: m.MarketingMobileMenu })), {
   ssr: true,
@@ -85,11 +84,11 @@ export function MarketingHeaderHtml({ dict, locale, isAuthenticated = false }: M
                   {t('common.logIn')}
                 </Link>
                 <a
-                  href={WAITLIST_URL}
+                  href="/onboarding"
                   className="inline-flex h-9 items-center justify-center rounded-full px-5 font-semibold text-[0.8125rem] tracking-[0.01em] bg-[#F27C5C] text-white hover:bg-[#e8694d] active:bg-[#d8603f] transition-all duration-200 shadow-[0_2px_8px_rgba(242,124,92,0.3)] hover:shadow-[0_4px_12px_rgba(242,124,92,0.35)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F27C5C]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#3A0B22]"
                   aria-label="Join the BeyondRounds waitlist"
                 >
-                  Join the waitlist
+                  {t('common.joinNow')}
                 </a>
               </>
             )}
@@ -100,7 +99,7 @@ export function MarketingHeaderHtml({ dict, locale, isAuthenticated = false }: M
             locale={locale}
             navLinks={navLinks.map((l) => ({ href: l.href, label: t(l.labelKey) }))}
             logInLabel={t('common.logIn')}
-            joinNowLabel="Join the waitlist"
+            joinNowLabel={t('common.joinNow')}
             languageLabel={t('common.language')}
             isAuthenticated={isAuthenticated}
             dashboardLabel={t('common.dashboard')}

@@ -12,16 +12,16 @@ export function LandingProblem({ t }: LandingProblemProps) {
           {/* Left: Copy */}
           <div>
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#3A0B22] tracking-tight leading-[1.15] mb-6">
-              Being a doctor can feel lonely — even when you&apos;re surrounded by people.
+              {t('landing.problemTitle')}
             </h2>
 
             <p className="text-[#5E555B] text-base leading-relaxed mb-6">
-              Medicine is demanding. Long hours, rotating hospitals, new cities, and little time to build real friendships.
+              {t('landing.problemDesc')}
             </p>
 
             <p className="text-[#3A0B22] font-bold text-lg leading-snug mb-8">
-              The problem isn&apos;t motivation.<br />
-              The problem is structure.
+              {t('landing.problemBold1')}<br />
+              {t('landing.problemBold2')}
             </p>
 
             {/* CTA — soft, "learn" phase */}
@@ -29,7 +29,7 @@ export function LandingProblem({ t }: LandingProblemProps) {
               href="#how-it-works"
               className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-[#3A0B22] border border-[#3A0B22]/20 hover:border-[#3A0B22]/40 hover:bg-[#3A0B22]/[0.03] active:bg-[#3A0B22]/[0.06] transition-all duration-200"
             >
-              See how it works
+              {t('landing.seeHowItWorks')}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
             </a>
           </div>

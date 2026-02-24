@@ -18,7 +18,7 @@ const footerLinks = {
   legal: [
     { labelKey: 'common.termsConditions', href: '/terms' },
     { labelKey: 'common.privacyPolicy', href: '/privacy' },
-    { labelKey: 'landing.impressum', href: '/impressum' },
+    { labelKey: 'common.impressum', href: '/impressum' },
   ],
   support: [
     { labelKey: 'common.contactUs', href: `mailto:${EMAILS.contact}` },

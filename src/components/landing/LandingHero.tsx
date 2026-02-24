@@ -2,7 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { WAITLIST_URL } from '@/lib/waitlist';
+
+interface LandingHeroProps {
+  translations: {
+    headline: string;
+    subheadline: string;
+    subheadline2: string;
+    limitedSpots: string;
+    limitedSpotsCount: string;
+    registrationClosesIn: string;
+    cta: string;
+    ctaHowItWorks: string;
+    verifiedOnly: string;
+    smallGroups: string;
+    weekendMeetups: string;
+  };
+}
 
 /** Countdown to next Friday 18:00 Berlin time */
 function useCountdown() {
@@ -45,7 +60,7 @@ function pad(n: number) {
   return String(n).padStart(2, '0');
 }
 
-export function LandingHero() {
+export function LandingHero({ translations: tt }: LandingHeroProps) {
   const { days, hours, minutes, seconds } = useCountdown();
 
   return (
@@ -73,23 +88,23 @@ export function LandingHero() {
 
         {/* Headline */}
         <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.15] mb-6 max-w-3xl mx-auto">
-          The weekly meetups turning isolated doctors into real friendships.
+          {tt.headline}
         </h1>
 
         {/* Subheadline */}
         <p className="text-white/80 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-          No swiping. No networking. No awkward small talk.<br />
-          We match you with 3–4 verified doctors in your city — so you just show up.
+          {tt.subheadline}<br />
+          {tt.subheadline2}
         </p>
 
         {/* Scarcity box */}
         <div className="inline-block bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-6 sm:px-8 py-4 mb-8">
-          <p className="text-white font-semibold text-sm mb-1">Limited weekly spots</p>
+          <p className="text-white font-semibold text-sm mb-1">{tt.limitedSpots}</p>
           <p className="text-white/70 text-sm mb-2">
-            Only <span className="text-[#F6B4A8] font-semibold">24 doctors</span> per weekend in Berlin.
+            {tt.limitedSpotsCount}
           </p>
           <p className="text-white/60 text-xs">
-            Registration closes in:{' '}
+            {tt.registrationClosesIn}{' '}
             <span className="text-white font-bold font-mono">
               {pad(days)}d : {pad(hours)}h : {pad(minutes)}m : {pad(seconds)}s
             </span>
@@ -99,17 +114,17 @@ export function LandingHero() {
         {/* Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <a
-            href={WAITLIST_URL}
+            href="/onboarding"
             className="inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-semibold bg-[#F27C5C] text-white hover:bg-[#e06a4a] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-[#F27C5C]/30"
-            aria-label="Join the BeyondRounds waitlist"
+            aria-label={tt.cta}
           >
-            Join the waitlist
+            {tt.cta}
           </a>
           <a
             href="#how-it-works"
             className="inline-flex items-center justify-center rounded-full px-8 py-4 text-base font-semibold text-white/90 border border-white/30 hover:border-white/50 hover:bg-white/5 transition-all duration-200"
           >
-            How it works
+            {tt.ctaHowItWorks}
           </a>
         </div>
 
@@ -117,15 +132,15 @@ export function LandingHero() {
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-white/70">
           <span className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F6B4A8" strokeWidth="2"><path d="M20 6 9 17l-5-5" /></svg>
-            Verified doctors only
+            {tt.verifiedOnly}
           </span>
           <span className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F6B4A8" strokeWidth="2"><path d="M20 6 9 17l-5-5" /></svg>
-            Small curated groups (3–4)
+            {tt.smallGroups}
           </span>
           <span className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F6B4A8" strokeWidth="2"><path d="M20 6 9 17l-5-5" /></svg>
-            Weekend meetups (Fri–Sun)
+            {tt.weekendMeetups}
           </span>
         </div>
       </div>

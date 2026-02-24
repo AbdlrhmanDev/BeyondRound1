@@ -1,19 +1,64 @@
-'use client';
-
 import Image from "next/image";
 import { Shield, Users, Heart, CalendarCheck, MessageCircle } from "lucide-react";
-import { WAITLIST_URL } from "@/lib/waitlist";
 
-const About = () => {
+interface AboutProps {
+  tt: {
+    badge: string;
+    headline: string;
+    subheadline: string;
+    missionTitle: string;
+    missionP1: string;
+    missionBold: string;
+    missionP2: string;
+    whyTitle: string;
+    why1Title: string; why1Desc: string;
+    why2Title: string; why2Desc: string;
+    why3Title: string; why3Desc: string;
+    why4Title: string; why4Desc: string;
+    why5Title: string; why5Desc: string;
+    expTitle: string;
+    expP1: string;
+    expP2: string;
+    expP3: string;
+    trustTitle: string;
+    trust1Title: string; trust1Desc: string;
+    trust2Title: string; trust2Desc: string;
+    trust3Title: string; trust3Desc: string;
+    trust4Title: string; trust4Desc: string;
+    ctaTitle: string;
+    ctaSubtitle: string;
+    ctaButton: string;
+    imgAlt1: string;
+    imgAlt2: string;
+    imgAlt3: string;
+    imgAlt4: string;
+  };
+}
+
+const About = ({ tt }: AboutProps) => {
+  const whyItems = [
+    { icon: Users,        title: tt.why1Title, desc: tt.why1Desc },
+    { icon: Shield,       title: tt.why2Title, desc: tt.why2Desc },
+    { icon: CalendarCheck,title: tt.why3Title, desc: tt.why3Desc },
+    { icon: MessageCircle,title: tt.why4Title, desc: tt.why4Desc },
+    { icon: Heart,        title: tt.why5Title, desc: tt.why5Desc },
+  ];
+
+  const trustItems = [
+    { title: tt.trust1Title, desc: tt.trust1Desc },
+    { title: tt.trust2Title, desc: tt.trust2Desc },
+    { title: tt.trust3Title, desc: tt.trust3Desc },
+    { title: tt.trust4Title, desc: tt.trust4Desc },
+  ];
+
   return (
     <div className="min-h-screen bg-[#F6F1EC]">
       {/* Hero */}
       <section className="relative min-h-[480px] sm:min-h-[580px] flex items-center overflow-hidden">
-        {/* Background image */}
         <div className="absolute inset-0">
           <Image
             src="https://images.unsplash.com/photo-1764079648275-a37d1f5104ae?w=1400&q=85&auto=format&fit=crop"
-            alt="Friends gathered inside a warmly lit café"
+            alt={tt.imgAlt1}
             fill
             className="object-cover"
             sizes="100vw"
@@ -21,50 +66,43 @@ const About = () => {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#1A0A12]/70 via-[#3A0B22]/60 to-[#1A0A12]/85" />
         </div>
-        {/* Content */}
         <div className="container mx-auto px-5 sm:px-8 max-w-3xl relative z-10 text-center pt-32 pb-20">
-          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#F6B4A8] mb-4">About BeyondRounds</p>
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#F6B4A8] mb-4">{tt.badge}</p>
           <h1 className="font-display text-4xl sm:text-5xl font-bold text-white tracking-tight leading-[1.15] mb-6">
-            A calmer way for doctors to make real friends.
+            {tt.headline}
           </h1>
           <p className="text-lg text-white/75 max-w-xl mx-auto leading-relaxed">
-            Medicine is demanding. Friendships shouldn't be. BeyondRounds gives doctors the structure to show up, connect, and build lasting relationships — without the effort of organizing everything yourself.
+            {tt.subheadline}
           </p>
         </div>
       </section>
 
-      {/* Photo Gallery — editorial layout */}
+      {/* Photo Gallery */}
       <section className="container mx-auto px-5 sm:px-8 max-w-4xl pb-16">
         <div className="grid grid-cols-3 grid-rows-2 gap-3 h-[240px] sm:h-[420px]">
-          {/* Main feature image — left, spans full height */}
           <div className="col-span-2 row-span-2 relative rounded-[18px] sm:rounded-[24px] overflow-hidden">
             <Image
               src="https://images.unsplash.com/photo-1731475761027-0b6b33b74547?w=900&q=85&auto=format&fit=crop"
-              alt="Group of friends sitting around a dinner table together"
-              fill
-              className="object-cover"
+              alt={tt.imgAlt2}
+              fill className="object-cover"
               sizes="(max-width: 640px) 66vw, (max-width: 1024px) 580px, 600px"
               priority
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#1A0A12]/20 to-transparent" />
           </div>
-          {/* Top right */}
           <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden">
             <Image
               src="https://images.unsplash.com/photo-1764079648275-a37d1f5104ae?w=500&q=80&auto=format&fit=crop"
-              alt="Friends gathered inside a warmly lit café"
-              fill
-              className="object-cover"
+              alt={tt.imgAlt3}
+              fill className="object-cover"
               sizes="(max-width: 640px) 33vw, 290px"
             />
           </div>
-          {/* Bottom right */}
           <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden">
             <Image
               src="https://images.unsplash.com/photo-1758525225816-8dd1901ef6ec?w=500&q=80&auto=format&fit=crop"
-              alt="Two women laughing at a café table"
-              fill
-              className="object-cover"
+              alt={tt.imgAlt4}
+              fill className="object-cover"
               sizes="(max-width: 640px) 33vw, 290px"
             />
           </div>
@@ -74,31 +112,19 @@ const About = () => {
       {/* Mission */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl pb-20">
         <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-4">The mission</h2>
-          <p className="text-[#5E555B] leading-relaxed mb-4">
-            Doctors are surrounded by people all day — patients, nurses, colleagues — yet many describe a deep sense of social isolation outside the hospital. Long hours, rotating schedules, and frequent relocations make it nearly impossible to maintain friendships the way others do.
-          </p>
-          <p className="text-[#3A0B22] font-semibold text-lg">
-            The problem isn't motivation. The problem is structure.
-          </p>
-          <p className="text-[#5E555B] leading-relaxed mt-4">
-            BeyondRounds provides that structure: small, curated groups of verified doctors who meet weekly in their city. No organizing. No guessing. Just show up.
-          </p>
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-4">{tt.missionTitle}</h2>
+          <p className="text-[#5E555B] leading-relaxed mb-4">{tt.missionP1}</p>
+          <p className="text-[#3A0B22] font-semibold text-lg">{tt.missionBold}</p>
+          <p className="text-[#5E555B] leading-relaxed mt-4">{tt.missionP2}</p>
         </div>
       </section>
 
       {/* Why It Works */}
       <section className="bg-[#3A0B22] py-20">
         <div className="container mx-auto px-5 sm:px-8 max-w-3xl">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mb-10">Why it works</h2>
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mb-10">{tt.whyTitle}</h2>
           <div className="space-y-6">
-            {[
-              { icon: Users, title: "Small groups, not crowds", desc: "3–4 doctors per meetup. Intimate enough for real conversation." },
-              { icon: Shield, title: "Verified doctors only", desc: "Every member is verified. You know you're among peers." },
-              { icon: CalendarCheck, title: "Weekly rhythm", desc: "Every weekend, a new match. Consistency builds trust." },
-              { icon: MessageCircle, title: "Group chat with prompts", desc: "Break the ice before you meet. Arrive already connected." },
-              { icon: Heart, title: "Low-pressure, high-warmth", desc: "Not dating. Not networking. Just good company." },
-            ].map((item) => (
+            {whyItems.map((item) => (
               <div key={item.title} className="flex gap-4 items-start">
                 <div className="h-10 w-10 rounded-xl bg-[#F27C5C]/15 flex items-center justify-center shrink-0">
                   <item.icon className="h-5 w-5 text-[#F27C5C]" />
@@ -115,30 +141,19 @@ const About = () => {
 
       {/* The Experience */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl py-20">
-        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">The experience</h2>
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">{tt.expTitle}</h2>
         <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
-          <p className="text-[#5E555B] leading-relaxed mb-4">
-            On Thursday, you'll receive your match: 3–4 doctors in your city who share your vibe and interests. A private group chat opens with conversation prompts and suggested meetup spots.
-          </p>
-          <p className="text-[#5E555B] leading-relaxed mb-4">
-            On the weekend, you meet. Maybe it's brunch at a neighbourhood spot. Maybe it's a walk along the canal. Maybe it's coffee at a quiet café. The format is simple. The connection is real.
-          </p>
-          <p className="text-[#3A0B22] font-medium">
-            No networking agendas. No forced icebreakers. Just a warm table and good company.
-          </p>
+          <p className="text-[#5E555B] leading-relaxed mb-4">{tt.expP1}</p>
+          <p className="text-[#5E555B] leading-relaxed mb-4">{tt.expP2}</p>
+          <p className="text-[#3A0B22] font-medium">{tt.expP3}</p>
         </div>
       </section>
 
       {/* Trust & Safety */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl pb-20">
-        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">Trust & safety</h2>
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">{tt.trustTitle}</h2>
         <div className="grid sm:grid-cols-2 gap-4">
-          {[
-            { title: "Verified community", desc: "Every member goes through medical license verification before joining." },
-            { title: "Community standards", desc: "Clear guidelines ensure a respectful, inclusive environment." },
-            { title: "Privacy-first", desc: "Your data stays private. We never share personal details with third parties." },
-            { title: "Safe reporting", desc: "Easy-to-use reporting tools for any concerns, with prompt follow-up." },
-          ].map((item) => (
+          {trustItems.map((item) => (
             <div key={item.title} className="bg-white/60 border border-[#E8DED5] rounded-[20px] p-6">
               <h3 className="font-semibold text-[#3A0B22] mb-2">{item.title}</h3>
               <p className="text-sm text-[#5E555B] leading-relaxed">{item.desc}</p>
@@ -150,13 +165,13 @@ const About = () => {
       {/* CTA */}
       <section className="bg-[#3A0B22] py-20">
         <div className="container mx-auto px-5 sm:px-8 max-w-xl text-center">
-          <h2 className="font-display text-3xl font-bold text-white mb-4">Choose a weekend meetup</h2>
-          <p className="text-white/60 mb-8">Join a curated group of doctors in Berlin this weekend.</p>
+          <h2 className="font-display text-3xl font-bold text-white mb-4">{tt.ctaTitle}</h2>
+          <p className="text-white/60 mb-8">{tt.ctaSubtitle}</p>
           <a
-            href={WAITLIST_URL}
+            href="/onboarding"
             className="inline-flex items-center justify-center h-14 px-10 rounded-full bg-[#F27C5C] hover:bg-[#e06d4d] text-white font-display font-semibold text-base transition-all active:scale-[0.98] shadow-sm"
           >
-            Join the waitlist
+            {tt.ctaButton}
           </a>
         </div>
       </section>

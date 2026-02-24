@@ -1,12 +1,10 @@
-import { WAITLIST_URL } from '@/lib/waitlist';
-
 interface LandingCTAButtonProps {
   label: string;
   className?: string;
   href?: string;
 }
 
-export function LandingCTAButton({ label, className, href = WAITLIST_URL }: LandingCTAButtonProps) {
+export function LandingCTAButton({ label, className, href = '/onboarding' }: LandingCTAButtonProps) {
   return (
     <a
       href={href}

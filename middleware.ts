@@ -7,7 +7,7 @@ import i18nConfig from './src/i18nConfig';
 // Route segments (after the locale prefix) that require authentication
 const protectedSegments = new Set([
   'dashboard', 'settings', 'profile', 'matches',
-  'chat', 'group-chat', 'places', 'onboarding', 'interests',
+  'chat', 'group-chat', 'places', 'interests',
 ]);
 
 // Route segments that require admin role

@@ -5,19 +5,24 @@ import type { Locale } from '@/lib/i18n/settings';
 import { LandingPricing } from '@/components/landing/LandingPricing';
 import { createClient } from '@/lib/supabase/server';
 
-export const metadata: Metadata = {
-  title: 'Pricing',
-  description: 'Simple, honest pricing. No hidden fees, no long-term contracts. Start with a single match.',
-  openGraph: {
-    title: 'BeyondRounds Pricing',
-    description: 'Simple, honest pricing. No hidden fees, no long-term contracts. Start with a single match or save with a bundle.',
-    images: [{ url: '/hero-doctors-friendship.jpg', width: 1200, height: 800, alt: 'Doctors enjoying a relaxed dinner together — BeyondRounds' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    images: ['/hero-doctors-friendship.jpg'],
-  },
-};
+export async function generateMetadata({ params }: { params: { locale: string } }): Promise<Metadata> {
+  const locale = params.locale;
+  const isDE = locale === 'de';
+  return {
+    title: isDE ? 'Preise — BeyondRounds' : 'Pricing — BeyondRounds',
+    description: isDE
+      ? 'Einfache, faire Preise. Keine versteckten Gebühren, keine Langzeitverträge. Starte mit einem einzigen Match.'
+      : 'Simple, honest pricing. No hidden fees, no long-term contracts. Start with a single match.',
+    openGraph: {
+      title: isDE ? 'BeyondRounds Preise' : 'BeyondRounds Pricing',
+      description: isDE
+        ? 'Einfache, faire Preise. Keine versteckten Gebühren, keine Langzeitverträge.'
+        : 'Simple, honest pricing. No hidden fees, no long-term contracts.',
+      images: [{ url: '/hero-doctors-friendship.jpg', width: 1200, height: 800, alt: 'Doctors enjoying a relaxed dinner together — BeyondRounds' }],
+    },
+    twitter: { card: 'summary_large_image', images: ['/hero-doctors-friendship.jpg'] },
+  };
+}
 
 export default async function PricingPage({ params }: { params: { locale: string } }) {
   const locale = params.locale as Locale;

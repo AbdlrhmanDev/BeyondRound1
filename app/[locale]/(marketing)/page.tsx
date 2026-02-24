@@ -22,6 +22,7 @@ import { LandingValueProps } from '@/components/landing/LandingValueProps';
 import { LandingFoundingMember } from '@/components/landing/LandingFoundingMember';
 import { LandingTestimonialsNew } from '@/components/landing/LandingTestimonialsNew';
 import { LandingFAQNew } from '@/components/landing/LandingFAQNew';
+import { LandingFinalCTANew } from '@/components/landing/LandingFinalCTANew';
 
 const LandingHero = nextDynamic(() => import('@/components/landing/LandingHero').then(m => ({ default: m.LandingHero })), { ssr: false });
 const LandingWeekendPicker = nextDynamic(() => import('@/components/landing/LandingWeekendPicker').then(m => ({ default: m.LandingWeekendPicker })), { ssr: false });
@@ -41,10 +42,37 @@ export default async function HomePage({ params }: HomePageProps) {
   const dict = await getDictionary(locale);
   const t = getT(dict);
 
+  // Pre-translate strings for client components (functions can't cross server→client boundary)
+  const heroTranslations = {
+    headline: t('landing.headline'),
+    subheadline: t('landing.subheadline'),
+    subheadline2: t('landing.subheadline2'),
+    limitedSpots: t('landing.limitedSpots'),
+    limitedSpotsCount: t('landing.limitedSpotsDesc').replace(/<1>/g, '').replace(/<\/1>/g, ''),
+    registrationClosesIn: t('landing.registrationClosesIn'),
+    cta: t('landing.cta'),
+    ctaHowItWorks: t('landing.ctaHowItWorks'),
+    verifiedOnly: t('landing.verifiedOnly'),
+    smallGroups: t('landing.smallGroups'),
+    weekendMeetups: t('landing.weekendMeetups'),
+  };
+
+  const weekendTranslations = {
+    title: t('landing.weekendTitle'),
+    subtitle: t('landing.weekendSubtitle'),
+    friday: t('landing.weekendFriday'),
+    saturday: t('landing.weekendSaturday'),
+    sunday: t('landing.weekendSunday'),
+    chooseDay: t('landing.weekendChoose'),
+    smallGroup: t('landing.weekendSmallGroup'),
+    city: t('landing.weekendCity'),
+    capacity: t('landing.weekendCapacity'),
+  };
+
   return (
     <div className="min-h-screen bg-[#F6F1EC]">
       {/* A: Hero — full-screen photo with plum overlay + countdown */}
-      <LandingHero />
+      <LandingHero translations={heroTranslations} />
 
       {/* B: Problem — doctor loneliness */}
       <LandingProblem t={t} />
@@ -56,7 +84,7 @@ export default async function HomePage({ params }: HomePageProps) {
       <LandingValueProps t={t} />
 
       {/* E: Weekend day picker (conversion) */}
-      <LandingWeekendPicker />
+      <LandingWeekendPicker translations={weekendTranslations} />
 
       {/* F: Founding Member scarcity */}
       <LandingFoundingMember t={t} />
@@ -67,7 +95,10 @@ export default async function HomePage({ params }: HomePageProps) {
       {/* H: FAQ */}
       <LandingFAQNew t={t} />
 
-      <StickyMobileCTA label="Join the waitlist" />
+      {/* I: Final CTA */}
+      <LandingFinalCTANew t={t} />
+
+      <StickyMobileCTA label={t('common.joinNow')} />
     </div>
   );
 }

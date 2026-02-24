@@ -11,15 +11,17 @@ const WaitlistPageContent = nextDynamic(() => import('@/views/Waitlist'), {
 });
 
 export const metadata: Metadata = {
-  title: 'Join the Waitlist',
-  description: 'Join the BeyondRounds waitlist and be the first to know when we launch.',
+  title: 'BeyondRounds — Meet Other Doctors in Berlin',
+  description: 'Join BeyondRounds: weekly curated matches with 3–4 verified doctors in Berlin for low-pressure meetups and real friendships. Free to join.',
   openGraph: {
-    title: 'Join the BeyondRounds Waitlist',
-    description: 'Be among the first verified doctors to get matched for real weekend meetups in Berlin.',
+    title: 'Meet verified doctors in Berlin. Make real friends.',
+    description: 'BeyondRounds matches you weekly with small groups of verified physicians — private chat, suggested venues, zero pressure. Join the waitlist free.',
     images: [{ url: '/hero-doctors-friendship.jpg', width: 1200, height: 800, alt: 'Doctors enjoying a relaxed dinner together — BeyondRounds' }],
   },
   twitter: {
     card: 'summary_large_image',
+    title: 'Meet verified doctors in Berlin. Make real friends.',
+    description: 'BeyondRounds matches you weekly with small groups of verified physicians. Join the waitlist free.',
     images: ['/hero-doctors-friendship.jpg'],
   },
 };
