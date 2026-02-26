@@ -787,7 +787,8 @@
     "updatePasswordButton": "Update password",
     "updating": "Updating…",
     "deutsch": "Deutsch",
-    "english": "English"
+    "english": "English",
+    "passwordUpdated": "Password updated successfully"
   },
   "notifications": {
     "heading": "Notifications",

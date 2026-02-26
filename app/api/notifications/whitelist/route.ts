@@ -8,6 +8,7 @@ const schema = z.object({
     .string({ required_error: 'Email is required' })
     .email('Invalid email address')
     .max(254, 'Email is too long'),
+  locale: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await emailService.sendWhitelistConfirmation(parsed.data.email);
+    const result = await emailService.sendWhitelistConfirmation(parsed.data.email, parsed.data.locale);
 
     if (result.success) {
       return NextResponse.json({ success: true });

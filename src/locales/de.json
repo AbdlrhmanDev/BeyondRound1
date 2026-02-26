@@ -788,7 +788,8 @@
     "updatePasswordButton": "Passwort aktualisieren",
     "updating": "Wird aktualisiert…",
     "deutsch": "Deutsch",
-    "english": "English"
+    "english": "English",
+    "passwordUpdated": "Passwort erfolgreich aktualisiert"
   },
   "notifications": {
     "heading": "Benachrichtigungen",

@@ -44,10 +44,11 @@ interface RateLimitConfig {
 }
 
 const PRESETS: Record<string, RateLimitConfig> = {
-  billing:   { limit: 10, windowMs: 60_000 }, // 10 per min per user
-  push:      { limit: 5,  windowMs: 60_000 }, // 5 per min per user
-  whitelist: { limit: 3,  windowMs: 60_000 }, // 3 per min per IP
-  admin:     { limit: 20, windowMs: 60_000 }, // 20 per min per user
+  billing:          { limit: 10, windowMs: 60_000 },
+  push:             { limit: 5,  windowMs: 60_000 },
+  whitelist:        { limit: 3,  windowMs: 60_000 },
+  admin:            { limit: 20, windowMs: 60_000 },
+  'forgot-password':{ limit: 3,  windowMs: 60_000 }, // 3 reset attempts per min per IP
 };
 
 /**

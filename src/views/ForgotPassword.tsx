@@ -58,14 +58,21 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await getSupabaseClient().auth.resetPasswordForEmail(formData.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: formData.email,
+          locale: (typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : 'en')
+        }),
       });
 
-      if (error) {
+      const result = await response.json();
+
+      if (!response.ok) {
         toast({
           title: "Error",
-          description: error.message || "Failed to send reset email. Please try again.",
+          description: result.error || "Failed to send reset email. Please try again.",
           variant: "destructive",
         });
       } else {

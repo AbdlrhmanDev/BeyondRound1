@@ -61,11 +61,11 @@ const nextConfig = {
     // - Adjust connect-src wss:// pattern if your Supabase project URL changes.
     const cspDirectives = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://connect.facebook.net",
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://connect.facebook.net https://va.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com https://www.googletagmanager.com https://www.google-analytics.com https://www.google.com",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com",
+      "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://va.vercel-scripts.com",
       "frame-src https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
