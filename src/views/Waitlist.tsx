@@ -250,19 +250,19 @@ export default function Waitlist() {
                   <p className="text-[#57534E]">{t.whitelistSuccessDesc}</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 sm:gap-3">
+                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 sm:gap-3 max-w-lg mx-auto">
                   <input
                     type="email"
                     required
                     placeholder={t.emailPlaceholder}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1 h-14 sm:h-14 rounded-2xl border border-[#1C1917]/10 bg-white px-6 text-[#1C1917] placeholder-[#57534E]/60 focus:outline-none focus:border-[#F26449] focus:ring-4 focus:ring-[#F26449]/10 transition-all text-base shadow-sm hover:border-[#1C1917]/20"
+                    className="flex-1 h-14 py-4 sm:h-16 rounded-3xl border border-[#1C1917]/10 bg-white px-6 text-[#1C1917] placeholder-[#57534E]/60 focus:outline-none focus:border-[#F26449] focus:ring-4 focus:ring-[#F26449]/10 transition-all text-lg shadow-sm hover:border-[#1C1917]/20"
                   />
                   <button
                     type="submit"
                     disabled={loading}
-                    className="h-14 sm:h-14 px-8 rounded-2xl bg-[#F26449] text-white font-semibold text-base hover:bg-[#E05A3E] transition-all disabled:opacity-50 whitespace-nowrap shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-[#F26449]/20"
+                    className="h-14 sm:h-16 px-8 rounded-3xl bg-[#F26449] text-white font-bold text-lg hover:bg-[#E05A3E] transition-all disabled:opacity-50 whitespace-nowrap shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-[#F26449]/20 w-full sm:w-auto shrink-0"
                   >
                     {loading ? t.joiningBtn : t.joinBtn}
                   </button>
@@ -451,12 +451,12 @@ export default function Waitlist() {
                     placeholder={t.emailPlaceholder}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1 h-14 sm:h-14 rounded-2xl border border-white/10 bg-[#4a2434] px-6 text-white placeholder-white/50 focus:outline-none focus:border-[#F26449] focus:ring-4 focus:ring-[#F26449]/20 transition-all text-base shadow-inner hover:border-white/20 hover:bg-[#53293b]"
+                    className="flex-1 h-14 py-4 sm:h-16 rounded-3xl border border-white/10 bg-[#4a2434] px-6 text-white placeholder-white/50 focus:outline-none focus:border-[#F26449] focus:ring-4 focus:ring-[#F26449]/20 transition-all text-lg shadow-inner hover:border-white/20 hover:bg-[#53293b]"
                   />
                   <button
                     type="submit"
                     disabled={loading}
-                    className="h-14 sm:h-14 px-8 rounded-2xl bg-[#E26A4F] text-white font-semibold text-base hover:bg-[#d05c43] transition-all disabled:opacity-50 shadow-md focus:outline-none focus:ring-4 focus:ring-[#E26A4F]/30 whitespace-nowrap"
+                    className="h-14 sm:h-16 px-8 rounded-3xl bg-[#E26A4F] text-white font-bold text-lg hover:bg-[#d05c43] transition-all disabled:opacity-50 shadow-md focus:outline-none focus:ring-4 focus:ring-[#E26A4F]/30 whitespace-nowrap w-full sm:w-auto shrink-0"
                   >
                     {loading ? t.joiningBtn : t.joinBtn}
                   </button>
