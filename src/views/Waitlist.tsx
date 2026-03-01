@@ -25,7 +25,6 @@ const translations = {
     joinBtn: "Join the Founding List",
     joiningBtn: "Joining...",
     noSpam: "No spam. Unsubscribe anytime. Verification happens after signup.",
-    priorityAccess: "Want priority access? Take the 2-minute assessment",
     perk1: "New groups open weekly",
     perk2: "Verified doctors only",
     perk3: "You choose what activities you do",
@@ -81,7 +80,6 @@ const translations = {
     joinBtn: "Auf die Founding List",
     joiningBtn: "Wird eingetragen...",
     noSpam: "Kein Spam. Jederzeit abmeldbar. Verifizierung nach Anmeldung.",
-    priorityAccess: "Prioritätszugang? Mach den 2-Minuten-Test",
     perk1: "Jede Woche neue Gruppen",
     perk2: "Nur verifizierte Ärzt:innen",
     perk3: "Du wählst die Aktivitäten",
@@ -272,14 +270,9 @@ export default function Waitlist() {
               )}
             </div>
 
-            <p className="text-sm text-[#57534E] mb-6">
+            <p className="text-sm text-[#57534E] mb-12">
               {t.noSpam}
             </p>
-
-            <a href="#" className="inline-flex items-center text-[#F26449] font-medium hover:text-[#E05A3E] transition-colors mb-12 group">
-              {t.priorityAccess}
-              <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </a>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm font-medium text-[#1C1917] mb-12">
               <span className="flex items-center gap-2">
