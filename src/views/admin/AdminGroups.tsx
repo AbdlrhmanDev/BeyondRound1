@@ -191,6 +191,7 @@ export default function AdminGroupsPage() {
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">Name</th>
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">Type</th>
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">Members</th>
+                      <th className="text-left py-3 px-2 font-medium text-muted-foreground">Score</th>
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">Week</th>
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">Status</th>
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">Created</th>
@@ -206,6 +207,9 @@ export default function AdminGroupsPage() {
                           >
                             {g.name || g.id.slice(0, 8)}
                           </Link>
+                          {g.is_partial_group && (
+                            <Badge variant="outline" className="ml-1 text-[10px] text-amber-600 border-amber-300">partial</Badge>
+                          )}
                         </td>
                         <td className="py-3 px-2 text-muted-foreground capitalize">{g.group_type}</td>
                         <td className="py-3 px-2">
@@ -213,6 +217,9 @@ export default function AdminGroupsPage() {
                             <Users className="h-3 w-3" />
                             {g.member_count}
                           </span>
+                        </td>
+                        <td className="py-3 px-2 text-muted-foreground">
+                          {g.score ? `${Number(g.score).toFixed(1)} ★` : "—"}
                         </td>
                         <td className="py-3 px-2 text-muted-foreground">{g.match_week || "—"}</td>
                         <td className="py-3 px-2">

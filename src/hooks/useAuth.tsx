@@ -145,6 +145,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
 
+      // Fire-and-forget welcome email — don't block signup on email failure
+      if (data?.user) {
+        fetch('/api/auth/welcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name: fullName }),
+        }).catch(() => {});
+      }
+
       if (data?.user && error?.message?.includes('confirmation email')) {
         const emailError: ExtendedError = new Error('Account created but confirmation email could not be sent.');
         emailError.status = (error as AuthError).status;

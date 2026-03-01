@@ -14,6 +14,10 @@ export const useAdminCheck = () => {
       return;
     }
 
+    // Set loading true immediately so callers wait for the result
+    // before making redirect decisions (avoids race condition on login)
+    setIsLoading(true);
+
     let isMounted = true;
 
     const checkAdminRole = async () => {

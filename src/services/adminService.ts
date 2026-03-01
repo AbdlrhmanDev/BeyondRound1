@@ -454,6 +454,7 @@ export interface VerificationRequest {
   file_url: string | null;
   status: string;
   rejection_reason: string | null;
+  reviewed_at: string | null;
   created_at: string;
   full_name?: string | null;
   city?: string | null;
@@ -583,12 +584,56 @@ export const requestReupload = async (userId: string, reason: string): Promise<b
   } catch (error) { console.error("Error requesting reupload:", error); return false; }
 };
 
-export const getSignedDocumentUrl = async (path: string): Promise<string | null> => {
+export const getSignedDocumentUrl = async (urlOrPath: string): Promise<string | null> => {
   try {
-    const { data, error } = await supabase.storage.from('verifications').createSignedUrl(path, 300);
+    let bucket = 'licenses';
+    let path = urlOrPath;
+
+    if (urlOrPath.startsWith('https://')) {
+      // Extract bucket and path from full Supabase storage URL
+      // Format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
+      const match = urlOrPath.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/?]+)\/(.+?)(?:\?.*)?$/);
+      if (match) {
+        bucket = match[1];
+        path = match[2];
+      } else {
+        // Unrecognised URL format — return as-is
+        return urlOrPath;
+      }
+    }
+
+    const { data, error } = await (supabase as any).storage.from(bucket).createSignedUrl(path, 3600);
     if (error) { console.error("Error creating signed URL:", error); return null; }
     return data?.signedUrl || null;
   } catch (error) { console.error("Error creating signed URL:", error); return null; }
+};
+
+export const deleteVerificationRequest = async (requestId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_delete_verification_request' as any, {
+      p_request_id: requestId,
+    });
+    if (error) { console.error("Error deleting verification request:", error); return false; }
+    return (data as any)?.success === true;
+  } catch (error) { console.error("Error deleting verification request:", error); return false; }
+};
+
+export const createVerificationRequest = async (
+  userId: string,
+  documentType: string = 'medical_license',
+  fileUrl?: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_create_verification_request' as any, {
+      p_user_id: userId,
+      p_document_type: documentType,
+      p_file_url: fileUrl ?? null,
+    });
+    if (error) { console.error("Error creating verification request:", error); return { success: false, error: error.message }; }
+    const result = data as any;
+    if (result?.error) return { success: false, error: result.error };
+    return { success: true };
+  } catch (error) { console.error("Error creating verification request:", error); return { success: false, error: 'unexpected_error' }; }
 };
 
 // ============================================================
@@ -1009,6 +1054,26 @@ export const getUserScore = async (userId: string): Promise<number | null> => {
   } catch (error) {
     console.error('Error getting user score:', error);
     return null;
+  }
+};
+
+/** Get pairwise compatibility scores for all active members of a group. */
+export const getGroupCompatibilityScores = async (
+  groupId: string
+): Promise<{ userAId: string; userBId: string; score: number }[]> => {
+  try {
+    const { data, error } = await supabase.rpc('admin_get_pairwise_scores' as any, {
+      p_group_id: groupId,
+    });
+    if (error) { console.error('Error fetching pairwise scores:', error); return []; }
+    return ((data as any[]) || []).map((r) => ({
+      userAId: r.user_a_id,
+      userBId: r.user_b_id,
+      score: Number(r.score),
+    }));
+  } catch (error) {
+    console.error('Error fetching pairwise scores:', error);
+    return [];
   }
 };
 

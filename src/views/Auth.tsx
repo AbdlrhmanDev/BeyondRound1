@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,6 @@ import { useLocalizedNavigate } from "@/hooks/useLocalizedNavigate";
 import LocalizedLink from "@/components/LocalizedLink";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { getSupabaseClient } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { LanguageLinks } from "@/components/marketing/LanguageLinks";
@@ -27,8 +26,8 @@ const Auth = () => {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const { toast } = useToast();
   const { signIn, user, loading } = useAuth();
-  const { isAdmin, isLoading: adminLoading } = useAdminCheck();
   const navigate = useLocalizedNavigate();
+  const redirectedRef = useRef(false);
 
   const handleJoinNow = () => {
     navigate('/onboarding');
@@ -39,16 +38,20 @@ const Auth = () => {
     password: "",
   });
 
-  // Redirect if already logged in - admins go to /admin, regular users go to /dashboard
+  // Redirect already-logged-in users — query role directly to avoid hook race condition
   useEffect(() => {
-    if (!loading && user && !adminLoading) {
-      if (isAdmin) {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
-    }
-  }, [user, loading, adminLoading, isAdmin, navigate]);
+    if (loading || !user || redirectedRef.current) return;
+    redirectedRef.current = true;
+    getSupabaseClient()
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data }) => {
+        navigate(data ? '/admin' : '/dashboard', { replace: true });
+      });
+  }, [user, loading, navigate]);
 
   const validateForm = () => {
     try {
@@ -130,13 +133,22 @@ const Auth = () => {
         }
       }
 
-      // User is active, proceed with login
+      // User is active — check admin role directly (avoids useEffect race condition)
       toast({
         title: t("auth.welcomeBack"),
         description: t("auth.loginSuccess"),
       });
-      // Check admin status and redirect accordingly
-      // The useEffect will handle the redirect once admin status is loaded
+
+      if (authUser) {
+        const { data: roleData } = await getSupabaseClient()
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", authUser.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        navigate(roleData ? '/admin' : '/dashboard', { replace: true });
+      }
     } catch (error) {
       toast({
         title: t("auth.error"),

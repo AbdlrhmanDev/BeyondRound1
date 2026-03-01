@@ -7,16 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, Users, MessageSquare, Trash2, UserMinus, XCircle, Send } from "lucide-react";
+import {
+  ArrowLeft, Loader2, Users, MessageSquare, Trash2, UserMinus,
+  XCircle, Send, Star, UserCheck, UserX, UserPlus,
+} from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/contexts/LocaleContext";
 import Link from "next/link";
 import {
   getGroupDetail, getGroupMessages, deleteMessage, removeFromGroup,
-  disbandGroup, sendSystemMessage,
+  disbandGroup, sendSystemMessage, verifyGroupMember, getGroupCompatibilityScores,
 } from "@/services/adminService";
+import { AdminAddMemberModal } from "@/components/admin/AdminAddMemberModal";
 import MessageDeleteDialog from "@/components/admin/MessageDeleteDialog";
 import GroupDisbandDialog from "@/components/admin/GroupDisbandDialog";
 import SystemMessageDialog from "@/components/admin/SystemMessageDialog";
@@ -36,6 +39,8 @@ export default function AdminGroupDetailPage() {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [disbandDialogOpen, setDisbandDialogOpen] = useState(false);
   const [systemMsgDialogOpen, setSystemMsgDialogOpen] = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [pairScores, setPairScores] = useState<{ userAId: string; userBId: string; score: number }[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -48,6 +53,10 @@ export default function AdminGroupDetailPage() {
       setMessages(msgs);
       setMsgLoading(false);
     }
+
+    const scores = await getGroupCompatibilityScores(groupId);
+    setPairScores(scores);
+
     setLoading(false);
   };
 
@@ -62,6 +71,26 @@ export default function AdminGroupDetailPage() {
       fetchData();
     } else {
       toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleApproveMember = async (userId: string) => {
+    const success = await verifyGroupMember(groupId, userId, 'verified');
+    if (success) {
+      toast({ title: "Member approved" });
+      fetchData();
+    } else {
+      toast({ title: "Error approving member", variant: "destructive" });
+    }
+  };
+
+  const handleRejectMember = async (userId: string) => {
+    const success = await verifyGroupMember(groupId, userId, 'rejected');
+    if (success) {
+      toast({ title: "Member rejected" });
+      fetchData();
+    } else {
+      toast({ title: "Error rejecting member", variant: "destructive" });
     }
   };
 
@@ -129,7 +158,8 @@ export default function AdminGroupDetailPage() {
     );
   }
 
-  const { group, members } = detail;
+  const { group, members, memberScores } = detail;
+  const activeMembers = members.filter((m: any) => m.status !== 'removed');
 
   return (
     <AdminLayout>
@@ -153,6 +183,21 @@ export default function AdminGroupDetailPage() {
               <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span className="capitalize">{group.group_type}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Gender</span><span>{group.gender_composition || "—"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Week</span><span>{group.match_week || "—"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Score</span>
+                <span className="flex items-center gap-1">
+                  {group.score != null
+                    ? <><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{group.score.toFixed(1)} <span className="text-muted-foreground text-xs">({group.score_count ?? 0} ratings)</span></>
+                    : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Capacity</span>
+                <span>{activeMembers.length} / {group.max_members ?? 5}</span>
+              </div>
+              {group.is_partial_group && (
+                <div className="flex justify-between"><span className="text-muted-foreground">Partial</span>
+                  <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">partial</Badge>
+                </div>
+              )}
               <div className="flex justify-between"><span className="text-muted-foreground">Created</span><span>{format(new Date(group.created_at), "MMM d, yyyy")}</span></div>
             </CardContent>
           </Card>
@@ -160,34 +205,87 @@ export default function AdminGroupDetailPage() {
           {/* Members */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Members ({members.length})
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Members ({activeMembers.length})
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  disabled={group.status === 'disbanded'}
+                  onClick={() => setAddMemberOpen(true)}
+                >
+                  <UserPlus className="h-3 w-3" />
+                  Add Member
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {members.map((m: any) => (
-                  <div key={m.id || m.user_id} className="flex items-center justify-between p-2 rounded border">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={m.profiles?.avatar_url || undefined} />
-                        <AvatarFallback>{m.profiles?.full_name?.charAt(0) || "U"}</AvatarFallback>
-                      </Avatar>
-                      <Link href={pathWithLocale(`/admin/users/${m.user_id}`)} className="text-sm hover:underline text-primary">
-                        {m.profiles?.full_name || m.user_id.slice(0, 8)}
-                      </Link>
+                {members.map((m: any) => {
+                  const isPending = m.status === 'pending';
+                  const score = memberScores?.[m.user_id];
+                  return (
+                    <div key={m.id || m.user_id} className="flex items-center justify-between p-2 rounded border">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar className="h-8 w-8 shrink-0">
+                          <AvatarImage src={m.profiles?.avatar_url || undefined} />
+                          <AvatarFallback>{m.profiles?.full_name?.charAt(0) || "U"}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <Link href={pathWithLocale(`/admin/users/${m.user_id}`)} className="text-sm hover:underline text-primary truncate block">
+                            {m.profiles?.full_name || m.user_id.slice(0, 8)}
+                          </Link>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {isPending
+                              ? <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px] px-1 py-0">pending</Badge>
+                              : <Badge variant="secondary" className="text-[10px] px-1 py-0">active</Badge>
+                            }
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              {score != null
+                                ? <><Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />{score}</>
+                                : "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isPending && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-green-600 hover:text-green-700"
+                              title="Approve"
+                              onClick={() => handleApproveMember(m.user_id)}
+                            >
+                              <UserCheck className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              title="Reject"
+                              onClick={() => handleRejectMember(m.user_id)}
+                            >
+                              <UserX className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => handleRemoveMember(m.user_id)}
+                        >
+                          <UserMinus className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
-                      onClick={() => handleRemoveMember(m.user_id)}
-                    >
-                      <UserMinus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -215,6 +313,51 @@ export default function AdminGroupDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Compatibility */}
+        {pairScores.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Compatibility Scores</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-xs text-muted-foreground">
+                      <th className="text-left py-2 px-2 font-medium">Member A</th>
+                      <th className="text-left py-2 px-2 font-medium">Member B</th>
+                      <th className="text-left py-2 px-2 font-medium">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pairScores.map((ps) => {
+                      const nameA = members.find((m: any) => m.user_id === ps.userAId)?.profiles?.full_name || ps.userAId.slice(0, 8);
+                      const nameB = members.find((m: any) => m.user_id === ps.userBId)?.profiles?.full_name || ps.userBId.slice(0, 8);
+                      const pct = Math.min(100, Math.max(0, ps.score));
+                      const color = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-400' : 'bg-red-400';
+                      const textColor = pct >= 70 ? 'text-green-700' : pct >= 40 ? 'text-amber-700' : 'text-red-600';
+                      return (
+                        <tr key={`${ps.userAId}-${ps.userBId}`} className="border-b hover:bg-muted/40">
+                          <td className="py-2 px-2">{nameA}</td>
+                          <td className="py-2 px-2">{nameB}</td>
+                          <td className="py-2 px-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className={`text-xs font-medium ${textColor}`}>{ps.score.toFixed(0)}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Messages */}
         <Card>
@@ -279,6 +422,15 @@ export default function AdminGroupDetailPage() {
         open={systemMsgDialogOpen}
         onConfirm={handleSystemMessage}
         onCancel={() => setSystemMsgDialogOpen(false)}
+      />
+      <AdminAddMemberModal
+        open={addMemberOpen}
+        groupId={groupId}
+        groupName={group.name || "Group"}
+        currentCount={activeMembers.length}
+        maxMembers={group.max_members ?? 5}
+        onClose={() => setAddMemberOpen(false)}
+        onAdded={fetchData}
       />
     </AdminLayout>
   );

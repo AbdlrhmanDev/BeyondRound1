@@ -2,7 +2,6 @@ import {
     Body,
     Container,
     Head,
-    Heading,
     Html,
     Preview,
     Section,
@@ -12,24 +11,32 @@ import {
 import * as React from 'react';
 
 interface WhitelistEmailProps {
+    firstName?: string;
+    referralLink?: string;
     locale?: string;
 }
 
-export const WhitelistEmail = ({ locale = 'en' }: WhitelistEmailProps) => {
+export const WhitelistEmail = ({ 
+    firstName = 'Doctor', 
+    referralLink = '[Referral Link]',
+    locale = 'en'
+}: WhitelistEmailProps) => {
     const isDe = locale === 'de';
 
     const content = {
-        preview: isDe ? 'Sie sind auf der Warteliste!' : 'You’re on the whitelist!',
-        title: isDe ? 'Sie sind auf der Warteliste! 🎉' : 'You’re on the whitelist! 🎉',
-        secured: isDe ? 'Ihr Platz ist gesichert.' : 'Your spot is secured.',
-        body: isDe 
-            ? "Vielen Dank für Ihr Interesse! Wir haben Sie in unsere exklusive Warteliste aufgenommen. Wir führen den Zugang derzeit in Chargen ein, um die beste Erfahrung für alle zu gewährleisten."
-            : "Thank you for your interest! We've added you to our exclusive whitelist. We're currently rolling out access in batches to ensure the best experience for everyone.",
-        nextTitle: isDe ? 'Was passiert als Nächstes?' : 'What happens next?',
-        nextStep1: isDe ? '1. Unser Team wird Ihre Bewerbung prüfen.' : "1. Our team will review your application.",
-        nextStep2: isDe ? '2. Sie erhalten einen Einladungslink, wenn Ihre Charge bereit ist.' : "2. You'll receive an invitation link when your batch is ready.",
-        nextStep3: isDe ? '3. Wir erwarten, dass die nächste Charge innerhalb der nächsten 2-4 Wochen eingeladen wird.' : "3. We expect the next batch to be invited within the next 2-4 weeks.",
-        footer: isDe ? 'Bleiben Sie gespannt auf weitere Updates in Ihrem Posteingang!' : 'Stay tuned for more updates in your inbox!',
+        preview: isDe ? 'Sie sind auf der BeyondRounds Early-Access-Liste' : 'You’re on the BeyondRounds early access list',
+        greeting: isDe ? `Hallo ${firstName},` : `Hi ${firstName},`,
+        in: isDe ? 'Sie sind dabei.' : 'You’re in.',
+        intro: isDe 
+            ? 'BeyondRounds ist eine verifizierte Community nur für Ärzte in Berlin. Wir öffnen den Zugang in kleinen Wellen, um die Qualität der Matches hoch zu halten.'
+            : 'BeyondRounds is a verified doctors-only community in Berlin. We’re opening access in small waves to keep matching quality high.',
+        nextStepsTitle: isDe ? 'Was als Nächstes passiert:' : 'What happens next:',
+        nextStep1: isDe ? 'Wir senden Ihnen eine E-Mail, sobald ein Platz frei wird' : 'We’ll email you when a spot opens',
+        nextStep2: isDe ? 'Sie verifizieren sich einmal (schnell + privat)' : 'You’ll verify once (quick + private)',
+        nextStep3: isDe ? 'Sie erhalten Ihre erste Match-Gruppe' : 'You’ll get your first match group',
+        optional: isDe ? 'Optional: Möchten Sie einem Kollegen helfen?' : 'Optional: want to help a colleague?',
+        share: isDe ? 'Teilen Sie diesen Link:' : 'Share this link:',
+        signoffTitle: isDe ? 'Gründer, BeyondRounds' : 'Founder, BeyondRounds'
     };
 
     return (
@@ -37,30 +44,38 @@ export const WhitelistEmail = ({ locale = 'en' }: WhitelistEmailProps) => {
             <Head />
             <Preview>{content.preview}</Preview>
             <Tailwind>
-                <Body className="bg-white font-sans">
-                    <Container className="mx-auto py-10 px-5 max-w-xl text-center">
-                        <Section className="mb-8">
-                            <Heading className="text-3xl font-bold text-gray-900 mb-6">
-                                {content.title}
-                            </Heading>
-                            <Section className="bg-blue-50 border border-blue-100 rounded-lg p-6 mb-6">
-                                <Text className="text-blue-900 text-lg font-medium m-0">
-                                    {content.secured}
-                                </Text>
+                <Body className="bg-white font-sans text-gray-900">
+                    <Container className="mx-auto py-10 px-5 max-w-xl">
+                        <Section>
+                            <Text className="text-base text-[#1C1917] leading-relaxed mb-4">
+                                {content.greeting}
+                            </Text>
+                            <Text className="text-base text-[#1C1917] font-semibold leading-relaxed mb-4">
+                                {content.in}
+                            </Text>
+                            <Text className="text-base text-[#1C1917] leading-relaxed mb-6">
+                                {content.intro}
+                            </Text>
+                            
+                            <Text className="text-base text-[#1C1917] font-medium mb-2">
+                                {content.nextStepsTitle}
+                            </Text>
+                            <Section className="pl-4 mb-6">
+                                <ul className="text-base text-[#1C1917] leading-relaxed m-0 p-0 pl-4 space-y-1">
+                                    <li>{content.nextStep1}</li>
+                                    <li>{content.nextStep2}</li>
+                                    <li>{content.nextStep3}</li>
+                                </ul>
                             </Section>
-                            <Text className="text-gray-700 text-lg leading-relaxed mb-4 text-left">
-                                {content.body}
+
+                            <Text className="text-base text-[#1C1917] leading-relaxed mb-6">
+                                <strong>{content.optional}</strong><br />
+                                {content.share} <a href={referralLink} className="text-[#F26449] underline">{referralLink}</a>
                             </Text>
-                            <Heading className="text-xl font-semibold text-gray-800 mb-2 text-left">
-                                {content.nextTitle}
-                            </Heading>
-                            <Text className="text-gray-700 text-base leading-relaxed mb-4 text-left">
-                                {content.nextStep1} <br />
-                                {content.nextStep2} <br />
-                                {content.nextStep3}
-                            </Text>
-                            <Text className="text-gray-500 text-sm italic text-left">
-                                {content.footer}
+
+                            <Text className="text-base text-[#57534E] leading-relaxed mt-8">
+                                — Mostafa<br />
+                                {content.signoffTitle}
                             </Text>
                         </Section>
                     </Container>

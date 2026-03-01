@@ -37,23 +37,23 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') ?? '';
   if (hostname === 'whitelist.beyondrounds.app') {
     const segments = pathname.split('/').filter(Boolean);
-    // Already on /{locale}/waitlist — serve it
-    if (segments[1] === 'waitlist') {
-      return await updateSession(request, NextResponse.next());
-    }
     // Detect locale from path or fall back to default
     const locale = KNOWN_LOCALES.has(segments[0]) ? segments[0] : 'de';
+    // Always rewrite (not redirect) to avoid RSC prefetch redirect loops.
+    // Middleware does not re-run after a rewrite, so there is no loop risk.
     const waitlistUrl = request.nextUrl.clone();
     waitlistUrl.pathname = `/${locale}/waitlist`;
-    return NextResponse.redirect(waitlistUrl, { status: 302 });
+    return NextResponse.rewrite(waitlistUrl);
   }
   // ────────────────────────────────────────────────────────────────────────────
 
   // Run i18nRouter first to handle locale detection and redirects
   const i18nResponse = i18nRouter(request, i18nConfig);
 
-  // If i18nRouter issued a redirect (e.g. /dashboard → /de/dashboard), return immediately
-  if (i18nResponse.headers.get('x-next-i18n-router-redirected')) {
+  // If i18nRouter issued a redirect, return immediately.
+  // Note: i18nRouter uses a `location` header (not x-next-i18n-router-redirected)
+  // for redirects, so we check the standard header instead.
+  if (i18nResponse.headers.has('location')) {
     return i18nResponse;
   }
 
