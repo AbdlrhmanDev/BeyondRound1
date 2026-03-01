@@ -14,16 +14,12 @@ import * as React from 'react';
 
 interface WhitelistEmailProps {
     firstName?: string;
-    referralLink?: string;
-    priorityFormLink?: string;
     unsubUrl?: string;
     locale?: string;
 }
 
 export const WhitelistEmail = ({
     firstName = 'Doctor',
-    referralLink = 'https://beyondrounds.app',
-    priorityFormLink = 'https://beyondrounds.app/en/quiz',
     unsubUrl = 'https://beyondrounds.app/en/unsubscribe',
     locale = 'en',
 }: WhitelistEmailProps) => {
@@ -42,14 +38,6 @@ export const WhitelistEmail = ({
         step1: isDe ? 'Wir senden Ihnen eine E-Mail, sobald ein Platz frei wird' : "We'll email you when a spot opens",
         step2: isDe ? 'Sie verifizieren sich einmal (schnell + privat)' : "You'll verify once (quick + private)",
         step3: isDe ? 'Sie erhalten Ihre erste Match-Gruppe' : "You'll get your first match group",
-        priorityTitle: isDe
-            ? 'Möchten Sie Priority Access?'
-            : 'If you want priority access, answer 2 quick questions here:',
-        priorityBtn: isDe ? 'Priority-Formular \u2192' : 'Answer 2 quick questions \u2192',
-        referralTitle: isDe
-            ? 'Optional: Möchten Sie einem Kollegen helfen?'
-            : 'Optional: want to help a colleague?',
-        referralBody: isDe ? 'Teilen Sie diesen Link:' : 'Share this link:',
         signoff: isDe ? 'Gründer, BeyondRounds' : 'Founder, BeyondRounds',
         footer: isDe
             ? 'Sie erhalten diese E-Mail, weil Sie sich auf der BeyondRounds-Warteliste angemeldet haben.'
@@ -92,29 +80,6 @@ export const WhitelistEmail = ({
                                 <li>{t.step2}</li>
                                 <li>{t.step3}</li>
                             </ul>
-
-                            {/* Priority form CTA */}
-                            <Section className="bg-[#fdf2f8] border-l-[3px] border-[#3A0B22] rounded-r-lg px-6 py-5 mb-5">
-                                <Text className="m-0 mb-4 text-base text-gray-800 leading-7">
-                                    {t.priorityTitle}
-                                </Text>
-                                <Button
-                                    href={priorityFormLink}
-                                    className="bg-[#3A0B22] text-white text-sm font-semibold px-5 py-3 rounded-md no-underline"
-                                >
-                                    {t.priorityBtn}
-                                </Button>
-                            </Section>
-
-                            {/* Referral */}
-                            {/* <Text className="text-base text-gray-800 leading-7">
-                                <strong>{t.referralTitle}</strong>
-                                <br />
-                                {t.referralBody}{' '}
-                                <a href={referralLink} className="text-[#3A0B22] underline break-all">
-                                    {referralLink}
-                                </a>
-                            </Text> */}
 
                             {/* Signature */}
                             <Text className="text-base text-gray-700 mt-10 leading-7">

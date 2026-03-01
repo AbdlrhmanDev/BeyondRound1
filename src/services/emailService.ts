@@ -9,18 +9,18 @@ import { PaymentEmail } from '../components/emails/payment-confirmed';
 import { QuizResultEmail } from '../components/emails/quiz-result';
 import { checkNotificationExists } from './notificationService';
 
-// Zoho SMTP Configuration
+// ZeptoMail SMTP Configuration
 const transporter = nodemailer.createTransport({
-    host: process.env.ZOHO_SMTP_HOST,
-    port: Number(process.env.ZOHO_SMTP_PORT) || 465,
-    secure: (process.env.ZOHO_SMTP_PORT === '465'),
+    host: process.env.ZEPTOMAIL_SMTP_HOST,
+    port: Number(process.env.ZEPTOMAIL_SMTP_PORT) || 465,
+    secure: (process.env.ZEPTOMAIL_SMTP_PORT === '465'),
     auth: {
-        user: process.env.ZOHO_SMTP_USER,
-        pass: process.env.ZOHO_SMTP_PASS,
+        user: process.env.ZEPTOMAIL_SMTP_USER,
+        pass: process.env.ZEPTOMAIL_SMTP_PASS,
     },
 });
 
-const DEFAULT_FROM = process.env.ZOHO_FROM || 'hello@beyondrounds.app';
+const DEFAULT_FROM = process.env.ZEPTOMAIL_FROM || 'hello@beyondrounds.app';
 
 export interface SendEmailOptions {
     to: string | string[];
@@ -44,8 +44,8 @@ export const emailService = {
      */
     async send(options: SendEmailOptions) {
         try {
-            if (!process.env.ZOHO_SMTP_PASS) {
-                throw new Error('ZOHO_SMTP_PASS is not defined in environment variables');
+            if (!process.env.ZEPTOMAIL_SMTP_PASS) {
+                throw new Error('ZEPTOMAIL_SMTP_PASS is not defined in environment variables');
             }
 
             // Optional Idempotency Check
@@ -57,7 +57,7 @@ export const emailService = {
                 }
             }
 
-            console.log(`Sending email via Zoho to: ${options.to} from: ${DEFAULT_FROM} with subject: ${options.subject}`);
+            console.log(`Sending email via ZeptoMail to: ${options.to} from: ${DEFAULT_FROM} with subject: ${options.subject}`);
 
             // Render React template to HTML
             const html = await render(options.react);
@@ -96,21 +96,18 @@ export const emailService = {
     async sendWhitelistConfirmation(email: string, locale: string = 'en') {
         const isDe = locale === 'de';
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.beyondrounds.app';
-        const priorityFormLink = `${appUrl}/en/quiz`;
-        const quizLink = `${appUrl}/en/quiz`;
-        const referralLink = `https://beyondrounds.app/?ref=${encodeURIComponent(email)}`;
         const unsubUrl = `${appUrl}/en/unsubscribe?email=${encodeURIComponent(email)}`;
 
         return this.send({
             to: email,
-            from: process.env.ZOHO_FROM_WAITLIST || 'waitlist@beyondrounds.app',
+            from: process.env.ZEPTOMAIL_FROM || 'waitlist@beyondrounds.app',
             subject: isDe
                 ? 'Sie sind auf der BeyondRounds Early-Access-Liste'
                 : "You're on the BeyondRounds early access list",
-            react: React.createElement(WhitelistEmail, { locale, priorityFormLink, quizLink, referralLink, unsubUrl }),
+            react: React.createElement(WhitelistEmail, { locale, unsubUrl }),
             text: isDe
-                ? `Sie sind dabei.\n\nBeyondRounds ist eine verifizierte Community nur für Ärzte in Berlin.\n\nWas als Nächstes passiert:\n1. Wir senden Ihnen eine E-Mail, sobald ein Platz frei wird\n2. Sie verifizieren sich einmal (schnell + privat)\n3. Sie erhalten Ihre erste Match-Gruppe\n\nPriority Access: ${priorityFormLink}\n\n— Mostafa\nGründer, BeyondRounds`
-                : `You're in.\n\nBeyondRounds is a verified doctors-only community in Berlin. We're opening access in small waves to keep matching quality high.\n\nWhat happens next:\n1. We'll email you when a spot opens\n2. You'll verify once (quick + private)\n3. You'll get your first match group\n\nIf you want priority access, answer 2 quick questions here: ${priorityFormLink}\n\nOptional — want to help a colleague? Share this link: ${referralLink}\n\n— Mostafa\nFounder, BeyondRounds`,
+                ? `Sie sind dabei.\n\nBeyondRounds ist eine verifizierte Community nur für Ärzte in Berlin.\n\nWas als Nächstes passiert:\n1. Wir senden Ihnen eine E-Mail, sobald ein Platz frei wird\n2. Sie verifizieren sich einmal (schnell + privat)\n3. Sie erhalten Ihre erste Match-Gruppe\n\n— Mostafa\nGründer, BeyondRounds`
+                : `You're in.\n\nBeyondRounds is a verified doctors-only community in Berlin. We're opening access in small waves to keep matching quality high.\n\nWhat happens next:\n1. We'll email you when a spot opens\n2. You'll verify once (quick + private)\n3. You'll get your first match group\n\n— Mostafa\nFounder, BeyondRounds`,
         });
     },
 
@@ -147,7 +144,7 @@ export const emailService = {
         const unsubUrl = `https://beyondrounds.app/${loc}/unsubscribe?email=${encodeURIComponent(email)}`;
         return this.send({
             to: email,
-            from: process.env.ZOHO_FROM_WAITLIST || 'waitlist@beyondrounds.app',
+            from: process.env.ZEPTOMAIL_FROM || 'waitlist@beyondrounds.app',
             subject: isDe
                 ? `Ihr Social Health Score: ${score}/100`
                 : `Your Social Health Score: ${score}/100`,
