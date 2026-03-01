@@ -204,21 +204,21 @@ export default function Waitlist() {
       
       {/* Top Bar (Burgundy) */}
       <header className="sticky top-0 z-50 bg-[#4A1526] text-[#FAF7F2] border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-          <div className="font-bold text-xl tracking-tight">Beyond Rounds</div>
-          <div className="flex items-center gap-4">
-            <LanguageLinks variant="overlay" className="hidden sm:inline-flex border-white/10" />
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+          <div className="font-bold text-lg sm:text-xl tracking-tight">Beyond Rounds</div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <LanguageLinks variant="overlay" className="border-white/10" />
             {!authLoading && user ? (
               <LocalizedLink
                 to="/dashboard"
-                className="h-9 px-5 rounded-full bg-[#F26449] text-white font-semibold text-sm hover:bg-[#E05A3E] transition-colors shadow-sm flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#4A1526]"
+                className="h-8 sm:h-9 px-4 sm:px-5 rounded-full bg-[#F26449] text-white font-semibold text-xs sm:text-sm hover:bg-[#E05A3E] transition-colors shadow-sm flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#4A1526]"
               >
                 {t.dashboard}
               </LocalizedLink>
             ) : (
               <a
                 href="#join"
-                className="h-9 px-5 rounded-full bg-[#F26449] text-white font-semibold text-sm hover:bg-[#E05A3E] transition-colors shadow-sm flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#4A1526]"
+                className="h-8 sm:h-9 px-4 sm:px-5 rounded-full bg-[#F26449] text-white font-semibold text-xs sm:text-sm hover:bg-[#E05A3E] transition-colors shadow-sm flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#4A1526]"
               >
                 {t.joinWaitlist}
               </a>
@@ -257,12 +257,12 @@ export default function Waitlist() {
                     placeholder={t.emailPlaceholder}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1 h-14 rounded-2xl border border-gray-200 bg-white px-5 text-[#1C1917] placeholder-[#57534E]/60 focus:outline-none focus:border-[#F26449] focus:ring-4 focus:ring-[#F26449]/10 transition-shadow text-base shadow-sm"
+                    className="flex-1 h-12 sm:h-14 rounded-2xl border border-gray-200 bg-white px-5 text-[#1C1917] placeholder-[#57534E]/60 focus:outline-none focus:border-[#F26449] focus:ring-4 focus:ring-[#F26449]/10 transition-shadow text-sm sm:text-base shadow-sm"
                   />
                   <button
                     type="submit"
                     disabled={loading}
-                    className="h-14 px-8 rounded-2xl bg-[#F26449] text-white font-semibold text-base hover:bg-[#E05A3E] transition-all disabled:opacity-50 whitespace-nowrap shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-[#F26449]/20"
+                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-2xl bg-[#F26449] text-white font-semibold text-sm sm:text-base hover:bg-[#E05A3E] transition-all disabled:opacity-50 whitespace-nowrap shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-[#F26449]/20"
                   >
                     {loading ? t.joiningBtn : t.joinBtn}
                   </button>
@@ -451,12 +451,12 @@ export default function Waitlist() {
                     placeholder={t.emailPlaceholder}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1 h-14 rounded-2xl border-none bg-[#4a2434] px-6 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#F26449] transition-all text-base shadow-inner"
+                    className="flex-1 h-12 sm:h-14 rounded-2xl border-none bg-[#4a2434] px-5 sm:px-6 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#F26449] transition-all text-sm sm:text-base shadow-inner"
                   />
                   <button
                     type="submit"
                     disabled={loading}
-                    className="h-14 px-8 rounded-2xl bg-[#E26A4F] text-white font-semibold text-lg hover:bg-[#d05c43] transition-all disabled:opacity-50 shadow-md focus:outline-none focus:ring-4 focus:ring-[#E26A4F]/30 whitespace-nowrap"
+                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-2xl bg-[#E26A4F] text-white font-semibold text-base hover:bg-[#d05c43] transition-all disabled:opacity-50 shadow-md focus:outline-none focus:ring-4 focus:ring-[#E26A4F]/30 whitespace-nowrap"
                   >
                     {loading ? t.joiningBtn : t.joinBtn}
                   </button>
