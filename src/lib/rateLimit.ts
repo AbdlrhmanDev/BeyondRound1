@@ -44,12 +44,14 @@ interface RateLimitConfig {
 }
 
 const PRESETS: Record<string, RateLimitConfig> = {
-  billing:          { limit: 10, windowMs: 60_000 },
-  push:             { limit: 5,  windowMs: 60_000 },
-  whitelist:        { limit: 3,  windowMs: 60_000 },
-  welcome:          { limit: 3,  windowMs: 60_000 },
-  admin:            { limit: 20, windowMs: 60_000 },
-  'forgot-password':{ limit: 3,  windowMs: 60_000 }, // 3 reset attempts per min per IP
+  billing:          { limit: 10, windowMs:  60_000 },
+  push:             { limit: 5,  windowMs:  60_000 },
+  whitelist:        { limit: 3,  windowMs:  60_000 },
+  welcome:          { limit: 3,  windowMs:  60_000 },
+  admin:            { limit: 20, windowMs:  60_000 },
+  'forgot-password':{ limit: 3,  windowMs:  60_000 },
+  signup:           { limit: 5,  windowMs: 600_000 }, // 5 signups per 10 min per IP
+  quiz:             { limit: 5,  windowMs: 600_000 }, // 5 submissions per 10 min per IP
 };
 
 /**
@@ -66,6 +68,7 @@ export function checkRateLimit(
   maybeCleanup();
 
   const cfg = PRESETS[preset];
+  if (!cfg) throw new Error(`Unknown rate-limit preset: "${preset}"`);
   const now = Date.now();
   const key = `${preset}:${identifier}`;
   const entry = store.get(key);

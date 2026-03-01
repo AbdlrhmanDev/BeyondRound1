@@ -86,9 +86,7 @@ export default function RootLayout({
     <html lang="de" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
-        {/* LCP preload: mobile image on small viewports, desktop on large */}
-        <link rel="preload" href="/hero-doctors-friendship-mobile.webp" as="image" media="(max-width: 639px)" />
-        <link rel="preload" href="/hero-doctors-friendship-card.webp" as="image" media="(min-width: 640px)" />
+        {/* Hero image preloads are scoped to the marketing layout only */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

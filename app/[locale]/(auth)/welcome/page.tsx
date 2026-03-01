@@ -79,9 +79,15 @@ export default function WelcomePage() {
           if (prefsSuccess) {
             localStorage.removeItem('pending_onboarding_data');
           }
-        } catch {
+        } catch (err) {
+          console.error("Failed to save pending onboarding data:", err);
           // Keep pending data for Dashboard to retry
         }
+      } else {
+        // No pending data and they haven't completed DB onboarding (checked in callback route)
+        // This means it's a new Google sign up who hasn't filled the form yet, redirect to onboarding
+        router.replace(`/${locale}/onboarding`);
+        return;
       }
 
       setSavingPending(false);
@@ -113,7 +119,7 @@ export default function WelcomePage() {
         completeLabel={t('onboarding.scoreBadge.complete')}
         allDoneTitle={t('onboarding.allDone')}
         allDoneSubtitle={t('onboarding.allDoneSubtitle')}
-        goToDashboardLabel={t('onboarding.goToDashboard')}
+        goToDashboardLabel={t('onboarding.goDashboard')}
         onComplete={handleComplete}
       />
     </div>

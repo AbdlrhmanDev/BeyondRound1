@@ -2,6 +2,8 @@
   "loading": "Loading your progress...",
   "allDone": "All Done!",
   "allDoneDesc": "You've completed all onboarding steps.",
+  "allDoneSubtitle": "You've completed all onboarding steps",
+  "goDashboard": "Go to Dashboard",
   "goToDashboard": "Go to Dashboard",
   "back": "Back",
   "stepOf": "Step {{current}} of {{total}}",

@@ -20,8 +20,8 @@ export interface City {
 
 const API_KEY = (process.env.NEXT_PUBLIC_COUNTRY_STATE_CITY_API_KEY || "").trim();
 
-/** Use proxy on production (same-origin), direct API on localhost */
-const useProxy = typeof window !== "undefined" && window.location.hostname !== "localhost";
+/** Use proxy to avoid CORS and keep API key secure */
+const useProxy = true;
 
 async function fetchCountries(): Promise<Country[]> {
   if (useProxy) {

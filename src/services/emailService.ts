@@ -6,26 +6,28 @@ import { WhitelistEmail } from '../components/emails/whitelist-signup';
 import { PasswordResetEmail } from '../components/emails/password-reset';
 import { ProjectCompletedEmail } from '../components/emails/project-completed';
 import { PaymentEmail } from '../components/emails/payment-confirmed';
+import { QuizResultEmail } from '../components/emails/quiz-result';
 import { checkNotificationExists } from './notificationService';
 
-// ZeptoMail SMTP Configuration
+// Zoho SMTP Configuration
 const transporter = nodemailer.createTransport({
-    host: process.env.ZEPTOMAIL_SMTP_HOST,
-    port: Number(process.env.ZEPTOMAIL_SMTP_PORT) || 465,
-    secure: (process.env.ZEPTOMAIL_SMTP_PORT === '465'),
+    host: process.env.ZOHO_SMTP_HOST,
+    port: Number(process.env.ZOHO_SMTP_PORT) || 465,
+    secure: (process.env.ZOHO_SMTP_PORT === '465'),
     auth: {
-        user: process.env.ZEPTOMAIL_SMTP_USER,
-        pass: process.env.ZEPTOMAIL_SMTP_PASS,
+        user: process.env.ZOHO_SMTP_USER,
+        pass: process.env.ZOHO_SMTP_PASS,
     },
 });
 
-const DEFAULT_FROM = process.env.ZEPTOMAIL_FROM || 'no-reply@beyondrounds.app';
+const DEFAULT_FROM = process.env.ZOHO_FROM || 'hello@beyondrounds.app';
 
 export interface SendEmailOptions {
     to: string | string[];
     subject: string;
     react: React.ReactElement;
     text: string;
+    from?: string;
     userId?: string;
     idempotencyKey?: string;
 }
@@ -42,8 +44,8 @@ export const emailService = {
      */
     async send(options: SendEmailOptions) {
         try {
-            if (!process.env.ZEPTOMAIL_SMTP_PASS) {
-                throw new Error('ZEPTOMAIL_SMTP_PASS is not defined in environment variables');
+            if (!process.env.ZOHO_SMTP_PASS) {
+                throw new Error('ZOHO_SMTP_PASS is not defined in environment variables');
             }
 
             // Optional Idempotency Check
@@ -55,13 +57,13 @@ export const emailService = {
                 }
             }
 
-            console.log(`Sending email via ZeptoMail to: ${options.to} from: ${DEFAULT_FROM} with subject: ${options.subject}`);
+            console.log(`Sending email via Zoho to: ${options.to} from: ${DEFAULT_FROM} with subject: ${options.subject}`);
 
             // Render React template to HTML
             const html = await render(options.react);
 
             const info = await transporter.sendMail({
-                from: DEFAULT_FROM,
+                from: options.from || DEFAULT_FROM,
                 to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
                 subject: options.subject,
                 html,
@@ -89,17 +91,26 @@ export const emailService = {
     },
 
     /**
-     * Send a whitelist confirmation email
+     * Send a whitelist confirmation email (Email 0 — immediate)
      */
     async sendWhitelistConfirmation(email: string, locale: string = 'en') {
         const isDe = locale === 'de';
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.beyondrounds.app';
+        const priorityFormLink = `${appUrl}/en/quiz`;
+        const quizLink = `${appUrl}/en/quiz`;
+        const referralLink = `https://beyondrounds.app/?ref=${encodeURIComponent(email)}`;
+        const unsubUrl = `${appUrl}/en/unsubscribe?email=${encodeURIComponent(email)}`;
+
         return this.send({
             to: email,
-            subject: isDe ? 'Sie sind auf der Warteliste 🎉' : 'You’re on the whitelist 🎉',
-            react: React.createElement(WhitelistEmail, { locale }),
-            text: isDe 
-                ? 'Vielen Dank für Ihr Interesse! Wir haben Sie in unsere exklusive Warteliste aufgenommen. Wir werden Sie benachrichtigen, sobald Sie auf die Plattform zugreifen können.'
-                : 'You have been successfully added to our whitelist. We will notify you once you can access the platform.',
+            from: process.env.ZOHO_FROM_WAITLIST || 'waitlist@beyondrounds.app',
+            subject: isDe
+                ? 'Sie sind auf der BeyondRounds Early-Access-Liste'
+                : "You're on the BeyondRounds early access list",
+            react: React.createElement(WhitelistEmail, { locale, priorityFormLink, quizLink, referralLink, unsubUrl }),
+            text: isDe
+                ? `Sie sind dabei.\n\nBeyondRounds ist eine verifizierte Community nur für Ärzte in Berlin.\n\nWas als Nächstes passiert:\n1. Wir senden Ihnen eine E-Mail, sobald ein Platz frei wird\n2. Sie verifizieren sich einmal (schnell + privat)\n3. Sie erhalten Ihre erste Match-Gruppe\n\nPriority Access: ${priorityFormLink}\n\n— Mostafa\nGründer, BeyondRounds`
+                : `You're in.\n\nBeyondRounds is a verified doctors-only community in Berlin. We're opening access in small waves to keep matching quality high.\n\nWhat happens next:\n1. We'll email you when a spot opens\n2. You'll verify once (quick + private)\n3. You'll get your first match group\n\nIf you want priority access, answer 2 quick questions here: ${priorityFormLink}\n\nOptional — want to help a colleague? Share this link: ${referralLink}\n\n— Mostafa\nFounder, BeyondRounds`,
         });
     },
 
@@ -109,7 +120,7 @@ export const emailService = {
     async sendProjectCompleted(emails: string[], projectName: string, dashboardUrl: string) {
         return this.send({
             to: emails,
-            subject: `✅ Project completed: ${projectName}`,
+            subject: `\u2705 Project completed: ${projectName}`,
             react: React.createElement(ProjectCompletedEmail, { projectName, dashboardUrl }),
             text: `Project "${projectName}" has been completed and is ready for use. View it here: ${dashboardUrl}`,
         });
@@ -121,9 +132,29 @@ export const emailService = {
     async sendPaymentConfirmation(email: string, details: { amount: string, date: string, invoiceUrl: string }) {
         return this.send({
             to: email,
-            subject: 'Payment confirmed – thank you',
+            subject: 'Payment confirmed \u2013 thank you',
             react: React.createElement(PaymentEmail, { ...details }),
             text: `Your payment of ${details.amount} on ${details.date} was successful. View your invoice: ${details.invoiceUrl}`,
+        });
+    },
+
+    /**
+     * Send a quiz result email with Social Health Score
+     */
+    async sendQuizResult(email: string, firstName: string, score: number, locale: string = 'en') {
+        const isDe = locale === 'de';
+        const loc = isDe ? 'de' : 'en';
+        const unsubUrl = `https://beyondrounds.app/${loc}/unsubscribe?email=${encodeURIComponent(email)}`;
+        return this.send({
+            to: email,
+            from: process.env.ZOHO_FROM_WAITLIST || 'waitlist@beyondrounds.app',
+            subject: isDe
+                ? `Ihr Social Health Score: ${score}/100`
+                : `Your Social Health Score: ${score}/100`,
+            react: React.createElement(QuizResultEmail, { firstName, score, locale, unsubUrl }),
+            text: isDe
+                ? `Hallo ${firstName},\n\nIhr Social Health Score beträgt ${score}/100.\n\nTreten Sie der BeyondRounds Early-Access-Liste bei: https://beyondrounds.app/de/waitlist\n\n— Mostafa\nGründer, BeyondRounds`
+                : `Hi ${firstName},\n\nYour Social Health Score is ${score}/100.\n\nJoin the BeyondRounds early access list: https://beyondrounds.app/en/waitlist\n\n— Mostafa\nFounder, BeyondRounds`,
         });
     },
 
@@ -134,9 +165,9 @@ export const emailService = {
         const isDe = locale === 'de';
         return this.send({
             to: email,
-            subject: isDe ? 'Passwort zurücksetzen – BeyondRounds' : 'Reset your password – BeyondRounds',
+            subject: isDe ? 'Passwort zurücksetzen \u2013 BeyondRounds' : 'Reset your password \u2013 BeyondRounds',
             react: React.createElement(PasswordResetEmail, { resetLink, locale }),
-            text: isDe 
+            text: isDe
                 ? `Klicken Sie auf den folgenden Link, um Ihr Passwort zurückzusetzen: ${resetLink}`
                 : `Click the following link to reset your password: ${resetLink}`,
         });

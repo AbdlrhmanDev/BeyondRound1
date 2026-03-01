@@ -413,8 +413,8 @@ export default function Waitlist() {
                 </p>
               </motion.div>
               <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.5, ease: "easeOut", delay: 0.3 }}
                 className="bg-white p-6 rounded-2xl shadow-sm border border-[#1C1917]/5 sm:col-span-2"
@@ -468,7 +468,7 @@ export default function Waitlist() {
                 <span className="font-medium text-[#1C1917]">{t.priv1}</span>
               </motion.div>
               <motion.div 
-                initial={{ opacity: 0, x: 50 }}
+                initial={{ opacity: 0, x: -50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
@@ -507,8 +507,8 @@ export default function Waitlist() {
               {currentFAQ.map((faq, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, x: i % 2 === 0 ? -50 : 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ duration: 0.4, ease: "easeOut", delay: i * 0.1 }}
                 >

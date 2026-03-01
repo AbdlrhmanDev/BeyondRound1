@@ -13,11 +13,6 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.session) {
-      // Detect password recovery flow: Supabase sets amr to [{ method: 'otp' }]
-      // and the user redirectTo in the recovery link determines the ?next param.
-      // Most reliable detection: check if the link was a recovery type via the `next` param
-      // or check the AMR claim on the session.
-      const amr = data.session.user?.factors ?? [];
       const isRecovery =
         next === '/reset-password' ||
         (data.session as any).amr?.some((entry: any) => entry.method === 'otp') ||
@@ -27,7 +22,20 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${locale}/reset-password`, request.url));
       }
 
-      // Normal email verification → show welcome animation, then dashboard
+      // Check if user has completed onboarding
+      const { data: prefs } = await supabase
+        .from('onboarding_preferences')
+        .select('completed_at')
+        .eq('user_id', data.session.user.id)
+        .maybeSingle();
+
+      const hasCompletedOnboarding = !!(prefs as any)?.completed_at;
+
+      if (hasCompletedOnboarding) {
+        return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+      }
+
+      // Not completed DB -> go to welcome page which will process localStorage or redirect to /onboarding
       return NextResponse.redirect(new URL(`/${locale}/welcome`, request.url));
     }
   }

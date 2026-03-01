@@ -686,9 +686,11 @@ export default function Profile() {
       if (cancelled) return;
 
       // Determine verification status from profile data
+      // profiles.verification_status is set by trigger/admin: null | 'pending' | 'approved' | 'rejected'
+      const dbProfileAny = dbProfile as unknown as Record<string, unknown>;
       let verificationStatus: VerificationStatus = "not_started";
-      if ((dbProfile as unknown as Record<string, unknown>)?.verified_at) verificationStatus = "verified";
-      else if (dbProfile?.license_url) verificationStatus = "pending";
+      if (dbProfileAny?.verification_status === 'approved') verificationStatus = "verified";
+      else if (dbProfile?.license_url || dbProfileAny?.verification_status === 'pending') verificationStatus = "pending";
 
       // Compute stats from memberships
       const completedGroups = memberships.length;
@@ -702,7 +704,17 @@ export default function Profile() {
         country: dbProfile?.country || "",
         verification_status: verificationStatus,
         bio: "",
-        languages: dbProfile?.languages || [],
+        // profiles.languages is an array; onboarding stores a single string in
+        // onboarding_preferences.group_language_preference — fall back to that.
+        languages: (dbProfile?.languages && dbProfile.languages.length > 0)
+          ? dbProfile.languages
+          : prefs?.group_language_preference
+            ? [{
+                english: "English",
+                german: "German",
+                both: "English & German",
+              }[prefs.group_language_preference as string] ?? prefs.group_language_preference]
+            : [],
         interests: prefs?.interests || [],
         email_notifications: settings?.email_notifications ?? true,
         push_notifications: settings?.push_notifications ?? false,

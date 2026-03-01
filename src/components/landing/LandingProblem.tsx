@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { ScrollAnimatedWrapper } from './ScrollAnimatedWrapper';
 
 interface LandingProblemProps {
   t: (key: string) => string;
@@ -10,7 +11,12 @@ export function LandingProblem({ t }: LandingProblemProps) {
       <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           {/* Left: Copy */}
-          <div>
+          <ScrollAnimatedWrapper
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#3A0B22] tracking-tight leading-[1.15] mb-6">
               {t('landing.problemTitle')}
             </h2>
@@ -32,10 +38,16 @@ export function LandingProblem({ t }: LandingProblemProps) {
               {t('landing.seeHowItWorks')}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
             </a>
-          </div>
+          </ScrollAnimatedWrapper>
 
           {/* Right: Photo */}
-          <div className="relative rounded-[24px] overflow-hidden aspect-[4/3] shadow-lg">
+          <ScrollAnimatedWrapper 
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+            className="relative rounded-[24px] overflow-hidden aspect-[4/3] shadow-lg"
+          >
             <Image
               src="https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=700&h=525&fit=crop&q=80"
               alt="Two women chatting over coffee at a warm café"
@@ -43,7 +55,7 @@ export function LandingProblem({ t }: LandingProblemProps) {
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
             />
-          </div>
+          </ScrollAnimatedWrapper>
         </div>
       </div>
     </section>

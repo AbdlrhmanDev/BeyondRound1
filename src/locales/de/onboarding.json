@@ -2,6 +2,7 @@
   "loading": "Lade deinen Fortschritt...",
   "allDone": "Alles erledigt!",
   "allDoneDesc": "Du hast alle Onboarding-Schritte abgeschlossen.",
+  "goDashboard": "Zum Dashboard",
   "goToDashboard": "Zum Dashboard",
   "back": "Zurück",
   "stepOf": "Schritt {{current}} von {{total}}",

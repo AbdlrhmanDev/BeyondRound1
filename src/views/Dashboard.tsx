@@ -350,6 +350,60 @@ export default function Dashboard() {
 
     const load = async () => {
       try {
+        // --- Retry pending onboarding data from Google Auth ---
+        const pendingStr = typeof window !== 'undefined' ? localStorage.getItem('pending_onboarding_data') : null;
+        if (pendingStr && user?.id) {
+          try {
+            const { personalInfo, answers } = JSON.parse(pendingStr);
+            const socialStyle = answers?.social_style || answers?.goals || [];
+            
+            // Re-import updateProfile/saveOnboardingPreferences inside here or at top
+            const { updateProfile } = await import('@/services/profileService');
+            const { saveOnboardingPreferences } = await import('@/services/onboardingService');
+            
+            await updateProfile(user.id, {
+              full_name: personalInfo?.name || null,
+              country: personalInfo?.country || null,
+              state: personalInfo?.state || null,
+              city: personalInfo?.city || null,
+              neighborhood: personalInfo?.neighborhood || null,
+              gender: personalInfo?.gender || null,
+              date_of_birth: personalInfo?.birthYear && personalInfo?.birthMonth && personalInfo?.birthDay
+                ? `${personalInfo.birthYear}-${personalInfo.birthMonth.padStart(2, '0')}-${personalInfo.birthDay.padStart(2, '0')}`
+                : null,
+              gender_preference: personalInfo?.genderPreference || null,
+              nationality: personalInfo?.nationality || null,
+            });
+
+            const prefsSuccess = await saveOnboardingPreferences(user.id, {
+              specialty: answers?.specialty?.[0] || null,
+              specialty_preference: answers?.specialty_preference?.[0] || 'no_preference',
+              group_language_preference: answers?.group_language_preference?.[0] || 'both',
+              career_stage: answers?.stage?.[0] || null,
+              sports: answers?.sports || [],
+              activity_level: answers?.activity_level?.[0] || null,
+              music_preferences: answers?.music_preferences || answers?.music || [],
+              movie_preferences: answers?.movie_preferences || answers?.movies || [],
+              other_interests: answers?.other_interests || [],
+              meeting_activities: answers?.meeting_activities || ['coffee', 'dinner'],
+              availability_slots: answers?.availability || [],
+              goals: answers?.goals || [],
+              social_style: socialStyle,
+              dietary_preferences: answers?.dietary_preferences || answers?.dietary || [],
+              life_stage: answers?.life_stage?.[0] || null,
+              ideal_weekend: answers?.ideal_weekend || [],
+              completed_at: new Date().toISOString(),
+            });
+
+            if (prefsSuccess) {
+              localStorage.removeItem('pending_onboarding_data');
+            }
+          } catch (err) {
+            console.error('Silently retrying pending onboarding data failed:', err);
+          }
+        }
+        // --- End retry ---
+
         const params = new URLSearchParams(window.location.search);
         if (params.get('booking_success') === 'true') {
           const bookingId = params.get('booking_id');

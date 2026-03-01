@@ -277,14 +277,14 @@ serve(async (req) => {
 
   try {
     // @ts-expect-error - Deno global is available at runtime
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const zohoApiKey = Deno.env.get("ZOHO_API_KEY");
     // @ts-expect-error - Deno global is available at runtime
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     // @ts-expect-error - Deno global is available at runtime
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-    if (!resendApiKey) {
-      throw new Error("Missing RESEND_API_KEY");
+    if (!zohoApiKey) {
+      throw new Error("Missing ZOHO_API_KEY");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -332,25 +332,25 @@ serve(async (req) => {
     // Generate email content from template
     const { subject, html, text } = generateEmailTemplate(template, data);
 
-    // Send email via Resend
-    const response = await fetch("https://api.resend.com/emails", {
+    // Send email via Zoho (ZeptoMail API)
+    const response = await fetch("https://api.zeptomail.eu/v1.1/email", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
+        "Authorization": `Zoho-enczapikey ${zohoApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "BeyondRounds <hello@beyondrounds.app>",
-        to: [to],
+        from: { address: "hello@beyondrounds.app", name: "BeyondRounds" },
+        to: [{ email_address: { address: to } }],
         subject,
-        html,
-        text,
+        htmlbody: html,
+        textbody: text,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(`Resend API error: ${JSON.stringify(errorData)}`);
+      throw new Error(`Zoho API error: ${JSON.stringify(errorData)}`);
     }
 
     const result = await response.json();

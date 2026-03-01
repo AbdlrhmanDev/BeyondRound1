@@ -1,4 +1,5 @@
 import { LandingCTAButton } from './LandingCTAButton';
+import { ScrollAnimatedWrapper } from './ScrollAnimatedWrapper';
 
 interface LandingHowItWorksProps {
   t: (key: string) => string;
@@ -54,8 +55,12 @@ export function LandingHowItWorks({ t }: LandingHowItWorksProps) {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {steps.map((step, i) => (
-            <div
+            <ScrollAnimatedWrapper
               key={step.num}
+              initial={{ opacity: 0, x: i % 2 === 0 ? -50 : 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, ease: "easeOut", delay: i * 0.1 }}
               className="bg-white/80 border border-[#E8DED5]/60 rounded-[22px] p-6 text-center shadow-sm"
             >
               {/* Icon */}
@@ -77,7 +82,7 @@ export function LandingHowItWorks({ t }: LandingHowItWorksProps) {
               <p className="text-[#5E555B] text-sm leading-relaxed">
                 {t(step.descKey)}
               </p>
-            </div>
+            </ScrollAnimatedWrapper>
           ))}
         </div>
 

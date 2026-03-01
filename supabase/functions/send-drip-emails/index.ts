@@ -1,6 +1,7 @@
-// Deno Edge Function — sends drip campaign emails to waitlist members
-// Triggered daily by pg_cron; stops automatically once LAUNCH_DATE is reached.
-// Uses ZeptoMail HTTP API (EU region) — no Resend dependency.
+// Deno Edge Function — structured pre-launch drip email sequence
+// Email 1 → Day 1 | Email 2 → Day 3 | Email 3 → Day 6 | Email 4 → Day 10
+// After Email 4: weekly nurture loop (every 7 days)
+// Triggered daily by pg_cron.
 // @ts-expect-error - Deno types are available at runtime
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // @ts-expect-error - Deno types are available at runtime
@@ -11,6 +12,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface WaitlistMember {
+  id: string;
+  email: string;
+  drip_count: number;
+  last_drip_sent_at: string | null;
+  created_at: string;
+  unsubscribed_at: string | null;
+}
+
+// ─── Zoho (ZeptoMail) sender ──────────────────────────────────────────────────
 
 async function sendViaZeptoMail(opts: {
   apiKey: string;
@@ -41,80 +55,318 @@ async function sendViaZeptoMail(opts: {
   }
 }
 
-function buildEmailHtml(dripNumber: number, locale: string): string {
-  const isDe = locale === "de";
+// ─── Timing logic ─────────────────────────────────────────────────────────────
+// Hours that must have passed before the next email in the sequence is sent.
+// drip_count = 0 → Email 1 (uses created_at as reference)
+// drip_count = 1 → Email 2 | drip_count = 2 → Email 3 | drip_count = 3 → Email 4
+// drip_count >= 4 → Weekly nurture (7 days between sends)
 
-  const title = isDe
-    ? "Die Plattform ist fast fertig! 🚀"
-    : "The platform is almost ready! 🚀";
-  const body = isDe
-    ? "Wir arbeiten hart daran, Ihnen die bestmögliche Erfahrung zu bieten. Jeden Tag bringen wir neue Funktionen zum Leben."
-    : "We're working hard to bring you the best possible experience. Every day we bring new features to life so you feel right at home from day one.";
-  const shareTitle = isDe ? "Kennen Sie andere Ärzte?" : "Know other doctors?";
-  const shareBody = isDe
-    ? "Helfen Sie uns, die Community aufzubauen! Teilen Sie BeyondRounds mit Ihren Kollegen."
-    : "Help us build the community! Share BeyondRounds with your colleagues — the more doctors join, the better the connections.";
-  const footer = isDe
-    ? "Bleiben Sie gespannt — es lohnt sich!"
-    : "Stay tuned — it will be worth it!";
-  const unsubNote = isDe
-    ? "Sie erhalten diese E-Mail, weil Sie sich auf der BeyondRounds-Warteliste angemeldet haben."
-    : "You are receiving this email because you signed up for the BeyondRounds waitlist.";
+const STEP_DELAY_HOURS: Record<number, number> = {
+  0: 24,  // Email 1: 1 day after signup
+  1: 48,  // Email 2: 2 days after Email 1
+  2: 72,  // Email 3: 3 days after Email 2
+  3: 96,  // Email 4: 4 days after Email 3
+};
+const WEEKLY_DELAY_HOURS = 168;
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f5f5f5;">
-      <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-        <div style="background: linear-gradient(135deg, #3A0B22 0%, #5B1A3A 100%); padding: 32px; text-align: center;">
-          <p style="color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.1em; font-size: 12px; margin: 0 0 8px 0;">Update #${dripNumber}</p>
-          <h1 style="color: white; margin: 0; font-size: 24px;">${title}</h1>
-        </div>
-        <div style="padding: 32px;">
-          <p style="font-size: 16px; margin-bottom: 24px;">${body}</p>
-          <div style="background: #fdf2f8; border: 1px solid #f0c4dc; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <h2 style="font-size: 16px; font-weight: 600; color: #3A0B22; margin: 0 0 8px 0;">${shareTitle}</h2>
-            <p style="font-size: 14px; color: #5B1A3A; margin: 0;">${shareBody}</p>
-          </div>
-          <p style="font-size: 14px; color: #6b7280; font-style: italic;">${footer}</p>
-        </div>
-        <div style="padding: 24px; background: #f9fafb; text-align: center;">
-          <p style="margin: 0; font-size: 12px; color: #9ca3af;">${unsubNote}</p>
-          <p style="margin: 8px 0 0 0; font-size: 12px; color: #9ca3af;">BeyondRounds</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+function isDue(member: WaitlistMember): boolean {
+  const step = member.drip_count;
+  const delayMs = (step < 4 ? STEP_DELAY_HOURS[step] : WEEKLY_DELAY_HOURS) * 3_600_000;
+  // For the very first drip, compare against signup time
+  const reference = step === 0 ? member.created_at : member.last_drip_sent_at;
+  if (!reference) return false;
+  return Date.now() - new Date(reference).getTime() >= delayMs;
 }
 
-function buildEmailText(dripNumber: number, locale: string): string {
-  const isDe = locale === "de";
-  if (isDe) {
-    return `Update #${dripNumber} — Die Plattform ist fast fertig!
+// ─── HTML helpers ─────────────────────────────────────────────────────────────
 
-Wir arbeiten hart daran, Ihnen die bestmögliche Erfahrung zu bieten.
-
-Kennen Sie andere Ärzte? Helfen Sie uns, die Community aufzubauen und teilen Sie BeyondRounds mit Ihren Kollegen.
-
-Bleiben Sie gespannt — es lohnt sich!
-
-BeyondRounds`;
-  }
-  return `Update #${dripNumber} — The platform is almost ready!
-
-We're working hard to bring you the best possible experience.
-
-Know other doctors? Help us build the community and share BeyondRounds with your colleagues.
-
-Stay tuned — it will be worth it!
-
-BeyondRounds`;
+function emailWrapper(body: string, unsubUrl: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:580px;margin:32px auto;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+    <div style="background:#3A0B22;padding:18px 32px;">
+      <span style="color:#ffffff;font-size:15px;font-weight:600;letter-spacing:0.02em;">BeyondRounds</span>
+    </div>
+    <div style="padding:32px 36px;">
+      ${body}
+      <p style="margin:36px 0 0;color:#9ca3af;font-size:12px;border-top:1px solid #f3f4f6;padding-top:18px;line-height:1.6;">
+        You received this because you joined the BeyondRounds early access list.<br>
+        <a href="${unsubUrl}" style="color:#9ca3af;">Unsubscribe</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
 }
+
+function p(text: string): string {
+  return `<p style="margin:0 0 20px;font-size:16px;line-height:1.7;color:#1f2937;">${text}</p>`;
+}
+
+function ol(items: string[]): string {
+  const lis = items
+    .map((i) => `<li style="margin-bottom:14px;font-size:16px;line-height:1.6;color:#1f2937;">${i}</li>`)
+    .join("");
+  return `<ol style="margin:0 0 24px;padding-left:22px;">${lis}</ol>`;
+}
+
+function ul(items: string[]): string {
+  const lis = items
+    .map((i) => `<li style="margin-bottom:8px;font-size:16px;line-height:1.6;color:#1f2937;">${i}</li>`)
+    .join("");
+  return `<ul style="margin:0 0 24px;padding-left:22px;">${lis}</ul>`;
+}
+
+function ctaBox(content: string): string {
+  return `<div style="background:#fdf2f8;border-left:3px solid #3A0B22;border-radius:0 8px 8px 0;padding:20px 24px;margin:0 0 24px;">${content}</div>`;
+}
+
+function btn(href: string, label: string): string {
+  return `<a href="${href}" style="display:inline-block;background:#3A0B22;color:#ffffff;text-decoration:none;padding:11px 22px;border-radius:6px;font-size:14px;font-weight:600;letter-spacing:0.01em;">${label}</a>`;
+}
+
+function sig(): string {
+  return `<p style="margin:32px 0 0;font-size:16px;color:#374151;line-height:1.7;">— Mostafa<br><span style="color:#6b7280;font-size:14px;">Founder, BeyondRounds</span></p>`;
+}
+
+function textFooter(): string {
+  return `\n\n---\nYou received this because you joined the BeyondRounds early access list.`;
+}
+
+// ─── Email 1: How matching will work ─────────────────────────────────────────
+
+function email1Html(prefsLink: string, unsubUrl: string): string {
+  return emailWrapper(
+    p("Hi Doctor,") +
+    p("Quick overview of how BeyondRounds works:") +
+    ol([
+      "<strong>Verified doctors only</strong><br>We confirm membership privately to keep the community safe.",
+      "<strong>Small curated groups</strong><br>You'll be placed in a small group based on your interests + availability.",
+      "<strong>Weekly waves, not spammy events</strong><br>We open new matches in waves so people actually meet.",
+    ]) +
+    p("If you want us to match you better, tell us what you prefer:") +
+    ctaBox(
+      `<p style="margin:0 0 14px;font-size:15px;color:#5B1A3A;line-height:1.8;">
+        Coffee / dinner / sports / walks<br>
+        English / German<br>
+        Typical free days
+      </p>` +
+      btn(prefsLink, "Set your preferences →")
+    ) +
+    sig(),
+    unsubUrl
+  );
+}
+
+function email1Text(prefsLink: string): string {
+  return `Hi Doctor,
+
+Quick overview of how BeyondRounds works:
+
+1) Verified doctors only
+We confirm membership privately to keep the community safe.
+
+2) Small curated groups
+You'll be placed in a small group based on your interests + availability.
+
+3) Weekly waves, not spammy events
+We open new matches in waves so people actually meet.
+
+If you want us to match you better, tell us what you prefer:
+Coffee / dinner / sports / walks
+English / German
+Typical free days
+
+Set your preferences: ${prefsLink}
+
+— Mostafa
+Founder, BeyondRounds${textFooter()}`;
+}
+
+// ─── Email 2: One question ────────────────────────────────────────────────────
+
+function email2Html(formLink: string, unsubUrl: string): string {
+  return emailWrapper(
+    p("Hi Doctor,") +
+    p("One quick question:") +
+    p("<strong>What's the biggest thing blocking you socially in Berlin right now?</strong>") +
+    ctaBox(
+      `<p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:2;">
+        A) Unpredictable schedule<br>
+        B) Don't know where to meet people<br>
+        C) Too tired after work<br>
+        D) Language barrier<br>
+        E) Tried already, didn't work
+      </p>` +
+      btn(formLink, "Send your answer →")
+    ) +
+    p("This helps us build groups that actually work for doctors.") +
+    sig(),
+    unsubUrl
+  );
+}
+
+function email2Text(formLink: string): string {
+  return `Hi Doctor,
+
+One quick question:
+
+What's the biggest thing blocking you socially in Berlin right now?
+
+A) Unpredictable schedule
+B) Don't know where to meet people
+C) Too tired after work
+D) Language barrier
+E) Tried already, didn't work
+
+Tap one: ${formLink}
+
+This helps us build groups that actually work for doctors.
+
+— Mostafa
+Founder, BeyondRounds${textFooter()}`;
+}
+
+// ─── Email 3: Referral push ───────────────────────────────────────────────────
+
+function email3Html(referralLink: string, unsubUrl: string): string {
+  return emailWrapper(
+    p("Hi Doctor,") +
+    p("We're opening BeyondRounds in small waves.") +
+    p("If you want earlier access, here's the simplest way:") +
+    p("<strong>Invite one doctor colleague to join the waitlist.</strong>") +
+    ctaBox(
+      `<p style="margin:0 0 6px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Your personal link</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#3A0B22;word-break:break-all;font-family:monospace;">${referralLink}</p>` +
+      btn(referralLink, "Share your link →")
+    ) +
+    p("When someone joins through your link, we move you up the queue.") +
+    sig(),
+    unsubUrl
+  );
+}
+
+function email3Text(referralLink: string): string {
+  return `Hi Doctor,
+
+We're opening BeyondRounds in small waves.
+
+If you want earlier access, here's the simplest way:
+
+Invite one doctor colleague to join the waitlist.
+
+Your personal link: ${referralLink}
+
+When someone joins through it, we move you up the queue.
+
+— Mostafa
+Founder, BeyondRounds${textFooter()}`;
+}
+
+// ─── Email 4: Slots opening soon ─────────────────────────────────────────────
+
+function email4Html(prefsLink: string, priorityLink: string, unsubUrl: string): string {
+  return emailWrapper(
+    p("Hi Doctor,") +
+    p("We're close to starting matching in Berlin.") +
+    p("To keep quality high, we'll invite people in waves:") +
+    ul([
+      "A limited number of new members per wave",
+      "Priority goes to people who complete preferences + verification quickly",
+    ]) +
+    p("If you haven't done it yet, take 60 seconds:") +
+    ctaBox(
+      `<p style="margin:0 0 12px;font-size:15px;line-height:1.8;">
+        <a href="${prefsLink}" style="color:#3A0B22;font-weight:600;">→ Preferences</a>
+      </p>
+      <p style="margin:0;font-size:15px;line-height:1.8;">
+        <a href="${priorityLink}" style="color:#3A0B22;font-weight:600;">→ Priority access form</a>
+      </p>`
+    ) +
+    sig(),
+    unsubUrl
+  );
+}
+
+function email4Text(prefsLink: string, priorityLink: string): string {
+  return `Hi Doctor,
+
+We're close to starting matching in Berlin.
+
+To keep quality high, we'll invite people in waves:
+- A limited number of new members per wave
+- Priority goes to people who complete preferences + verification quickly
+
+If you haven't done it yet, take 60 seconds:
+
+Preferences: ${prefsLink}
+Priority access form: ${priorityLink}
+
+— Mostafa
+Founder, BeyondRounds${textFooter()}`;
+}
+
+// ─── Weekly nurture ───────────────────────────────────────────────────────────
+
+const WEEKLY_SUBJECTS = [
+  "Quick update: Berlin wave is building",
+  "We're adding more doctors before wave 1",
+  "Matching starts soon — do this to get priority",
+];
+
+function weeklyHtml(
+  referralLink: string,
+  prefsLink: string,
+  weekNum: number,
+  unsubUrl: string
+): string {
+  const taglines = [
+    "we're growing the Berlin list to make matching strong from day 1.",
+    "more doctors are joining every day — matching will be better for it.",
+    "we're finalising group sizes and neighbourhoods before opening.",
+  ];
+  const tagline = taglines[(weekNum - 1) % taglines.length];
+
+  return emailWrapper(
+    p("Hi Doctor,") +
+    p(`Quick update: ${tagline}`) +
+    p("If you want priority access, do these 2 things:") +
+    ctaBox(
+      `<p style="margin:0 0 14px;font-size:15px;line-height:1.8;">
+        <a href="${prefsLink}" style="color:#3A0B22;font-weight:600;">1. Complete your preferences →</a>
+      </p>
+      <p style="margin:0;font-size:15px;line-height:1.8;">
+        <a href="${referralLink}" style="color:#3A0B22;font-weight:600;">2. Invite one colleague →</a>
+      </p>`
+    ) +
+    p("That's it.") +
+    sig(),
+    unsubUrl
+  );
+}
+
+function weeklyText(referralLink: string, prefsLink: string): string {
+  return `Hi Doctor,
+
+Quick update: we're growing the Berlin list to make matching strong from day 1.
+
+If you want priority access, do these 2 things:
+
+1. Complete your preferences: ${prefsLink}
+2. Invite one colleague: ${referralLink}
+
+That's it.
+
+— Mostafa
+Founder, BeyondRounds${textFooter()}`;
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -123,104 +375,121 @@ serve(async (req) => {
 
   try {
     // @ts-expect-error - Deno global is available at runtime
-    const zeptoApiKey = Deno.env.get("ZEPTOMAIL_API_KEY");
+    const zeptoApiKey = Deno.env.get("ZOHO_API_KEY");
     // @ts-expect-error - Deno global is available at runtime
-    const zeptoFrom = Deno.env.get("ZEPTOMAIL_FROM") ?? "no-reply@beyondrounds.app";
+    const zeptoFrom = Deno.env.get("ZOHO_FROM_WAITLIST") ?? "waitlist@beyondrounds.app";
     // @ts-expect-error - Deno global is available at runtime
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     // @ts-expect-error - Deno global is available at runtime
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     // @ts-expect-error - Deno global is available at runtime
-    const launchDateStr = Deno.env.get("LAUNCH_DATE") ?? "";
+    const appUrl = (Deno.env.get("APP_URL") ?? "https://app.beyondrounds.app").replace(/\/$/, "");
 
-    if (!zeptoApiKey) throw new Error("Missing ZEPTOMAIL_API_KEY");
+    if (!zeptoApiKey) throw new Error("Missing ZOHO_API_KEY");
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
     }
 
-    // Stop sending once launch date has passed
-    if (launchDateStr) {
-      const launchDate = new Date(launchDateStr);
-      if (!isNaN(launchDate.getTime()) && new Date() >= launchDate) {
-        console.log("🚀 Launch date reached — drip campaign complete.");
-        return new Response(
-          JSON.stringify({ success: true, sent: 0, skipped: 0, reason: "past_launch_date" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-        );
-      }
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log("📧 Starting drip email process...");
+    console.log("📧 Starting drip email sequence...");
 
-    // Members who signed up 3+ days ago and haven't received a drip in 3+ days
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
     const { data: members, error: queryError } = await supabase
       .from("waitlist")
-      .select("id, email, drip_count, last_drip_sent_at")
-      .lte("created_at", threeDaysAgo)
-      .or(`last_drip_sent_at.is.null,last_drip_sent_at.lte.${threeDaysAgo}`);
+      .select("id, email, drip_count, last_drip_sent_at, created_at, unsubscribed_at")
+      .is("unsubscribed_at", null)
+      .order("created_at", { ascending: true });
 
     if (queryError) throw queryError;
-
-    console.log(`📋 Found ${members?.length ?? 0} members due for drip`);
 
     let sent = 0;
     let skipped = 0;
 
-    for (const member of members ?? []) {
+    for (const member of (members as WaitlistMember[]) ?? []) {
       try {
-        const dripNumber = (member.drip_count ?? 0) + 1;
-        const locale = "de"; // default to German (primary market)
+        if (!isDue(member)) {
+          skipped++;
+          continue;
+        }
 
-        const subject =
-          locale === "de"
-            ? `Update #${dripNumber} — BeyondRounds kommt bald!`
-            : `Update #${dripNumber} — BeyondRounds is coming soon!`;
+        const step = member.drip_count;
+
+        // Build per-member links
+        const emailSlug = encodeURIComponent(member.email);
+        const referralLink = `https://beyondrounds.app/?ref=${emailSlug}`;
+        const prefsLink = `${appUrl}/en/quiz`;
+        const priorityLink = `${appUrl}/en/waitlist`;
+        const feedbackLink = `${appUrl}/en/feedback?q=social_blocker&from=${emailSlug}`;
+        const unsubUrl = `${appUrl}/unsubscribe?email=${emailSlug}`;
+
+        let subject: string;
+        let html: string;
+        let text: string;
+
+        if (step === 0) {
+          subject = "How matching will work (in plain English)";
+          html = email1Html(prefsLink, unsubUrl);
+          text = email1Text(prefsLink);
+        } else if (step === 1) {
+          subject = "One question so we match you correctly";
+          html = email2Html(feedbackLink, unsubUrl);
+          text = email2Text(feedbackLink);
+        } else if (step === 2) {
+          subject = "Want earlier access? Bring one doctor with you";
+          html = email3Html(referralLink, unsubUrl);
+          text = email3Text(referralLink);
+        } else if (step === 3) {
+          subject = "Berlin matching starts soon — here's how invites work";
+          html = email4Html(prefsLink, priorityLink, unsubUrl);
+          text = email4Text(prefsLink, priorityLink);
+        } else {
+          // Weekly nurture — cycles through 3 subject lines
+          const weekNum = step - 3; // 1, 2, 3, ...
+          subject = WEEKLY_SUBJECTS[(weekNum - 1) % WEEKLY_SUBJECTS.length];
+          html = weeklyHtml(referralLink, prefsLink, weekNum, unsubUrl);
+          text = weeklyText(referralLink, prefsLink);
+        }
 
         await sendViaZeptoMail({
           apiKey: zeptoApiKey,
           from: zeptoFrom,
           to: member.email,
           subject,
-          html: buildEmailHtml(dripNumber, locale),
-          text: buildEmailText(dripNumber, locale),
+          html,
+          text,
         });
 
-        // Update tracking columns
         const { error: updateError } = await supabase
           .from("waitlist")
           .update({
             last_drip_sent_at: new Date().toISOString(),
-            drip_count: dripNumber,
+            drip_count: step + 1,
           })
           .eq("id", member.id);
 
         if (updateError) {
-          console.error(`⚠️ Failed to update drip tracking for ${member.email}:`, updateError);
+          console.error(`⚠️ Failed to update tracking for ${member.email}:`, updateError);
         }
 
         sent++;
-        console.log(`✅ Drip #${dripNumber} sent to ${member.email}`);
+        console.log(`✅ Email ${step + 1} (step ${step}) → ${member.email}`);
       } catch (memberError) {
-        console.error(`❌ Failed drip for ${member.email}:`, memberError);
+        console.error(`❌ Failed for ${member.email}:`, memberError);
         skipped++;
       }
     }
 
-    console.log(`📧 Drip campaign complete: ${sent} sent, ${skipped} skipped`);
+    console.log(`📧 Done: ${sent} sent, ${skipped} skipped`);
 
     return new Response(
       JSON.stringify({ success: true, sent, skipped }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("❌ Error in send-drip-emails:", errorMessage);
-
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("❌ Error in send-drip-emails:", msg);
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: msg }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }

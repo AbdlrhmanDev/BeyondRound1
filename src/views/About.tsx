@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Shield, Users, Heart, CalendarCheck, MessageCircle } from "lucide-react";
+import { ScrollAnimatedWrapper } from "@/components/landing/ScrollAnimatedWrapper";
 
 interface AboutProps {
   tt: {
@@ -111,12 +112,18 @@ const About = ({ tt }: AboutProps) => {
 
       {/* Mission */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl pb-20">
-        <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]"
+        >
           <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-4">{tt.missionTitle}</h2>
           <p className="text-[#5E555B] leading-relaxed mb-4">{tt.missionP1}</p>
           <p className="text-[#3A0B22] font-semibold text-lg">{tt.missionBold}</p>
           <p className="text-[#5E555B] leading-relaxed mt-4">{tt.missionP2}</p>
-        </div>
+        </ScrollAnimatedWrapper>
       </section>
 
       {/* Why It Works */}
@@ -141,23 +148,50 @@ const About = ({ tt }: AboutProps) => {
 
       {/* The Experience */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl py-20">
-        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">{tt.expTitle}</h2>
-        <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">{tt.expTitle}</h2>
+        </ScrollAnimatedWrapper>
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+          className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]"
+        >
           <p className="text-[#5E555B] leading-relaxed mb-4">{tt.expP1}</p>
           <p className="text-[#5E555B] leading-relaxed mb-4">{tt.expP2}</p>
           <p className="text-[#3A0B22] font-medium">{tt.expP3}</p>
-        </div>
+        </ScrollAnimatedWrapper>
       </section>
 
       {/* Trust & Safety */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl pb-20">
-        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">{tt.trustTitle}</h2>
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">{tt.trustTitle}</h2>
+        </ScrollAnimatedWrapper>
         <div className="grid sm:grid-cols-2 gap-4">
-          {trustItems.map((item) => (
-            <div key={item.title} className="bg-white/60 border border-[#E8DED5] rounded-[20px] p-6">
+          {trustItems.map((item, i) => (
+            <ScrollAnimatedWrapper
+              key={item.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, ease: "easeOut", delay: i * 0.1 }}
+              className="bg-white/60 border border-[#E8DED5] rounded-[20px] p-6"
+            >
               <h3 className="font-semibold text-[#3A0B22] mb-2">{item.title}</h3>
               <p className="text-sm text-[#5E555B] leading-relaxed">{item.desc}</p>
-            </div>
+            </ScrollAnimatedWrapper>
           ))}
         </div>
       </section>

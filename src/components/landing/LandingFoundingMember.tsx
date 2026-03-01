@@ -1,4 +1,5 @@
 import { LandingCTAButton } from './LandingCTAButton';
+import { ScrollAnimatedWrapper } from './ScrollAnimatedWrapper';
 
 interface LandingFoundingMemberProps {
   t: (key: string) => string;
@@ -17,20 +18,33 @@ export function LandingFoundingMember({ t }: LandingFoundingMemberProps) {
     <section className="py-20 sm:py-28 bg-[#F6F1EC]">
       <div className="container mx-auto px-4 sm:px-6 max-w-3xl text-center">
         {/* Badge */}
-        <p className="text-[#F27C5C] text-xs font-semibold tracking-[0.15em] uppercase mb-4">
-          {t('landing.foundingBadge')}
-        </p>
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <p className="text-[#F27C5C] text-xs font-semibold tracking-[0.15em] uppercase mb-4">
+            {t('landing.foundingBadge')}
+          </p>
 
-        <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#3A0B22] tracking-tight mb-3 leading-[1.15]">
-          {t('landing.foundingTitle')}
-        </h2>
+          <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#3A0B22] tracking-tight mb-3 leading-[1.15]">
+            {t('landing.foundingTitle')}
+          </h2>
 
-        <p className="text-[#5E555B] text-base mb-10 max-w-md mx-auto leading-relaxed">
-          {t('landing.foundingSubtitle').replace(/<1>/g, '').replace(/<\/1>/g, '')}
-        </p>
+          <p className="text-[#5E555B] text-base mb-10 max-w-md mx-auto leading-relaxed">
+            {t('landing.foundingSubtitle').replace(/<1>/g, '').replace(/<\/1>/g, '')}
+          </p>
+        </ScrollAnimatedWrapper>
 
         {/* Benefits card */}
-        <div className="bg-white/80 border border-[#E8DED5]/60 rounded-[22px] p-6 sm:p-8 text-left max-w-lg mx-auto mb-8">
+        <ScrollAnimatedWrapper 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+          className="bg-white/80 border border-[#E8DED5]/60 rounded-[22px] p-6 sm:p-8 text-left max-w-lg mx-auto mb-8"
+        >
           <ul className="space-y-4">
             {benefitKeys.map((key) => (
               <li key={key} className="flex items-start gap-3">
@@ -53,7 +67,7 @@ export function LandingFoundingMember({ t }: LandingFoundingMemberProps) {
               </li>
             ))}
           </ul>
-        </div>
+        </ScrollAnimatedWrapper>
 
         {/* Closing scarcity line */}
         <p className="text-[#5E555B]/60 text-xs mb-8 tracking-wide">

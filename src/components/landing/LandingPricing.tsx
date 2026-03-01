@@ -1,4 +1,5 @@
 import { LandingCTAButton } from './LandingCTAButton';
+import { ScrollAnimatedWrapper } from './ScrollAnimatedWrapper';
 
 interface Props {
   t: (key: string) => string;
@@ -163,7 +164,11 @@ function PlanCard({
 
 function GuaranteeBanner({ t }: { t: Props['t'] }) {
   return (
-    <div
+    <ScrollAnimatedWrapper
+      initial={{ opacity: 0, scale: 0.95 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
       className="mt-10 rounded-[22px] overflow-hidden"
       style={{
         background: 'linear-gradient(135deg, #3A0B22 0%, #4B0F2D 100%)',
@@ -228,7 +233,7 @@ function GuaranteeBanner({ t }: { t: Props['t'] }) {
           </p>
         </div>
       </div>
-    </div>
+    </ScrollAnimatedWrapper>
   );
 }
 
@@ -310,7 +315,16 @@ export function LandingPricing({ t, ctaHref }: Props) {
         {/* Plan grid — 1 col mobile, 2 col md, 4 col xl */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
           {plans.map((plan, i) => (
-            <PlanCard key={i} {...plan} />
+            <ScrollAnimatedWrapper
+              key={i}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, ease: "easeOut", delay: i * 0.1 }}
+              className="flex"
+            >
+              <PlanCard {...plan} />
+            </ScrollAnimatedWrapper>
           ))}
         </div>
 

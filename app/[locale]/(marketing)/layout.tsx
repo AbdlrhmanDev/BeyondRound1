@@ -23,6 +23,9 @@ export default async function MarketingLayout({
 
   return (
     <div className="min-h-screen bg-[#F6F1EC]">
+      {/* LCP preload: hero image only needed on marketing pages */}
+      <link rel="preload" href="/hero-doctors-friendship-mobile.webp" as="image" media="(max-width: 639px)" />
+      <link rel="preload" href="/hero-doctors-friendship-card.webp" as="image" media="(min-width: 640px)" />
       <MarketingHeaderHtml dict={dict} locale={locale as Locale} isAuthenticated={!!user} />
       <main>{children}</main>
       <FooterSmall dict={dict} locale={locale as Locale} />

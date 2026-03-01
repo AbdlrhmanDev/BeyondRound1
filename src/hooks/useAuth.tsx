@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, createContext, useContext, type ReactNode, useRef } from 'react';
-import type { User, Session, AuthError, SupabaseClient } from '@supabase/supabase-js';
+import type { User, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { createClient } from '@/integrations/supabase/client';
 
@@ -17,6 +17,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null; data?: { user: User | null } }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<{ error: Error | null }>;
 }
@@ -135,43 +136,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabaseRef.current = supabase;
 
     try {
-      const callbackUrl = `${window.location.origin}/auth/callback`;
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: callbackUrl,
-          data: { full_name: fullName },
-        },
+      // Create user via server-side admin API (bypasses Supabase SMTP)
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, fullName }),
       });
 
-      // Fire-and-forget welcome email — don't block signup on email failure
-      if (data?.user) {
-        fetch('/api/auth/welcome', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name: fullName }),
-        }).catch(() => {});
+      const body = await res.json();
+
+      if (!res.ok) {
+        const err: ExtendedError = new Error(body.error || 'Signup failed');
+        if (res.status === 409) err.code = 'user_already_exists';
+        return { error: err };
       }
 
-      if (data?.user && error?.message?.includes('confirmation email')) {
-        const emailError: ExtendedError = new Error('Account created but confirmation email could not be sent.');
-        emailError.status = (error as AuthError).status;
-        emailError.code = 'email_send_failed';
-        emailError.userCreated = true;
-        return { error: emailError, data };
-      }
-
-      if (!data?.user && (error as AuthError)?.status === 500) {
-        const msg = (error as AuthError)?.message || '';
-        const extErr: ExtendedError = new Error(
-          msg.includes('confirmation email')
-            ? 'Signup failed. Check SMTP (Hostinger) settings and run the database trigger fix — see TROUBLESHOOTING_SIGNUP_ERROR.md'
-            : msg || 'Signup failed. See TROUBLESHOOTING_SIGNUP_ERROR.md'
-        );
-        return { error: extErr };
-      }
-
+      // User is auto-confirmed — sign in immediately to get a session
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       return { error, data };
     } catch (err) {
       return { error: err as Error };
@@ -182,6 +163,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const supabase = supabaseRef.current ?? createClient();
     supabaseRef.current = supabase;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
+  };
+
+  const signInWithGoogle = async () => {
+    const supabase = supabaseRef.current ?? createClient();
+    supabaseRef.current = supabase;
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const locale = ['de', 'en'].includes(pathParts[0]) ? pathParts[0] : 'de';
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/${locale}/auth/callback`,
+      },
+    });
     return { error };
   };
 
@@ -206,7 +201,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, updatePassword }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signOut, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );
@@ -222,6 +217,7 @@ export const useAuth = () => {
       loading: false,
       signUp: async () => ({ error: new Error('Auth not available on this page') }),
       signIn: async () => ({ error: new Error('Auth not available on this page') }),
+      signInWithGoogle: async () => ({ error: new Error('Auth not available on this page') }),
       signOut: async () => { },
       updatePassword: async () => ({ error: new Error('Auth not available on this page') }),
     };

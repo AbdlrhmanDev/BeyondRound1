@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { EMAILS } from "@/constants/emails";
+import { ScrollAnimatedWrapper } from "@/components/landing/ScrollAnimatedWrapper";
 
 interface FAQItem {
   q: string;
@@ -64,7 +65,14 @@ const FAQ = ({ tt, sections }: FAQProps) => {
                 const key = `${sIdx}-${iIdx}`;
                 const isOpen = openItems.has(key);
                 return (
-                  <div key={key} className="bg-white/60 border border-[#E8DED5] rounded-[18px] overflow-hidden shadow-[0_1px_4px_rgba(58,11,34,0.03)]">
+                  <ScrollAnimatedWrapper
+                    key={key}
+                    initial={{ opacity: 0, x: iIdx % 2 === 0 ? -30 : 30 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.4, ease: "easeOut", delay: iIdx * 0.1 }}
+                    className="bg-white/60 border border-[#E8DED5] rounded-[18px] overflow-hidden shadow-[0_1px_4px_rgba(58,11,34,0.03)]"
+                  >
                     <button
                       onClick={() => toggle(key)}
                       className="w-full flex items-center justify-between gap-3 p-5 text-left min-h-[44px]"
@@ -77,7 +85,7 @@ const FAQ = ({ tt, sections }: FAQProps) => {
                         <p className="text-[#5E555B] text-sm leading-relaxed">{item.a}</p>
                       </div>
                     )}
-                  </div>
+                  </ScrollAnimatedWrapper>
                 );
               })}
             </div>
@@ -85,7 +93,13 @@ const FAQ = ({ tt, sections }: FAQProps) => {
         ))}
 
         {/* Still have questions */}
-        <div className="bg-[#3A0B22] rounded-[24px] p-8 sm:p-10 text-center">
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+          className="bg-[#3A0B22] rounded-[24px] p-8 sm:p-10 text-center"
+        >
           <h3 className="font-display text-2xl font-bold text-white mb-3">{tt.stillTitle}</h3>
           <p className="text-white/60 mb-6">{tt.stillSubtitle}</p>
           <a
@@ -94,7 +108,7 @@ const FAQ = ({ tt, sections }: FAQProps) => {
           >
             {tt.contactButton}
           </a>
-        </div>
+        </ScrollAnimatedWrapper>
       </section>
     </div>
   );

@@ -1,4 +1,5 @@
 import { LandingCTAButton } from './LandingCTAButton';
+import { ScrollAnimatedWrapper } from './ScrollAnimatedWrapper';
 
 interface LandingFAQNewProps {
   t: (key: string) => string;
@@ -23,31 +24,38 @@ export function LandingFAQNew({ t }: LandingFAQNewProps) {
         </h2>
 
         <div className="space-y-3">
-          {faqs.map((faq) => (
-            <details
+          {faqs.map((faq, i) => (
+            <ScrollAnimatedWrapper
               key={faq.q}
-              className="group bg-white/80 border border-[#E8DED5]/60 rounded-xl shadow-sm"
+              initial={{ opacity: 0, x: i % 2 === 0 ? -50 : 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.4, ease: "easeOut", delay: i * 0.1 }}
             >
-              <summary className="flex items-center justify-between cursor-pointer px-6 py-5 text-[#3A0B22] font-medium text-sm select-none list-none [&::-webkit-details-marker]:hidden">
-                <span>{faq.q}</span>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0 ml-4 text-[#5E555B]/40 transition-transform duration-200 group-open:rotate-180"
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </summary>
-              <div className="px-6 pb-5 text-sm text-[#5E555B] leading-relaxed">
-                {faq.a}
-              </div>
-            </details>
+              <details
+                className="group bg-white/80 border border-[#E8DED5]/60 rounded-xl shadow-sm"
+              >
+                <summary className="flex items-center justify-between cursor-pointer px-6 py-5 text-[#3A0B22] font-medium text-sm select-none list-none [&::-webkit-details-marker]:hidden">
+                  <span>{faq.q}</span>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="shrink-0 ml-4 text-[#5E555B]/40 transition-transform duration-200 group-open:rotate-180"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </summary>
+                <div className="px-6 pb-5 text-sm text-[#5E555B] leading-relaxed">
+                  {faq.a}
+                </div>
+              </details>
+            </ScrollAnimatedWrapper>
           ))}
         </div>
 

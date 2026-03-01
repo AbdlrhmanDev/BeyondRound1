@@ -3,7 +3,7 @@
  * Following Single Responsibility Principle
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, supabase } from '@/integrations/supabase/client';
 
 export interface GroupEvaluation {
   id?: string;
@@ -36,7 +36,7 @@ export const getEvaluation = async (
       return null;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from("group_evaluations")
       .select("id, met_in_person, meeting_rating, real_connection, feedback_text, photos_urls")
       .eq("user_id", userId)
@@ -88,7 +88,7 @@ export const submitEvaluation = async (evaluation: GroupEvaluation): Promise<boo
       return false;
     }
 
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from("group_evaluations")
       .upsert({
         user_id: evaluation.user_id,
@@ -132,7 +132,7 @@ export const hasSubmittedEvaluation = async (
       return false;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from("group_evaluations")
       .select("id")
       .eq("user_id", userId)

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Clock, Users, Heart, Shield, MapPin, Coffee } from "lucide-react";
+import { ScrollAnimatedWrapper } from "@/components/landing/ScrollAnimatedWrapper";
 
 interface ForDoctorsProps {
   tt: {
@@ -103,20 +104,40 @@ const ForDoctors = ({ tt }: ForDoctorsProps) => {
 
       {/* The Challenge */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl pb-20">
-        <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]"
+        >
           <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-4">{tt.challengeTitle}</h2>
           <p className="text-[#5E555B] leading-relaxed mb-4">{tt.challengeP1}</p>
           <p className="text-[#3A0B22] font-semibold text-lg">{tt.challengeP2}</p>
-        </div>
+        </ScrollAnimatedWrapper>
       </section>
 
       {/* What to Expect */}
       <section className="bg-[#3A0B22] py-20">
         <div className="container mx-auto px-5 sm:px-8 max-w-3xl">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mb-10">{tt.expectTitle}</h2>
+          <ScrollAnimatedWrapper
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mb-10">{tt.expectTitle}</h2>
+          </ScrollAnimatedWrapper>
           <div className="space-y-6">
-            {expectations.map((item) => (
-              <div key={item.title} className="flex gap-4 items-start">
+            {expectations.map((item, i) => (
+              <ScrollAnimatedWrapper
+                key={item.title}
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.4, ease: "easeOut", delay: i * 0.1 }}
+                className="flex gap-4 items-start"
+              >
                 <div className="h-10 w-10 rounded-xl bg-[#F27C5C]/15 flex items-center justify-center shrink-0">
                   <item.icon className="h-5 w-5 text-[#F27C5C]" />
                 </div>
@@ -124,7 +145,7 @@ const ForDoctors = ({ tt }: ForDoctorsProps) => {
                   <h3 className="text-white font-semibold mb-1">{item.title}</h3>
                   <p className="text-white/60 text-sm leading-relaxed">{item.desc}</p>
                 </div>
-              </div>
+              </ScrollAnimatedWrapper>
             ))}
           </div>
         </div>
@@ -132,10 +153,24 @@ const ForDoctors = ({ tt }: ForDoctorsProps) => {
 
       {/* How Verification Works */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl py-20">
-        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">{tt.verifyTitle}</h2>
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#3A0B22] mb-6">{tt.verifyTitle}</h2>
+        </ScrollAnimatedWrapper>
         <div className="space-y-4">
-          {steps.map((item) => (
-            <div key={item.step} className="flex gap-4 items-start bg-white/60 border border-[#E8DED5] rounded-[18px] p-5">
+          {steps.map((item, i) => (
+            <ScrollAnimatedWrapper
+              key={item.step}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.4, ease: "easeOut", delay: i * 0.1 }}
+              className="flex gap-4 items-start bg-white/60 border border-[#E8DED5] rounded-[18px] p-5"
+            >
               <div className="h-8 w-8 rounded-full bg-[#F27C5C] text-white font-bold text-sm flex items-center justify-center shrink-0">
                 {item.step}
               </div>
@@ -143,21 +178,27 @@ const ForDoctors = ({ tt }: ForDoctorsProps) => {
                 <h3 className="font-semibold text-[#3A0B22] mb-0.5">{item.title}</h3>
                 <p className="text-sm text-[#5E555B] leading-relaxed">{item.desc}</p>
               </div>
-            </div>
+            </ScrollAnimatedWrapper>
           ))}
         </div>
       </section>
 
       {/* New in Berlin */}
       <section className="container mx-auto px-5 sm:px-8 max-w-3xl pb-20">
-        <div className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]">
+        <ScrollAnimatedWrapper
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="bg-white/60 border border-[#E8DED5] rounded-[24px] p-8 sm:p-12 shadow-[0_2px_8px_rgba(58,11,34,0.04)]"
+        >
           <div className="flex items-center gap-2 mb-4">
             <MapPin className="h-5 w-5 text-[#F27C5C]" />
             <h2 className="font-display text-2xl font-bold text-[#3A0B22]">{tt.berlinTitle}</h2>
           </div>
           <p className="text-[#5E555B] leading-relaxed mb-4">{tt.berlinP1}</p>
           <p className="text-[#3A0B22] font-medium">{tt.berlinP2}</p>
-        </div>
+        </ScrollAnimatedWrapper>
       </section>
 
       {/* Photo Grid — 6 images, 2 rows */}

@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { LandingCTAButton } from './LandingCTAButton';
+import { ScrollAnimatedWrapper } from './ScrollAnimatedWrapper';
 
 interface LandingValuePropsProps {
   t: (key: string) => string;
@@ -34,7 +35,12 @@ export function LandingValueProps({ t }: LandingValuePropsProps) {
       <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           {/* Left: Check list */}
-          <div>
+          <ScrollAnimatedWrapper
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#3A0B22] tracking-tight leading-[1.15] mb-8">
               {t('landing.valueTitle')}
             </h2>
@@ -77,10 +83,16 @@ export function LandingValueProps({ t }: LandingValuePropsProps) {
                 {t('landing.valueCTANote')}
               </p>
             </div>
-          </div>
+          </ScrollAnimatedWrapper>
 
           {/* Right: Photo grid */}
-          <div className="grid grid-cols-2 gap-3">
+          <ScrollAnimatedWrapper 
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+            className="grid grid-cols-2 gap-3"
+          >
             {/* Large photo spanning full width */}
             <div className="col-span-2 relative rounded-[20px] overflow-hidden aspect-[3/2] shadow-md">
               <Image
@@ -106,7 +118,7 @@ export function LandingValueProps({ t }: LandingValuePropsProps) {
                 />
               </div>
             ))}
-          </div>
+          </ScrollAnimatedWrapper>
         </div>
       </div>
     </section>
