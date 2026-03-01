@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import LocalizedLink from "@/components/LocalizedLink";
 import { LanguageLinks } from "@/components/marketing/LanguageLinks";
+import { motion } from "framer-motion";
 import {
   Check, ChevronDown, Lock, CheckCircle2, UserCheck, Settings, Users, ArrowRight, Instagram
 } from "lucide-react";
@@ -230,7 +231,12 @@ export default function Waitlist() {
       <main>
         {/* Hero Section (Cream) */}
         <section className="pt-20 pb-24 sm:pt-28 sm:pb-32 px-5 sm:px-8 bg-[#FAF7F2]">
-          <div className="max-w-4xl mx-auto text-center">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="max-w-4xl mx-auto text-center"
+          >
             <span className="inline-block py-1.5 px-3 rounded-full bg-[#4A1526]/5 text-[#4A1526] text-xs font-bold tracking-widest uppercase mb-8">
               {t.badge}
             </span>
@@ -294,18 +300,30 @@ export default function Waitlist() {
                 {t.builtBy}
               </span>
             </div>
-          </div>
+          </motion.div>
         </section>
 
         {/* How It Works Section (White) */}
         <section className="py-24 bg-white px-5 sm:px-8">
-          <div className="max-w-6xl mx-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="max-w-6xl mx-auto"
+          >
             <h2 className="text-3xl md:text-4xl font-bold text-center text-[#1C1917] mb-16 tracking-tight">
               {t.howItWorks}
             </h2>
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {/* Step 1 */}
-              <div className="bg-[#FAF7F2] p-8 rounded-[24px] shadow-sm hover:shadow-md transition-shadow">
+              <motion.div 
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="bg-[#FAF7F2] p-8 rounded-[24px] shadow-sm hover:shadow-md transition-shadow"
+              >
                 <div className="w-14 h-14 bg-[#4A1526] rounded-2xl flex items-center justify-center text-white mb-6 shadow-sm">
                   <UserCheck className="w-7 h-7" />
                 </div>
@@ -313,9 +331,15 @@ export default function Waitlist() {
                 <p className="text-[#57534E] leading-relaxed">
                   {t.step1Desc}
                 </p>
-              </div>
+              </motion.div>
               {/* Step 2 */}
-              <div className="bg-[#FAF7F2] p-8 rounded-[24px] shadow-sm hover:shadow-md transition-shadow">
+              <motion.div 
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+                className="bg-[#FAF7F2] p-8 rounded-[24px] shadow-sm hover:shadow-md transition-shadow"
+              >
                 <div className="w-14 h-14 bg-[#4A1526] rounded-2xl flex items-center justify-center text-white mb-6 shadow-sm">
                   <Settings className="w-7 h-7" />
                 </div>
@@ -323,9 +347,15 @@ export default function Waitlist() {
                 <p className="text-[#57534E] leading-relaxed">
                   {t.step2Desc}
                 </p>
-              </div>
+              </motion.div>
               {/* Step 3 */}
-              <div className="bg-[#4A1526] p-8 rounded-[24px] shadow-md hover:shadow-lg transition-shadow relative overflow-hidden text-white">
+              <motion.div 
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
+                className="bg-[#4A1526] p-8 rounded-[24px] shadow-md hover:shadow-lg transition-shadow relative overflow-hidden text-white"
+              >
                 <div className="absolute top-0 right-0 p-6 opacity-10">
                   <Users className="w-32 h-32" />
                 </div>
@@ -336,14 +366,20 @@ export default function Waitlist() {
                 <p className="text-white/80 leading-relaxed relative z-10">
                   {t.step3Desc}
                 </p>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </section>
 
         {/* Who It's For Section (Cream) */}
         <section className="py-24 bg-[#FAF7F2] px-5 sm:px-8 border-y border-[#1C1917]/5">
-          <div className="max-w-4xl mx-auto text-center">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="max-w-4xl mx-auto text-center"
+          >
             <h2 className="text-3xl md:text-4xl font-bold text-[#1C1917] mb-6 tracking-tight">
               {t.forWho}
             </h2>
@@ -352,24 +388,42 @@ export default function Waitlist() {
             </p>
             
             <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto text-left mb-12">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#1C1917]/5">
+              <motion.div 
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+                className="bg-white p-6 rounded-2xl shadow-sm border border-[#1C1917]/5"
+              >
                 <p className="text-[#1C1917] font-medium flex gap-3">
                   <span className="text-[#F26449] mt-0.5">✖</span>
                   {t.tired1}
                 </p>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#1C1917]/5">
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+                className="bg-white p-6 rounded-2xl shadow-sm border border-[#1C1917]/5"
+              >
                 <p className="text-[#1C1917] font-medium flex gap-3">
                   <span className="text-[#F26449] mt-0.5">✖</span>
                   {t.tired2}
                 </p>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#1C1917]/5 sm:col-span-2">
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: 0.3 }}
+                className="bg-white p-6 rounded-2xl shadow-sm border border-[#1C1917]/5 sm:col-span-2"
+              >
                 <p className="text-[#1C1917] font-medium flex gap-3">
                   <span className="text-[#F26449] mt-0.5">✖</span>
                   {t.tired3}
                 </p>
-              </div>
+              </motion.div>
             </div>
 
             <a
@@ -378,13 +432,19 @@ export default function Waitlist() {
             >
               {t.getEarlyAccess}
             </a>
-          </div>
+          </motion.div>
         </section>
 
         {/* Privacy & Safety Section (White) */}
         <section className="py-24 bg-white px-5 sm:px-8">
-          <div className="max-w-5xl mx-auto rounded-[32px] bg-[#FAF7F2] p-10 sm:p-16 border border-[#1C1917]/5 text-center sm:text-left flex flex-col md:flex-row gap-12 items-center">
-            <div className="md:w-1/2">
+            <div className="max-w-5xl mx-auto rounded-[32px] bg-[#FAF7F2] p-10 sm:p-16 border border-[#1C1917]/5 text-center sm:text-left flex flex-col md:flex-row gap-12 items-center">
+            <motion.div 
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="md:w-1/2"
+            >
               <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-[#4A1526] mb-6 mx-auto sm:mx-0">
                 <Lock className="w-8 h-8" />
               </div>
@@ -395,41 +455,79 @@ export default function Waitlist() {
               <a href="#" className="font-semibold text-[#4A1526] hover:text-[#5E1B31] underline underline-offset-4">
                 {t.readPrivacy}
               </a>
-            </div>
+            </motion.div>
             <div className="md:w-1/2 space-y-4">
-              <div className="flex bg-white p-5 rounded-2xl shadow-sm border border-[#1C1917]/5 gap-4 text-left">
+              <motion.div 
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+                className="flex bg-white p-5 rounded-2xl shadow-sm border border-[#1C1917]/5 gap-4 text-left"
+              >
                 <Lock className="w-6 h-6 text-[#F26449] shrink-0" />
                 <span className="font-medium text-[#1C1917]">{t.priv1}</span>
-              </div>
-              <div className="flex bg-white p-5 rounded-2xl shadow-sm border border-[#1C1917]/5 gap-4 text-left">
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+                className="flex bg-white p-5 rounded-2xl shadow-sm border border-[#1C1917]/5 gap-4 text-left"
+              >
                 <Lock className="w-6 h-6 text-[#F26449] shrink-0" />
                 <span className="font-medium text-[#1C1917]">{t.priv2}</span>
-              </div>
-              <div className="flex bg-white p-5 rounded-2xl shadow-sm border border-[#1C1917]/5 gap-4 text-left">
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: 0.3 }}
+                className="flex bg-white p-5 rounded-2xl shadow-sm border border-[#1C1917]/5 gap-4 text-left"
+              >
                 <Lock className="w-6 h-6 text-[#F26449] shrink-0" />
                 <span className="font-medium text-[#1C1917]">{t.priv3}</span>
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
 
         {/* Quick Questions FAQ (Cream) */}
         <section className="py-24 bg-[#FAF7F2] px-5 sm:px-8 bg-gradient-to-b from-white to-[#FAF7F2]">
-          <div className="max-w-3xl mx-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="max-w-3xl mx-auto"
+          >
             <h2 className="text-3xl md:text-4xl font-bold text-[#1C1917] mb-12 text-center tracking-tight">
               {t.quickQuestions}
             </h2>
-            <div className="space-y-1 text-left">
+            <div className="space-y-4 text-left">
               {currentFAQ.map((faq, i) => (
-                <AccordionItem key={i} q={faq.q} a={faq.a} />
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.4, ease: "easeOut", delay: i * 0.1 }}
+                >
+                  <AccordionItem q={faq.q} a={faq.a} />
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </section>
 
         {/* Final CTA Section (Burgundy) */}
         <section className="py-24 bg-[#391823] px-5 sm:px-8">
-          <div className="max-w-xl mx-auto text-center">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="max-w-xl mx-auto text-center"
+          >
             <h2 className="text-4xl sm:text-5xl font-extrabold text-[#FAF7F2] mb-4 tracking-tight leading-tight">
               {t.finalTitle1}<br className="hidden sm:block" /> {t.finalTitle2}
             </h2>
@@ -466,7 +564,7 @@ export default function Waitlist() {
             <p className="text-[#FAF7F2]/60 text-sm">
               {t.finalLaunchNotice}
             </p>
-          </div>
+          </motion.div>
         </section>
       </main>
 
