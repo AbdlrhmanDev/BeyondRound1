@@ -64,35 +64,68 @@ export function LandingHero({ translations: tt }: LandingHeroProps) {
   const { days, hours, minutes, seconds } = useCountdown();
 
   return (
-    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
-      {/* Background photo */}
+    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden  ">
+
+      {/* ── Background photo — friends laughing at an upscale dinner (Unsplash) ── */}
       <Image
-        src="/hero-doctors-friendship.webp"
-        alt="Doctors enjoying a relaxed dinner together"
+        src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1920&q=85"
+        alt="Group of friends laughing together at an elegant dinner"
         fill
         priority
-        className="object-cover"
+        className="object-cover object-center"
         sizes="100vw"
-        quality={85}
       />
 
-      {/* Gradient overlay: plum top → transparent */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#3A0B22]/70 via-[#3A0B22]/40 to-[#3A0B22]/60" />
+      {/* ── Decorative rings ── */}
+      <svg
+        className="absolute right-[-120px] top-[-80px] opacity-[0.12] "
+        width="600" height="600"
+        viewBox="0 0 600 600"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        <circle cx="300" cy="300" r="280" stroke="#F6B4A8" strokeWidth="1" />
+        <circle cx="300" cy="300" r="220" stroke="#F6B4A8" strokeWidth="0.75" />
+        <circle cx="300" cy="300" r="160" stroke="#F27C5C" strokeWidth="0.5" />
+      </svg>
+      <svg
+        className="absolute left-[-80px] bottom-[-60px] opacity-[0.08]"
+        width="400" height="400"
+        viewBox="0 0 400 400"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        <circle cx="200" cy="200" r="180" stroke="#F6B4A8" strokeWidth="1" />
+        <circle cx="200" cy="200" r="120" stroke="#F27C5C" strokeWidth="0.75" />
+      </svg>
+
+      {/* ── Floating pill / card shapes — suggest social connection ── */}
+      {/* <div className="absolute top-[18%] right-[8%] hidden lg:flex items-center gap-2 bg-white/5 border border-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-white/50 text-xs font-medium select-none">
+        <span className="w-2 h-2 rounded-full bg-[#F27C5C] animate-pulse" />
+        Berlin · 14 verified doctors matched this week
+      </div>
+      <div className="absolute bottom-[22%] left-[6%] hidden lg:flex items-center gap-2 bg-white/5 border border-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-white/50 text-xs font-medium select-none">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        Next group starts Friday 18:00
+      </div> */}
+
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 max-w-4xl text-center pt-28 pb-16">
         {/* Brand label */}
-        <p className="text-[#F6B4A8] text-xs sm:text-sm font-medium tracking-[0.2em] uppercase mb-6">
+        <p className="text-[#F6B4A8] text-xs sm:text-sm font-medium tracking-[0.2em] uppercase mb-6 drop-shadow-lg">
           BEYONDROUNDS
         </p>
 
         {/* Headline */}
-        <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.15] mb-6 max-w-3xl mx-auto">
+        <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.15] mb-6 max-w-3xl mx-auto drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
           {tt.headline}
         </h1>
 
         {/* Subheadline */}
-        <p className="text-white/80 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
+        <p className="text-white text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]">
           {tt.subheadline}<br />
           {tt.subheadline2}
         </p>

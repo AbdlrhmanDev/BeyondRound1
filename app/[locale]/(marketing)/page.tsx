@@ -98,7 +98,6 @@ export default async function HomePage({ params }: HomePageProps) {
       {/* I: Final CTA */}
       <LandingFinalCTANew t={t} />
 
-      <StickyMobileCTA label={t('common.joinNow')} />
     </div>
   );
 }

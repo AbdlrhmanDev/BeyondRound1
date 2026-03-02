@@ -12,7 +12,7 @@ interface LocaleLayoutProps {
   params: { locale: string };
 }
 
-const i18nNamespaces = ['common', 'auth', 'about', 'faq', 'contact', 'pricing', 'landing', 'waitlist', 'dashboard', 'onboarding', 'settings', 'notifications'];
+const i18nNamespaces = ['common', 'auth', 'about', 'faq', 'contact',  'landing', 'waitlist', 'dashboard', 'onboarding', 'settings', 'notifications'];
 
 export default async function LocaleLayout({ children, params: { locale } }: LocaleLayoutProps) {
   if (!isValidLocale(locale)) notFound();

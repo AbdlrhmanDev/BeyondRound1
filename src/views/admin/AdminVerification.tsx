@@ -8,12 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  ShieldCheck, Search, RefreshCw, Trash2, Plus, Loader2,
+  ShieldCheck, Search, RefreshCw, Trash2, Plus, Loader2, FileText, ZoomIn,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   getVerificationQueue, deleteVerificationRequest,
-  createVerificationRequest, searchUsers, VerificationRequest,
+  createVerificationRequest, searchUsers, getSignedDocumentUrl, VerificationRequest,
 } from "@/services/adminService";
 import { useLocale } from "@/contexts/LocaleContext";
 import Link from "next/link";
@@ -52,6 +52,10 @@ export default function AdminVerificationPage() {
   const { pathWithLocale } = useLocale();
   const { toast } = useToast();
 
+  // Signed thumbnail URLs keyed by request id
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<VerificationRequest | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -71,6 +75,21 @@ export default function AdminVerificationPage() {
     const data = await getVerificationQueue(statusFilter);
     setRequests(data);
     setLoading(false);
+
+    // Batch-load signed URLs for all rows that have a file
+    const withFiles = data.filter((r) => r.file_url);
+    if (withFiles.length === 0) return;
+    const entries = await Promise.all(
+      withFiles.map(async (r) => {
+        const url = await getSignedDocumentUrl(r.file_url!);
+        return [r.id, url] as [string, string | null];
+      })
+    );
+    const map: Record<string, string> = {};
+    for (const [id, url] of entries) {
+      if (url) map[id] = url;
+    }
+    setSignedUrls(map);
   };
 
   useEffect(() => { fetchRequests(); }, [statusFilter]);
@@ -203,6 +222,7 @@ export default function AdminVerificationPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
+                      <th className="py-3 px-2 font-medium text-muted-foreground">Doc</th>
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">Doctor</th>
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">Specialty</th>
                       <th className="text-left py-3 px-2 font-medium text-muted-foreground">City</th>
@@ -216,6 +236,38 @@ export default function AdminVerificationPage() {
                   <tbody>
                     {filteredRequests.map((r) => (
                       <tr key={r.id} className="border-b hover:bg-muted/50">
+                        <td className="py-2 px-2">
+                          {signedUrls[r.id] ? (
+                            (r.file_url ?? "").toLowerCase().includes(".pdf") ? (
+                              <a href={signedUrls[r.id]} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center justify-center w-12 h-12 rounded border bg-muted hover:bg-muted/80">
+                                <FileText className="h-5 w-5 text-muted-foreground" />
+                              </a>
+                            ) : (
+                              <button
+                                className="w-12 h-12 rounded border overflow-hidden bg-muted hover:ring-2 hover:ring-primary/50 transition-all group relative shrink-0"
+                                onClick={() => setLightboxUrl(signedUrls[r.id])}
+                              >
+                                <img
+                                  src={signedUrls[r.id]}
+                                  alt="License"
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                  <ZoomIn className="h-4 w-4 text-white opacity-0 group-hover:opacity-90 drop-shadow" />
+                                </div>
+                              </button>
+                            )
+                          ) : r.file_url ? (
+                            <div className="flex items-center justify-center w-12 h-12 rounded border bg-muted">
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center w-12 h-12 rounded border bg-muted/50">
+                              <FileText className="h-4 w-4 text-muted-foreground/40" />
+                            </div>
+                          )}
+                        </td>
                         <td className="py-3 px-2">
                           <Link href={pathWithLocale(`/admin/verifications/${r.user_id}`)} className="font-medium hover:underline text-primary">
                             {r.full_name || "Unknown"}
@@ -278,6 +330,19 @@ export default function AdminVerificationPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Thumbnail lightbox */}
+      {lightboxUrl && (
+        <Dialog open={!!lightboxUrl} onOpenChange={(v) => !v && setLightboxUrl(null)}>
+          <DialogContent className="max-w-5xl w-full p-2">
+            <img
+              src={lightboxUrl}
+              alt="License document"
+              className="w-full h-auto max-h-[85vh] object-contain rounded"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Create request modal */}
       <Dialog open={createOpen} onOpenChange={(v) => !v && resetCreateModal()}>

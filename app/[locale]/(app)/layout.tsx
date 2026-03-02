@@ -4,7 +4,7 @@ import { Providers } from '@/providers/Providers';
 import TranslationsProvider from '@/components/TranslationsProvider';
 import initTranslations from '@/i18n';
 
-const i18nNamespaces = ['common', 'auth', 'dashboard', 'settings', 'notifications', 'pricing'];
+const i18nNamespaces = ['common', 'auth', 'dashboard', 'settings', 'notifications'];
 
 export default async function AppLayout({
   children,

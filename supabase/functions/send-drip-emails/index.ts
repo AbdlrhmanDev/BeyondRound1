@@ -33,7 +33,14 @@ async function sendViaZeptoMail(opts: {
   subject: string;
   html: string;
   text: string;
+  unsubUrl?: string;
 }): Promise<void> {
+  const mime_headers: Record<string, string> = {};
+  if (opts.unsubUrl) {
+    mime_headers["List-Unsubscribe"] = `<${opts.unsubUrl}>, <mailto:unsubscribe@beyondrounds.app>`;
+    mime_headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+  }
+
   const response = await fetch("https://api.zeptomail.eu/v1.1/email", {
     method: "POST",
     headers: {
@@ -46,6 +53,7 @@ async function sendViaZeptoMail(opts: {
       subject: opts.subject,
       htmlbody: opts.html,
       textbody: opts.text,
+      ...(Object.keys(mime_headers).length > 0 && { mime_headers }),
     }),
   });
 
@@ -94,9 +102,10 @@ function emailWrapper(body: string, unsubUrl: string): string {
     </div>
     <div style="padding:32px 36px;">
       ${body}
-      <p style="margin:36px 0 0;color:#9ca3af;font-size:12px;border-top:1px solid #f3f4f6;padding-top:18px;line-height:1.6;">
+      <p style="margin:36px 0 0;color:#9ca3af;font-size:12px;border-top:1px solid #f3f4f6;padding-top:18px;line-height:1.8;">
         You received this because you joined the BeyondRounds early access list.<br>
-        <a href="${unsubUrl}" style="color:#9ca3af;">Unsubscribe</a>
+        BeyondRounds · Berlin, Germany<br>
+        <a href="${unsubUrl}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
       </p>
     </div>
   </div>
@@ -457,6 +466,7 @@ serve(async (req) => {
           subject,
           html,
           text,
+          unsubUrl,
         });
 
         const { error: updateError } = await supabase

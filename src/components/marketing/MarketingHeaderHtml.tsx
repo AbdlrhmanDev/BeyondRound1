@@ -17,7 +17,6 @@ import type { Locale } from '@/lib/i18n/settings';
 
 const navLinks = [
   { href: '/for-doctors', labelKey: 'common.forDoctors' },
-  { href: '/pricing', labelKey: 'common.pricing' },
   { href: '/about', labelKey: 'common.about' },
   { href: '/faq', labelKey: 'common.faq' },
 ] as const;

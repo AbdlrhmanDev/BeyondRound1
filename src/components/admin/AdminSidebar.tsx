@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, ShieldCheck, Users, AlertTriangle,
-  MessageSquare, MessageCircle, ListChecks, ScrollText, Settings, LogOut
+  MessageSquare, MessageCircle, ListChecks, ScrollText, Settings, LogOut, Mail
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { title: "Groups & Chats", url: "/admin/groups", icon: MessageSquare },
   { title: "Feedback", url: "/admin/feedback", icon: MessageCircle },
   { title: "Waitlist & Surveys", url: "/admin/waitlist", icon: ListChecks },
+  { title: "Email Campaigns", url: "/admin/emails", icon: Mail },
   { title: "Audit Logs", url: "/admin/audit-logs", icon: ScrollText },
   { title: "App Config", url: "/admin/config", icon: Settings },
 ];
