@@ -76,6 +76,9 @@ export function LandingHero({ translations: tt }: LandingHeroProps) {
         sizes="100vw"
       />
 
+      {/* ── Dark overlay for text legibility ── */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/65" aria-hidden="true" />
+
       {/* ── Decorative rings ── */}
       <svg
         className="absolute right-[-120px] top-[-80px] opacity-[0.12] "
@@ -125,18 +128,18 @@ export function LandingHero({ translations: tt }: LandingHeroProps) {
         </h1>
 
         {/* Subheadline */}
-        <p className="text-white text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]">
+        <p className="text-white/95 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed drop-shadow-[0_2px_12px_rgba(0,0,0,1)]">
           {tt.subheadline}<br />
           {tt.subheadline2}
         </p>
 
         {/* Scarcity box */}
-        <div className="inline-block bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-6 sm:px-8 py-4 mb-8">
+        <div className="inline-block bg-black/40 backdrop-blur-md border border-white/25 rounded-2xl px-6 sm:px-8 py-4 mb-8">
           <p className="text-white font-semibold text-sm mb-1">{tt.limitedSpots}</p>
-          <p className="text-white/70 text-sm mb-2">
+          <p className="text-white/85 text-sm mb-2">
             {tt.limitedSpotsCount}
           </p>
-          <p className="text-white/60 text-xs">
+          <p className="text-white/75 text-xs">
             {tt.registrationClosesIn}{' '}
             <span className="text-white font-bold font-mono">
               {pad(days)}d : {pad(hours)}h : {pad(minutes)}m : {pad(seconds)}s
@@ -162,7 +165,7 @@ export function LandingHero({ translations: tt }: LandingHeroProps) {
         </div>
 
         {/* Trust bullets */}
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-white/70">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-white/90">
           <span className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F6B4A8" strokeWidth="2"><path d="M20 6 9 17l-5-5" /></svg>
             {tt.verifiedOnly}
