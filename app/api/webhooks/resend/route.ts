@@ -5,7 +5,7 @@ import { createAdminClient } from '@/integrations/supabase/server';
  * Resend webhook handler — suppresses bounced and complained addresses.
  *
  * Setup in Resend Dashboard → Webhooks → Add Endpoint:
- *   URL: https://app.beyondrounds.app/api/webhooks/resend
+ *   URL: https://www.beyondrounds.app/api/webhooks/resend
  *   Events: email.bounced, email.complained
  *
  * Env var: RESEND_WEBHOOK_SECRET (signing secret from Resend dashboard)

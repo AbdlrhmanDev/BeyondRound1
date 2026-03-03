@@ -35,7 +35,17 @@
       "Bash(find:*)",
       "Bash(supabase:*)",
       "Bash(where psql:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_ddb200cfa797ca49d7a393c8e375d175cb436911 npx supabase:*)",
+      "Bash(rm:*)",
+      "WebFetch(domain:dev.to)",
+      "Bash(echo === $id ===:*)",
+      "Bash(do:*)",
+      "Bash(npm install:*)",
+      "Bash(printf:*)",
+      "Bash(nslookup:*)",
+      "Bash(vercel env:*)",
+      "Bash(sed:*)"
     ]
   }
 }

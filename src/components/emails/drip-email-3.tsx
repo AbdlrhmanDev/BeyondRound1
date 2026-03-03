@@ -31,13 +31,13 @@ const CHECKOUT_URL = 'https://checkout.beyondrounds.app/b/9B68wQfvz275ft23sqbo40
 export const DripEmail3 = ({
     firstName,
     locale = 'en',
-    unsubUrl = 'https://app.beyondrounds.app/en/unsubscribe',
+    unsubUrl = 'https://www.beyondrounds.app/en/unsubscribe',
     profileUrl,
 }: DripEmail3Props) => {
     const isDe = locale === 'de';
     const loc = isDe ? 'de' : 'en';
     const siteUrl = `https://www.beyondrounds.app/${loc}`;
-    const appUrl = profileUrl || `https://app.beyondrounds.app/${loc}/onboarding`;
+    const appUrl = profileUrl || `https://www.beyondrounds.app/${loc}/onboarding`;
 
     const t = {
         preview: isDe

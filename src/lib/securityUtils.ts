@@ -19,7 +19,7 @@ export function getAllowedPriceIds(): Set<string> {
 }
 
 const ALLOWED_RETURN_HOSTS = new Set([
-  'app.beyondrounds.app',
+  'www.beyondrounds.app',
   'admin.beyondrounds.app',
   'whitelist.beyondrounds.app',
   'checkout.beyondrounds.app',

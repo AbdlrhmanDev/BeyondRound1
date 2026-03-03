@@ -30,7 +30,7 @@ const CHECKOUT_URL = 'https://checkout.beyondrounds.app/b/9B68wQfvz275ft23sqbo40
 export const DripEmail1 = ({
     firstName,
     locale = 'en',
-    unsubUrl = 'https://app.beyondrounds.app/en/unsubscribe',
+    unsubUrl = 'https://www.beyondrounds.app/en/unsubscribe',
 }: DripEmail1Props) => {
     const isDe = locale === 'de';
     const loc = isDe ? 'de' : 'en';

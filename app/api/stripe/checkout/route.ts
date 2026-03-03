@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const ALLOWED_ORIGINS = [
-  'https://app.beyondrounds.app',
+  'https://www.beyondrounds.app',
   'https://admin.beyondrounds.app',
   'https://whitelist.beyondrounds.app',
   'http://localhost:3000',

@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
                 let portalUrl = 'https://billing.stripe.com';
                 if (invoice.customer) {
                     try {
-                        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.beyondrounds.app';
+                        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.beyondrounds.app';
                         const session = await stripe.billingPortal.sessions.create({
                             customer: invoice.customer as string,
                             return_url: `${appUrl}/settings?tab=billing`,

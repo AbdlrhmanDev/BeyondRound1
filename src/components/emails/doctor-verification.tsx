@@ -49,7 +49,7 @@ const t = {
 
 export const DoctorVerificationEmail = ({ approved, firstName, locale = 'en' }: DoctorVerificationProps) => {
     const c = locale === 'de' ? t.de : t.en;
-    const appUrl = 'https://app.beyondrounds.app';
+    const appUrl = 'https://www.beyondrounds.app';
 
     return (
         <Html>

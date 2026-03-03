@@ -22,7 +22,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = `BeyondRounds <${process.env.RESEND_FROM || 'hello@mail.beyondrounds.app'}>`;
 
 // Always use the production URL for links inside emails — never localhost
-const EMAIL_BASE_URL = process.env.EMAIL_BASE_URL ?? 'https://app.beyondrounds.app';
+const EMAIL_BASE_URL = process.env.EMAIL_BASE_URL ?? 'https://www.beyondrounds.app';
 
 export interface SendEmailOptions {
     to: string | string[];
