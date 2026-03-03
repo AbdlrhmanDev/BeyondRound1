@@ -37,7 +37,7 @@ export const DripEmail3 = ({
     const isDe = locale === 'de';
     const loc = isDe ? 'de' : 'en';
     const siteUrl = `https://www.beyondrounds.app/${loc}`;
-    const appUrl = profileUrl || `https://app.beyondrounds.app/${loc}/auth`;
+    const appUrl = profileUrl || `https://app.beyondrounds.app/${loc}/onboarding`;
 
     const t = {
         preview: isDe

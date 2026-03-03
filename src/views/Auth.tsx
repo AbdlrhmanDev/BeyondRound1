@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,11 @@ const Auth = () => {
   const { toast } = useToast();
   const { signIn, signInWithGoogle, user, loading } = useAuth();
   const navigate = useLocalizedNavigate();
+  const searchParams = useSearchParams();
   const redirectedRef = useRef(false);
+
+  // Where to send the user after login — middleware sets ?next= when protecting routes
+  const nextPath = searchParams.get('next');
 
   const handleJoinNow = () => {
     navigate('/onboarding');
@@ -53,10 +58,18 @@ const Auth = () => {
     password: "",
   });
 
-  // Redirect already-logged-in users — query role directly to avoid hook race condition
+  // Redirect already-logged-in users — honour ?next= param set by middleware
   useEffect(() => {
     if (loading || !user || redirectedRef.current) return;
     redirectedRef.current = true;
+
+    // If middleware sent us here with a ?next= destination, go there directly
+    if (nextPath && nextPath.startsWith('/')) {
+      navigate(nextPath, { replace: true });
+      return;
+    }
+
+    // Otherwise route by role (admin → /admin, user → /dashboard)
     getSupabaseClient()
       .from("user_roles")
       .select("role")
@@ -66,7 +79,7 @@ const Auth = () => {
       .then(({ data }) => {
         navigate(data ? '/admin' : '/dashboard', { replace: true });
       });
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, nextPath]);
 
   const validateForm = () => {
     try {
