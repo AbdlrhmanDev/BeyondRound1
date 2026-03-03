@@ -180,3 +180,10 @@ export async function resumeSubscription(accessToken: string): Promise<void> {
 export async function switchPlan(newPriceId: string, accessToken: string): Promise<void> {
   await post('/api/billing/switch', { newPriceId }, accessToken);
 }
+
+/** Refunds the most recent paid invoice and cancels the subscription. */
+export async function requestRefund(
+  accessToken: string
+): Promise<{ refund_id: string; amount: number; currency: string }> {
+  return post('/api/billing/refund', {}, accessToken);
+}

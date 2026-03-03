@@ -202,12 +202,13 @@ export const BillingSection = () => {
     subscription, invoices, loading,
     isActive, isPastDue, isCanceled, isPendingEnd, hasOneTime,
     createCheckoutSession, cancelSubscription, resumeSubscription,
-    openPortal, switchPlan, refetch,
+    openPortal, switchPlan, requestRefund, refetch,
   } = useSubscription();
 
   const [processingPriceId, setProcessingPriceId] = useState<string | null>(null);
   const [cancelDialogOpen,  setCancelDialogOpen]  = useState(false);
   const [switchDialogOpen,  setSwitchDialogOpen]  = useState(false);
+  const [refundDialogOpen,  setRefundDialogOpen]  = useState(false);
   const [actionLoading,     setActionLoading]     = useState(false);
 
   const currentPriceId = subscription?.stripe_price_id;
@@ -292,6 +293,19 @@ export const BillingSection = () => {
       toast.error(err instanceof Error ? err.message : 'Plan switch failed');
     } finally {
       setProcessingPriceId(null);
+    }
+  };
+
+  const handleRefund = async () => {
+    try {
+      setActionLoading(true);
+      await requestRefund();
+      setRefundDialogOpen(false);
+      toast.success('Refund processed — allow 5–10 business days to appear on your statement.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Refund failed. Please contact support.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -522,8 +536,8 @@ export const BillingSection = () => {
           </ActionBtn>
         )}
 
-        {/* Change plan — only for active recurring subscriptions, not pending cancel */}
-        {isActive && !isPendingEnd && subscription?.stripe_subscription_id && (
+        {/* Change plan — only for active recurring subscriptions with a known item ID */}
+        {isActive && !isPendingEnd && subscription?.stripe_subscription_id && subscription?.stripe_subscription_item_id && (
           <ActionBtn
             onClick={() => setSwitchDialogOpen(true)}
             disabled={isAnyLoading}
@@ -557,6 +571,19 @@ export const BillingSection = () => {
             variant="danger"
           >
             Cancel subscription
+          </ActionBtn>
+        )}
+
+        {/* Refund — shown for any active or pending-cancel subscription */}
+        {(isActive || isPendingEnd) && (
+          <ActionBtn
+            onClick={() => setRefundDialogOpen(true)}
+            disabled={isAnyLoading}
+            loading={actionLoading && refundDialogOpen}
+            icon={RotateCcw}
+            variant="danger"
+          >
+            Request refund
           </ActionBtn>
         )}
       </div>
@@ -638,6 +665,33 @@ export const BillingSection = () => {
             >
               {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Yes, cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Refund confirmation dialog ─────────────────────────────────────── */}
+      <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Request a refund?</DialogTitle>
+            <DialogDescription>
+              We'll refund your most recent payment in full and cancel your subscription immediately.
+              Please allow <strong>5–10 business days</strong> for the amount to appear on your statement.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setRefundDialogOpen(false)} className="flex-1 rounded-xl">
+              Keep subscription
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRefund}
+              disabled={actionLoading}
+              className="flex-1 rounded-xl"
+            >
+              {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Yes, refund me
             </Button>
           </DialogFooter>
         </DialogContent>

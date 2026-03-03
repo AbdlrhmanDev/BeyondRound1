@@ -58,15 +58,48 @@ const USER_FACING_SUBSTRINGS = [
   'Cannot switch plan',
   'priceId is required',
   'newPriceId is required',
+  'No paid invoice found',
+  'No payment found to refund',
+  'Refund could not be processed',
+  'already been refunded',
 ];
 
 /**
  * Sanitizes an error before returning it to the client.
  * Only passes through known safe user-facing messages;
  * returns a generic message for internal/unexpected errors.
+ *
+ * Stripe SDK errors expose a numeric `statusCode` — a 4xx from Stripe is a
+ * client-side problem (bad data, not configured, etc.) and should not surface
+ * as an HTTP 500 to our callers.
  */
 export function sanitizeError(err: unknown): { message: string; status: number } {
   const raw = err instanceof Error ? err.message : String(err);
+
+  // Detect Stripe SDK errors by their `statusCode` property
+  const stripeStatus =
+    err != null && typeof err === 'object' && 'statusCode' in err
+      ? (err as { statusCode: unknown }).statusCode
+      : null;
+
+  if (typeof stripeStatus === 'number') {
+    if (stripeStatus < 500) {
+      // Map common Stripe 4xx errors to friendly user-facing messages
+      if (raw.includes('No portal configuration') || raw.includes('portal is not configured')) {
+        return { message: 'Billing portal is not set up yet. Please contact support.', status: 400 };
+      }
+      if (raw.includes('No such customer')) {
+        return { message: 'Billing account not found. Please contact support.', status: 400 };
+      }
+      if (raw.includes('No such subscription')) {
+        return { message: 'Subscription not found. Please contact support.', status: 400 };
+      }
+      return { message: 'Payment provider rejected the request. Please try again.', status: 400 };
+    }
+    // Stripe 5xx → treat as upstream error
+    return { message: 'Payment provider is temporarily unavailable. Please try again later.', status: 502 };
+  }
+
   const isUserFacing = USER_FACING_SUBSTRINGS.some(s => raw.includes(s));
   return {
     message: isUserFacing ? raw : 'An unexpected error occurred. Please try again.',

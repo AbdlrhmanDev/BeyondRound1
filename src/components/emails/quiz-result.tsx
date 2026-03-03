@@ -26,38 +26,38 @@ interface QuizResultEmailProps {
 
 function scoreLabel(score: number, isDe: boolean): string {
     if (isDe) {
-        if (score <= 30) return 'Noch im Aufbau';
-        if (score <= 60) return 'In Entwicklung';
-        if (score <= 80) return 'Wachsend';
+        if (score <= 3) return 'Noch im Aufbau';
+        if (score <= 6) return 'In Entwicklung';
+        if (score <= 8) return 'Wachsend';
         return 'Stark';
     }
-    if (score <= 30) return 'Still forming';
-    if (score <= 60) return 'Developing';
-    if (score <= 80) return 'Growing';
+    if (score <= 3) return 'Still forming';
+    if (score <= 6) return 'Developing';
+    if (score <= 8) return 'Growing';
     return 'Strong';
 }
 
 function scoreMessage(score: number, isDe: boolean): string {
     if (isDe) {
-        if (score <= 30) {
+        if (score <= 3) {
             return 'Ihr soziales Fundament in Berlin befindet sich noch im Aufbau — genau dafür ist BeyondRounds gemacht. Wir matchen verifizierte Ärzte in kleine, kuratierte Gruppen, damit Sie wirklich Menschen kennenlernen und keine Kontakte sammeln.';
         }
-        if (score <= 60) {
+        if (score <= 6) {
             return 'Sie haben bereits einige Kontakte in Berlin, aber eine echte Freundesgruppe aufzubauen braucht Zeit und das richtige System. BeyondRounds übernimmt die Arbeit: verifizierte Kollegen, kuratierte Gruppen, passende Orte.';
         }
-        if (score <= 80) {
+        if (score <= 8) {
             return 'Sie bauen sich ein solides Sozialleben in Berlin auf. BeyondRounds kann Ihnen helfen, tiefer zu gehen — durch verifizierte Kollegen, die die Anforderungen eines Arztberufs wirklich verstehen.';
         }
         return 'Sie haben ein starkes Sozialleben in Berlin. BeyondRounds kann trotzdem einen Mehrwert bieten: verifizierte Kollegen in kuratierten Kleingruppen — Qualität statt Quantität.';
     }
 
-    if (score <= 30) {
+    if (score <= 3) {
         return "Your social foundation in Berlin is still forming — that's exactly what BeyondRounds is built for. We match verified doctors into small curated groups so you actually meet people, not just collect contacts.";
     }
-    if (score <= 60) {
+    if (score <= 6) {
         return "You have some connections in Berlin, but building a genuine friend group takes time and the right system. BeyondRounds does the heavy lifting: verified peers, curated groups, suggested venues.";
     }
-    if (score <= 80) {
+    if (score <= 8) {
         return "You're building a solid social life in Berlin. BeyondRounds can help you go deeper — meeting verified peers who truly get the demands of a medical career.";
     }
     return "You have a strong social life in Berlin. BeyondRounds can still add value by connecting you with verified peers in curated small groups — quality over quantity.";
@@ -76,15 +76,15 @@ export const QuizResultEmail = ({
 
     const label = scoreLabel(score, isDe);
     const message = scoreMessage(score, isDe);
-    const scoreColor = score <= 30 ? '#DC2626' : score <= 60 ? '#D97706' : score <= 80 ? '#2563EB' : '#16A34A';
+    const scoreColor = score <= 3 ? '#DC2626' : score <= 6 ? '#D97706' : score <= 8 ? '#2563EB' : '#16A34A';
 
     const t = {
         preview: isDe
-            ? `Ihr Social Health Score: ${score}/100 \u2014 ${label}`
-            : `Your Social Health Score: ${score}/100 \u2014 ${label}`,
+            ? `Ihr Social Health Score: ${score}/10 \u2014 ${label}`
+            : `Your Social Health Score: ${score}/10 \u2014 ${label}`,
         greeting: isDe ? `Hallo ${firstName},` : `Hi ${firstName},`,
         scoreIntro: isDe ? 'Hier ist Ihr Social Health Score:' : "Here's your Social Health Score:",
-        outOf: isDe ? `von 100 \u2014` : `out of 100 \u2014`,
+        outOf: isDe ? `von 10 \u2014` : `out of 10 \u2014`,
         body: isDe
             ? 'BeyondRounds öffnet in kleinen Wellen. Treten Sie der Early-Access-Liste bei, um als Erster benachrichtigt zu werden, wenn Ihre Welle öffnet.'
             : 'BeyondRounds is opening in small waves. Join the early access list to be first in line when your wave opens.',

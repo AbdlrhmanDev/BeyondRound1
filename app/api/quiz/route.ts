@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { firstName, email, phone, location, yesNoAnswers, q11, q12, q13, q14, q15 } = parsed.data;
-    const score = yesNoAnswers.filter(Boolean).length * 10;
+    const score = yesNoAnswers.filter(Boolean).length; // 0–10 raw count
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;

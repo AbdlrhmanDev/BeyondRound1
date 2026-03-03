@@ -12,6 +12,7 @@ import {
   resumeSubscription,
   openBillingPortal,
   switchPlan,
+  requestRefund,
   type Subscription,
   type Invoice,
   type PaymentMethod,
@@ -161,6 +162,16 @@ export const useSubscription = () => {
     await fetchSubscription();
   };
 
+  const handleRequestRefund = async () => {
+    if (!user) throw new Error('Not authenticated');
+    const token = await getToken();
+    const result = await requestRefund(token);
+    // Subscription is now canceled — refresh data
+    await fetchSubscription();
+    await fetchInvoices();
+    return result;
+  };
+
   // ── Derived state ──────────────────────────────────────────────────────────
   const isActive      = subscription?.status === 'active' || subscription?.status === 'trialing';
   const isPastDue     = subscription?.status === 'past_due' || subscription?.status === 'unpaid';
@@ -189,6 +200,7 @@ export const useSubscription = () => {
     resumeSubscription:    handleResume,
     openPortal:            handleOpenPortal,
     switchPlan:            handleSwitchPlan,
+    requestRefund:         handleRequestRefund,
     refetch: () => {
       fetchSubscription();
       fetchInvoices();

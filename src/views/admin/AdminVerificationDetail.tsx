@@ -105,10 +105,19 @@ export default function AdminVerificationDetailPage() {
   const handleConfirm = async () => {
     setActionLoading(true);
     let success = false;
-    switch (dialogAction) {
-      case "approve":  success = await approveVerification(userId, reason || undefined); break;
-      case "reject":   success = await rejectVerification(userId, reason); break;
-      case "reupload": success = await requestReupload(userId, reason); break;
+    if (dialogAction === "reupload") {
+      success = await requestReupload(userId, reason);
+    } else {
+      try {
+        const res = await fetch('/api/admin/verify-doctor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, decision: dialogAction, reason: reason || undefined }),
+        });
+        success = res.ok;
+      } catch {
+        success = false;
+      }
     }
     setActionLoading(false);
     setDialogOpen(false);

@@ -20,15 +20,28 @@ export async function POST() {
       .from('subscriptions')
       .select('stripe_subscription_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (subErr || !sub?.stripe_subscription_id) {
       return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
     }
 
-    const canceled = await stripe.subscriptions.update(sub.stripe_subscription_id, {
-      cancel_at_period_end: true,
-    });
+    let cancelAt: string | null = null;
+
+    try {
+      const canceled = await stripe.subscriptions.update(sub.stripe_subscription_id, {
+        cancel_at_period_end: true,
+      });
+      cancelAt = canceled.cancel_at
+        ? new Date(canceled.cancel_at * 1000).toISOString()
+        : null;
+    } catch (stripeErr) {
+      // If the subscription no longer exists in Stripe (e.g. stale test data),
+      // treat it as already canceled — mark the DB row and let the UI update.
+      const msg = stripeErr instanceof Error ? stripeErr.message : '';
+      if (!msg.includes('No such subscription')) throw stripeErr;
+      console.warn('[api/billing/cancel] subscription not found in Stripe — marking canceled in DB:', sub.stripe_subscription_id);
+    }
 
     await admin
       .from('subscriptions')
@@ -38,9 +51,7 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       message: 'Subscription will cancel at the end of the billing period',
-      cancel_at: canceled.cancel_at
-        ? new Date(canceled.cancel_at * 1000).toISOString()
-        : null,
+      cancel_at: cancelAt,
     });
   } catch (err) {
     console.error('[api/billing/cancel]', err instanceof Error ? err.message : err);

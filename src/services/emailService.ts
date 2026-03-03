@@ -1,26 +1,28 @@
-import nodemailer from 'nodemailer';
-import { render } from '@react-email/render';
+import { Resend } from 'resend';
 import * as React from 'react';
 import { WelcomeEmail } from '../components/emails/welcome';
-import { WhitelistEmail } from '../components/emails/whitelist-signup';
 import { PasswordResetEmail } from '../components/emails/password-reset';
 import { ProjectCompletedEmail } from '../components/emails/project-completed';
 import { PaymentEmail } from '../components/emails/payment-confirmed';
 import { QuizResultEmail } from '../components/emails/quiz-result';
+import { EmailVerification } from '../components/emails/email-verification';
+import { MagicLinkEmail } from '../components/emails/magic-link';
+import { DoctorVerificationEmail } from '../components/emails/doctor-verification';
+import { SubscriptionStartedEmail } from '../components/emails/subscription-started';
+import { PaymentFailedEmail } from '../components/emails/payment-failed';
+import { RefundProcessedEmail } from '../components/emails/refund-processed';
+import { BookingConfirmedEmail } from '../components/emails/booking-confirmed';
+import { EventReminderEmail } from '../components/emails/event-reminder';
+import { AdminAlertEmail } from '../components/emails/admin-alert';
 import { checkNotificationExists } from './notificationService';
 
-// ZeptoMail SMTP Configuration
-const transporter = nodemailer.createTransport({
-    host: process.env.ZEPTOMAIL_SMTP_HOST,
-    port: Number(process.env.ZEPTOMAIL_SMTP_PORT) || 465,
-    secure: (process.env.ZEPTOMAIL_SMTP_PORT === '465'),
-    auth: {
-        user: process.env.ZEPTOMAIL_SMTP_USER,
-        pass: process.env.ZEPTOMAIL_SMTP_PASS,
-    },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const DEFAULT_FROM = process.env.ZEPTOMAIL_FROM || 'hello@beyondrounds.app';
+// Stream 1: all transactional email from mail.beyondrounds.app
+const FROM = `BeyondRounds <${process.env.RESEND_FROM || 'hello@mail.beyondrounds.app'}>`;
+
+// Always use the production URL for links inside emails — never localhost
+const EMAIL_BASE_URL = process.env.EMAIL_BASE_URL ?? 'https://app.beyondrounds.app';
 
 export interface SendEmailOptions {
     to: string | string[];
@@ -28,24 +30,24 @@ export interface SendEmailOptions {
     react: React.ReactElement;
     text: string;
     from?: string;
+    replyTo?: string;
+    headers?: Record<string, string>;
     userId?: string;
     idempotencyKey?: string;
 }
 
 /**
- * ZeptoMail (SMTP) Email Service
- * Handles transactional email delivery using Nodemailer and React Email templates.
+ * Resend Email Service
+ * Handles transactional email delivery using Resend SDK and React Email templates.
  */
 export const emailService = {
     /**
      * Send a single or multi-recipient email with optional idempotency check
-     * @param options SendEmailOptions
-     * @returns Promise<{ success: boolean; data?: any; error?: any; alreadySent?: boolean }>
      */
     async send(options: SendEmailOptions) {
         try {
-            if (!process.env.ZEPTOMAIL_SMTP_PASS) {
-                throw new Error('ZEPTOMAIL_SMTP_PASS is not defined in environment variables');
+            if (!process.env.RESEND_API_KEY) {
+                throw new Error('RESEND_API_KEY is not defined in environment variables');
             }
 
             // Optional Idempotency Check
@@ -57,21 +59,23 @@ export const emailService = {
                 }
             }
 
-            console.log(`Sending email via ZeptoMail to: ${options.to} from: ${DEFAULT_FROM} with subject: ${options.subject}`);
+            const to = Array.isArray(options.to) ? options.to : [options.to];
+            console.log(`Sending email via Resend to: ${to.join(', ')} subject: ${options.subject}`);
 
-            // Render React template to HTML
-            const html = await render(options.react);
-
-            const info = await transporter.sendMail({
-                from: options.from || DEFAULT_FROM,
-                to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+            const { data, error } = await resend.emails.send({
+                from: options.from || FROM,
+                to,
+                replyTo: options.replyTo,
                 subject: options.subject,
-                html,
+                react: options.react,
                 text: options.text,
+                headers: options.headers,
             });
 
-            console.log('Email sent successfully!', info.messageId);
-            return { success: true, data: info };
+            if (error) throw error;
+
+            console.log('Email sent successfully!', data?.id);
+            return { success: true, data };
         } catch (error) {
             console.error('Email Service Error:', error);
             return { success: false, error };
@@ -86,28 +90,24 @@ export const emailService = {
             to: email,
             subject: 'Welcome! Your account has been created',
             react: React.createElement(WelcomeEmail, { name }),
-            text: `Hello ${name}, welcome to our platform! Your account has been successfully created.`,
+            text: `Hello Doctor, welcome to our platform! Your account has been successfully created.`,
         });
     },
 
     /**
-     * Send a whitelist confirmation email (Email 0 — immediate)
+     * Send a magic link (passwordless sign-in) email
      */
-    async sendWhitelistConfirmation(email: string, locale: string = 'en') {
+    async sendMagicLink(email: string, magicLink: string, locale: string = 'en') {
         const isDe = locale === 'de';
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.beyondrounds.app';
-        const unsubUrl = `${appUrl}/en/unsubscribe?email=${encodeURIComponent(email)}`;
-
         return this.send({
             to: email,
-            from: process.env.ZEPTOMAIL_FROM || 'waitlist@beyondrounds.app',
             subject: isDe
-                ? 'Sie sind auf der BeyondRounds Early-Access-Liste'
-                : "You're on the BeyondRounds early access list",
-            react: React.createElement(WhitelistEmail, { locale, unsubUrl }),
+                ? 'Ihr Anmeldelink \u2013 BeyondRounds'
+                : 'Your sign-in link \u2013 BeyondRounds',
+            react: React.createElement(MagicLinkEmail, { magicLink, locale }),
             text: isDe
-                ? `Sie sind dabei.\n\nBeyondRounds ist eine verifizierte Community nur für Ärzte in Berlin.\n\nWas als Nächstes passiert:\n1. Wir senden Ihnen eine E-Mail, sobald ein Platz frei wird\n2. Sie verifizieren sich einmal (schnell + privat)\n3. Sie erhalten Ihre erste Match-Gruppe\n\n— Mostafa\nGründer, BeyondRounds`
-                : `You're in.\n\nBeyondRounds is a verified doctors-only community in Berlin. We're opening access in small waves to keep matching quality high.\n\nWhat happens next:\n1. We'll email you when a spot opens\n2. You'll verify once (quick + private)\n3. You'll get your first match group\n\n— Mostafa\nFounder, BeyondRounds`,
+                ? `Klicken Sie auf den folgenden Link, um sich anzumelden (läuft in 15 Minuten ab): ${magicLink}`
+                : `Click the following link to sign in (expires in 15 minutes): ${magicLink}`,
         });
     },
 
@@ -141,10 +141,9 @@ export const emailService = {
     async sendQuizResult(email: string, firstName: string, score: number, locale: string = 'en') {
         const isDe = locale === 'de';
         const loc = isDe ? 'de' : 'en';
-        const unsubUrl = `https://beyondrounds.app/${loc}/unsubscribe?email=${encodeURIComponent(email)}`;
+        const unsubUrl = `${EMAIL_BASE_URL}/${loc}/unsubscribe?email=${encodeURIComponent(email)}`;
         return this.send({
             to: email,
-            from: process.env.ZEPTOMAIL_FROM || 'waitlist@beyondrounds.app',
             subject: isDe
                 ? `Ihr Social Health Score: ${score}/100`
                 : `Your Social Health Score: ${score}/100`,
@@ -168,5 +167,140 @@ export const emailService = {
                 ? `Klicken Sie auf den folgenden Link, um Ihr Passwort zurückzusetzen: ${resetLink}`
                 : `Click the following link to reset your password: ${resetLink}`,
         });
-    }
+    },
+
+    /**
+     * Send an email verification link to a new user
+     */
+    async sendEmailVerification(email: string, verificationLink: string, locale: string = 'en') {
+        const isDe = locale === 'de';
+        return this.send({
+            to: email,
+            subject: isDe ? 'E-Mail-Adresse bestätigen \u2013 BeyondRounds' : 'Verify your email \u2013 BeyondRounds',
+            react: React.createElement(EmailVerification, { verificationLink, locale }),
+            text: isDe
+                ? `Bitte bestätigen Sie Ihre E-Mail-Adresse: ${verificationLink}`
+                : `Please verify your email address: ${verificationLink}`,
+        });
+    },
+
+    /**
+     * Send doctor verification result (approved or rejected)
+     */
+    async sendDoctorVerification(email: string, firstName: string, approved: boolean, locale: string = 'en') {
+        const isDe = locale === 'de';
+        return this.send({
+            to: email,
+            subject: approved
+                ? (isDe ? 'Verifizierung genehmigt \u2013 BeyondRounds' : 'Verification approved \u2013 BeyondRounds')
+                : (isDe ? 'Update zu Ihrer Verifizierung \u2013 BeyondRounds' : 'Update on your verification \u2013 BeyondRounds'),
+            react: React.createElement(DoctorVerificationEmail, { approved, firstName, locale }),
+            text: approved
+                ? `Hi ${firstName}, your doctor verification has been approved. You now have full access to BeyondRounds.`
+                : `Hi ${firstName}, we were unable to approve your verification. Please resubmit your documents.`,
+        });
+    },
+
+    /**
+     * Send subscription started / renewal confirmation
+     */
+    async sendSubscriptionStarted(email: string, planName: string, nextBillingDate: string, amount: string) {
+        return this.send({
+            to: email,
+            subject: 'Your BeyondRounds subscription is active',
+            react: React.createElement(SubscriptionStartedEmail, { planName, nextBillingDate, amount }),
+            text: `Your ${planName} subscription is now active. Next billing date: ${nextBillingDate}. Amount: ${amount}.`,
+        });
+    },
+
+    /**
+     * Send payment failed notification
+     */
+    async sendPaymentFailed(email: string, amount: string, nextRetryDate: string, updatePaymentUrl: string) {
+        return this.send({
+            to: email,
+            subject: 'Action required: payment failed \u2013 BeyondRounds',
+            react: React.createElement(PaymentFailedEmail, { amount, nextRetryDate, updatePaymentUrl }),
+            text: `Your payment of ${amount} failed. We'll retry on ${nextRetryDate}. Update your payment method: ${updatePaymentUrl}`,
+        });
+    },
+
+    /**
+     * Send refund processed notification
+     */
+    async sendRefundProcessed(email: string, amount: string, planName: string) {
+        return this.send({
+            to: email,
+            subject: 'Your refund has been processed \u2013 BeyondRounds',
+            react: React.createElement(RefundProcessedEmail, { amount, planName }),
+            text: `Your refund of ${amount} for ${planName} has been processed. Please allow 5–10 business days.`,
+        });
+    },
+
+    /**
+     * Send booking confirmation / change / cancellation
+     */
+    async sendBookingConfirmed(email: string, details: {
+        eventDate: string;
+        eventTime: string;
+        venue: string;
+        city: string;
+        action: 'confirmed' | 'changed' | 'canceled';
+        locale?: string;
+    }) {
+        const { action, locale = 'en', ...rest } = details;
+        const subjects = {
+            confirmed: 'Booking confirmed \u2013 BeyondRounds',
+            changed: 'Booking updated \u2013 BeyondRounds',
+            canceled: 'Booking canceled \u2013 BeyondRounds',
+        };
+        return this.send({
+            to: email,
+            subject: subjects[action],
+            react: React.createElement(BookingConfirmedEmail, { ...rest, action, locale }),
+            text: `Your booking has been ${action}. Date: ${details.eventDate} at ${details.eventTime}, ${details.venue}, ${details.city}.`,
+        });
+    },
+
+    /**
+     * Send event reminder (24h or 2h before)
+     */
+    async sendEventReminder(email: string, details: {
+        eventDate: string;
+        eventTime: string;
+        venue: string;
+        city: string;
+        locale?: string;
+    }, hoursUntil: 24 | 2) {
+        const { locale = 'en', ...rest } = details;
+        return this.send({
+            to: email,
+            subject: hoursUntil === 2
+                ? 'Your event starts in 2 hours \u2013 BeyondRounds'
+                : 'Reminder: your event is tomorrow \u2013 BeyondRounds',
+            react: React.createElement(EventReminderEmail, { ...rest, hoursUntil, locale }),
+            text: `Reminder: your event is ${hoursUntil === 2 ? 'in 2 hours' : 'tomorrow'} at ${details.eventTime}, ${details.venue}, ${details.city}.`,
+        });
+    },
+
+    /**
+     * Send an admin alert (silently skips if ADMIN_EMAIL is not set)
+     */
+    async sendAdminAlert(type: 'new_signup' | 'payment_failed' | 'booking_created', details: Record<string, string>) {
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (!adminEmail) return { success: true, skipped: true };
+
+        const subjects = {
+            new_signup: '🆕 New signup – BeyondRounds',
+            payment_failed: '⚠️ Payment failed – BeyondRounds',
+            booking_created: '📅 New booking – BeyondRounds',
+        };
+
+        return this.send({
+            to: adminEmail,
+            subject: subjects[type],
+            react: React.createElement(AdminAlertEmail, { type, details }),
+            text: `Admin alert [${type}]:\n${Object.entries(details).map(([k, v]) => `${k}: ${v}`).join('\n')}`,
+        });
+    },
 };

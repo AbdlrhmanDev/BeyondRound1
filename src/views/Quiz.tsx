@@ -63,19 +63,19 @@ const QUALIFYING_QUESTIONS: { question: string; options: string[] }[] = [
 // ─── Score helpers ───────────────────────────────────────────────────────────
 
 function getScoreBand(score: number) {
-    if (score <= 30) return {
+    if (score <= 3) return {
         label: 'Still forming',
         color: '#DC2626',
         bg: '#FEF2F2',
         message: "Your social foundation in Berlin is still in its early stages. That's exactly what BeyondRounds is built for — we match verified doctors into small curated groups so you actually meet people, not just collect contacts.",
     };
-    if (score <= 60) return {
+    if (score <= 6) return {
         label: 'Developing',
         color: '#D97706',
         bg: '#FFFBEB',
         message: "You have some connections in Berlin, but building a genuine friend group takes time and the right system. BeyondRounds does the heavy lifting: verified peers, curated groups, suggested venues — every week.",
     };
-    if (score <= 80) return {
+    if (score <= 8) return {
         label: 'Growing',
         color: '#2563EB',
         bg: '#EFF6FF',
@@ -535,15 +535,15 @@ export default function Quiz() {
                                                 strokeWidth="10"
                                                 strokeLinecap="round"
                                                 strokeDasharray={`${2 * Math.PI * 50}`}
-                                                strokeDashoffset={`${2 * Math.PI * 50 * (1 - score / 100)}`}
+                                                strokeDashoffset={`${2 * Math.PI * 50 * (1 - score / 10)}`}
                                                 initial={{ strokeDashoffset: `${2 * Math.PI * 50}` }}
-                                                animate={{ strokeDashoffset: `${2 * Math.PI * 50 * (1 - score / 100)}` }}
+                                                animate={{ strokeDashoffset: `${2 * Math.PI * 50 * (1 - score / 10)}` }}
                                                 transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
                                             />
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                                             <span className="text-4xl font-extrabold" style={{ color: band.color }}>{score}</span>
-                                            <span className="text-xs text-[#57534E]">out of 100</span>
+                                            <span className="text-xs text-[#57534E]">out of 10</span>
                                         </div>
                                     </div>
 

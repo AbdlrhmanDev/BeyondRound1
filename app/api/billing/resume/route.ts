@@ -35,9 +35,15 @@ export async function POST() {
       );
     }
 
-    await stripe.subscriptions.update(sub.stripe_subscription_id, {
-      cancel_at_period_end: false,
-    });
+    try {
+      await stripe.subscriptions.update(sub.stripe_subscription_id, {
+        cancel_at_period_end: false,
+      });
+    } catch (stripeErr) {
+      const msg = stripeErr instanceof Error ? stripeErr.message : '';
+      if (!msg.includes('No such subscription')) throw stripeErr;
+      console.warn('[api/billing/resume] subscription not found in Stripe — updating DB only:', sub.stripe_subscription_id);
+    }
 
     await admin
       .from('subscriptions')

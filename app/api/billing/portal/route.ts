@@ -27,7 +27,14 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // Static portal link — used as fallback when no customer exists or
+    // when the customer ID is stale (e.g. test-mode data mismatch).
+    const staticPortalUrl = process.env.STRIPE_PORTAL_URL;
+
     if (!sub?.stripe_customer_id) {
+      if (staticPortalUrl) {
+        return NextResponse.json({ url: staticPortalUrl });
+      }
       return NextResponse.json(
         { error: 'No billing account found. Please subscribe first.' },
         { status: 400 }
@@ -43,12 +50,22 @@ export async function POST(req: NextRequest) {
       returnUrl = validateReturnUrl(body?.returnUrl, defaultReturn);
     } catch { /* body is optional */ }
 
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer:   sub.stripe_customer_id,
-      return_url: returnUrl,
-    });
-
-    return NextResponse.json({ url: portalSession.url });
+    try {
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer:   sub.stripe_customer_id,
+        return_url: returnUrl,
+      });
+      return NextResponse.json({ url: portalSession.url });
+    } catch (stripeErr) {
+      // Customer doesn't exist in Stripe (e.g. stale test data) — fall back to
+      // the static portal link so the user can still manage their billing.
+      const msg = stripeErr instanceof Error ? stripeErr.message : '';
+      if (staticPortalUrl && (msg.includes('No such customer') || msg.includes('No portal configuration'))) {
+        console.warn('[api/billing/portal] falling back to static portal link:', msg);
+        return NextResponse.json({ url: staticPortalUrl });
+      }
+      throw stripeErr;
+    }
   } catch (err) {
     console.error('[api/billing/portal]', err instanceof Error ? err.message : err);
     const { message, status } = sanitizeError(err);

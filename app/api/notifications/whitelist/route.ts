@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { emailService } from '@/services/emailService';
+import { brevoService } from '@/services/brevoService';
 import { checkRateLimit, getRateLimitId } from '@/lib/rateLimit';
 
 const schema = z.object({
@@ -8,6 +8,7 @@ const schema = z.object({
     .string({ required_error: 'Email is required' })
     .email('Invalid email address')
     .max(254, 'Email is too long'),
+  firstName: z.string().max(100).optional(),
   locale: z.string().optional(),
 });
 
@@ -32,16 +33,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
-    const result = await emailService.sendWhitelistConfirmation(parsed.data.email, parsed.data.locale);
+  const { email, firstName, locale } = parsed.data;
 
-    if (result.success) {
-      return NextResponse.json({ success: true });
+  try {
+    // Add contact to Brevo list — triggers the Automation UI drip sequence.
+    // A Brevo failure is logged but must not break the signup response.
+    const result = await brevoService.addContact({ email, firstName, locale });
+    if (!result.success) {
+      console.error('[whitelist] Brevo enrolment failed:', result.error);
     }
 
-    // Don't expose internal email service errors to the client
-    console.error('[whitelist] Email service error:', result.error);
-    return NextResponse.json({ error: 'Failed to send confirmation email' }, { status: 500 });
+    return NextResponse.json({ success: true });
   } catch (err) {
     console.error('[whitelist] Unexpected error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
