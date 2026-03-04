@@ -3,14 +3,17 @@ import Stripe from 'stripe';
 import { createAdminClient } from '@/integrations/supabase/server';
 import { emailService } from '@/services/emailService';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2026-01-28.clover',
-});
+function getStripe() {
+    return new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        apiVersion: '2026-01-28.clover',
+    });
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getCustomerEmail(customerId: string): Promise<string | null> {
     try {
+        const stripe = getStripe();
         const customer = await stripe.customers.retrieve(customerId);
         if (customer.deleted) return null;
         return (customer as Stripe.Customer).email ?? null;
@@ -22,7 +25,7 @@ async function getCustomerEmail(customerId: string): Promise<string | null> {
 async function getBookingDetails(bookingId: string) {
     const admin = createAdminClient();
     const { data } = await admin
-        .from('bookings')
+        .from('bookings' as any)
         .select('id, user_id, event_id, events(date_time, venue, city)')
         .eq('id', bookingId)
         .maybeSingle();
@@ -37,6 +40,7 @@ async function getBookingDetails(bookingId: string) {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+    const stripe = getStripe();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_EMAILS;
     if (!webhookSecret) {
         console.error('[stripe-webhook] STRIPE_WEBHOOK_SECRET_EMAILS not set');
@@ -80,8 +84,8 @@ export async function POST(req: NextRequest) {
                         ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: priceItem.price.currency.toUpperCase() })
                             .format((priceItem.price.unit_amount ?? 0) / 100)
                         : '';
-                    const nextBillingDate = sub?.current_period_end
-                        ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-GB')
+                    const nextBillingDate = (sub as any)?.current_period_end
+                        ? new Date((sub as any).current_period_end * 1000).toLocaleDateString('en-GB')
                         : '';
 
                     await Promise.all([
@@ -150,7 +154,7 @@ export async function POST(req: NextRequest) {
                         ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: priceItem.price.currency.toUpperCase() })
                             .format((priceItem.price.unit_amount ?? 0) / 100)
                         : '';
-                    const nextBillingDate = new Date(sub.current_period_end * 1000).toLocaleDateString('en-GB');
+                    const nextBillingDate = new Date((sub as any).current_period_end * 1000).toLocaleDateString('en-GB');
 
                     await emailService.sendSubscriptionStarted(email, planName, nextBillingDate, amount);
                 }

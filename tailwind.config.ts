@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  darkMode: false,
+  darkMode: "media",
   future: { hoverOnlyWhenSupported: true },
   content: [
     "./app/**/*.{ts,tsx}",
