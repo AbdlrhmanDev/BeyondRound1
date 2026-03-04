@@ -1,6 +1,7 @@
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });
+const { withSentryConfig } = require('@sentry/nextjs');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -65,7 +66,7 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com https://www.googletagmanager.com https://www.google-analytics.com https://www.google.com",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://va.vercel-scripts.com",
+      "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://va.vercel-scripts.com https://*.ingest.sentry.io",
       "frame-src https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
@@ -187,6 +188,9 @@ const nextConfig = {
     return config;
   },
 
+  // Required for Sentry server-side instrumentation
+  instrumentationHook: true,
+
   // Experimental features
   experimental: {
     optimizePackageImports: [
@@ -235,4 +239,22 @@ const nextConfig = {
   },
 };
 
-module.exports = withBundleAnalyzer(nextConfig);
+const sentryWebpackPluginOptions = {
+  // Upload source maps to Sentry (needed for readable stack traces)
+  // Set SENTRY_AUTH_TOKEN in Vercel env vars
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Automatically tree-shake Sentry logger statements to reduce bundle size
+  disableLogger: true,
+  // Upload source maps but don't expose them to browser
+  hideSourceMaps: true,
+  // Disable Sentry telemetry
+  telemetry: false,
+};
+
+module.exports = withSentryConfig(
+  withBundleAnalyzer(nextConfig),
+  sentryWebpackPluginOptions
+);
