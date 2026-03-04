@@ -16,7 +16,17 @@ import { EventReminderEmail } from '../components/emails/event-reminder';
 import { AdminAlertEmail } from '../components/emails/admin-alert';
 import { checkNotificationExists } from './notificationService';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+const getResendClient = () => {
+    if (!resendClient) {
+        const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) {
+            throw new Error('RESEND_API_KEY is not defined in environment variables');
+        }
+        resendClient = new Resend(apiKey);
+    }
+    return resendClient;
+};
 
 // Stream 1: all transactional email from mail.beyondrounds.app
 const FROM = `BeyondRounds <${process.env.RESEND_FROM || 'hello@mail.beyondrounds.app'}>`;
@@ -62,6 +72,7 @@ export const emailService = {
             const to = Array.isArray(options.to) ? options.to : [options.to];
             console.log(`Sending email via Resend to: ${to.join(', ')} subject: ${options.subject}`);
 
+            const resend = getResendClient();
             const { data, error } = await resend.emails.send({
                 from: options.from || FROM,
                 to,

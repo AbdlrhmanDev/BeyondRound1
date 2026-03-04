@@ -60,13 +60,20 @@ const nextConfig = {
     // - 'unsafe-inline' for scripts is required by Next.js hydration and inline styles (Radix, Tailwind).
     //   To remove it, upgrade to nonce-based CSP (requires middleware to inject nonces per request).
     // - Adjust connect-src wss:// pattern if your Supabase project URL changes.
+    // - In development, React Fast Refresh requires 'unsafe-eval', so we relax CSP only for dev.
+    let scriptSrc =
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://connect.facebook.net https://va.vercel-scripts.com";
+    if (process.env.NODE_ENV !== 'production') {
+      scriptSrc += " 'unsafe-eval'";
+    }
+
     const cspDirectives = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://connect.facebook.net https://va.vercel-scripts.com",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com https://www.googletagmanager.com https://www.google-analytics.com https://www.google.com",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://va.vercel-scripts.com https://*.ingest.sentry.io",
+      "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://va.vercel-scripts.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io",
       "frame-src https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
@@ -90,7 +97,10 @@ const nextConfig = {
     return [
       {
         source: '/:path*',
-        headers: securityHeaders,
+        headers: [
+          ...securityHeaders,
+          { key: 'Document-Policy', value: 'js-profiling' },
+        ],
       },
       // Static marketing pages: allow bfcache (avoid no-store)
       {
@@ -248,9 +258,18 @@ const sentryWebpackPluginOptions = {
   silent: !process.env.CI,
   // Disable Sentry telemetry
   telemetry: false,
+  webpack: {
+    // Enables automatic instrumentation of Vercel Cron Monitors.
+    automaticVercelMonitors: true,
+    // Tree-shaking options for reducing bundle size
+    treeshake: {
+      // Automatically tree-shake Sentry logger statements to reduce bundle size
+      removeDebugLogging: true,
+    },
+  },
 };
 
 module.exports = withSentryConfig(
   withBundleAnalyzer(nextConfig),
-  sentryWebpackPluginOptions
+  sentryWebpackPluginOptions,
 );
