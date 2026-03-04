@@ -45,7 +45,9 @@
       "Bash(printf:*)",
       "Bash(nslookup:*)",
       "Bash(vercel env:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(mv:*)"
     ]
   }
 }

@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { emailService } from '@/services/emailService';
+import { Resend } from 'resend';
+
+export const runtime = 'nodejs';
+
+let resendClient: Resend | null = null;
+
+function getResendClient(): Resend {
+    const apiKey = process.env.RESEND_API_KEY;
+
+    if (!apiKey) {
+        throw new Error('RESEND_API_KEY is not set in the environment.');
+    }
+
+    if (!resendClient) {
+        resendClient = new Resend(apiKey);
+    }
+
+    return resendClient;
+}
 
 // ── Auth helper (same pattern as run-matching) ────────────────────────────────
 
@@ -110,10 +128,34 @@ export async function POST(request: NextRequest) {
 
     const firstName = (profile?.full_name ?? '').split(' ')[0] || 'Doctor';
 
-    // Send verification result email (fire-and-forget — don't fail the response if email fails)
-    emailService.sendDoctorVerification(email, firstName, decision === 'approve').catch((err) => {
-        console.error('[verify-doctor] Email send failed:', err);
-    });
+    try {
+        const resend = getResendClient();
+
+        const subject =
+            decision === 'approve'
+                ? 'Verification approved – BeyondRounds'
+                : 'Update on your verification – BeyondRounds';
+
+        const text =
+            decision === 'approve'
+                ? `Hi ${firstName}, your doctor verification has been approved. You now have full access to BeyondRounds.`
+                : `Hi ${firstName}, we were unable to approve your verification. Please resubmit your documents.`;
+
+        await resend.emails.send({
+            from: `BeyondRounds <${process.env.RESEND_FROM || 'hello@mail.beyondrounds.app'}>`,
+            to: [email],
+            subject,
+            text,
+        });
+    } catch (err: any) {
+        console.error('[verify-doctor] Resend email send failed:', err);
+        const message =
+            err instanceof Error ? err.message : 'Unknown error while sending verification email.';
+        return NextResponse.json(
+            { error: 'Email delivery failed', detail: message },
+            { status: 500 },
+        );
+    }
 
     return NextResponse.json({ ok: true });
 }
