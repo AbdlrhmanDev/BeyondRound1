@@ -188,9 +188,6 @@ const nextConfig = {
     return config;
   },
 
-  // Required for Sentry server-side instrumentation
-  instrumentationHook: true,
-
   // Experimental features
   experimental: {
     optimizePackageImports: [
@@ -240,16 +237,15 @@ const nextConfig = {
 };
 
 const sentryWebpackPluginOptions = {
-  // Upload source maps to Sentry (needed for readable stack traces)
-  // Set SENTRY_AUTH_TOKEN in Vercel env vars
-  silent: true,
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+  org: 'personal-b27',
+  project: 'beyondrounds',
   authToken: process.env.SENTRY_AUTH_TOKEN,
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
-  disableLogger: true,
-  // Upload source maps but don't expose them to browser
-  hideSourceMaps: true,
+  // Upload more client files for better stack trace resolution
+  widenClientFileUpload: true,
+  // Proxy tunnel to bypass ad-blockers
+  tunnelRoute: '/monitoring',
+  // Suppress non-CI build output
+  silent: !process.env.CI,
   // Disable Sentry telemetry
   telemetry: false,
 };

@@ -100,5 +100,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/((?!api|static|.*\\..*|_next).*)',
+  // Exclude Sentry tunnel route, API routes, static files, and Next.js internals
+  matcher: '/((?!monitoring|api|static|.*\\..*|_next).*)',
 };
