@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  throw new Error('Sentry test error — server route');
+  return new Response(null, { status: 404 });
 }
