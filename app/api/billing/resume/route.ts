@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import { createClient, createAdminClient } from '@/integrations/supabase/server';
 import { sanitizeError } from '@/lib/securityUtils';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {

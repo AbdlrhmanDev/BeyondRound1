@@ -4,6 +4,8 @@ import { createClient, createAdminClient } from '@/integrations/supabase/server'
 import { validateReturnUrl, sanitizeError } from '@/lib/securityUtils';
 import { checkRateLimit } from '@/lib/rateLimit';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {

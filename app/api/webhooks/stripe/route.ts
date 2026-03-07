@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import { createAdminClient } from '@/integrations/supabase/server';
 import { emailService } from '@/services/emailService';
 
+export const dynamic = 'force-dynamic';
+
 function getStripe() {
     return new Stripe(process.env.STRIPE_SECRET_KEY!, {
         apiVersion: '2026-01-28.clover',

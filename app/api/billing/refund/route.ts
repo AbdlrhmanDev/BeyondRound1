@@ -5,6 +5,8 @@ import { sanitizeError } from '@/lib/securityUtils';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { emailService } from '@/services/emailService';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {

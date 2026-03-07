@@ -4,6 +4,8 @@ import { createClient, createAdminClient } from '@/integrations/supabase/server'
 import { getAllowedPriceIds, sanitizeError } from '@/lib/securityUtils';
 import { checkRateLimit } from '@/lib/rateLimit';
 
+export const dynamic = 'force-dynamic';
+
 async function getOrCreateCustomer(
   stripe: Stripe,
   userId: string,
