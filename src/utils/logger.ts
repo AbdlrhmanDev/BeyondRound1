@@ -46,15 +46,6 @@ class Logger {
         break;
       case 'error':
         console.error(formattedMessage, options?.data);
-        // In production, send to error tracking service
-        if (this.isProduction) {
-          // TODO: Integrate with error tracking service (Sentry, LogRocket, etc.)
-          // errorTrackingService.captureException(new Error(message), {
-          //   level,
-          //   context: options?.context,
-          //   extra: options?.data,
-          // });
-        }
         break;
     }
   }

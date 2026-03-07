@@ -1,14 +1,29 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
-Allow: /
+
+# Private app pages (locale-prefixed)
+Disallow: /*/dashboard
+Disallow: /*/chat
+Disallow: /*/group-chat
+Disallow: /*/edit-profile
+Disallow: /*/interests
+Disallow: /*/matches
+Disallow: /*/onboarding
+Disallow: /*/places
+Disallow: /*/profile
+Disallow: /*/settings
+Disallow: /*/survey
+Disallow: /*/u/
+
+# Admin
+Disallow: /*/admin
+
+# Auth flows
+Disallow: /*/auth
+Disallow: /*/forgot-password
+Disallow: /*/reset-password
+Disallow: /*/welcome
+
+# API
+Disallow: /api/
+
+Sitemap: https://beyondrounds.app/sitemap.xml
