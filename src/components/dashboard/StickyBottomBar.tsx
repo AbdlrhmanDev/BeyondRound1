@@ -45,7 +45,7 @@ export default function StickyBottomBar({ state }: StickyBottomBarProps) {
       {state.type === "confirmed" && (
         <div className="w-full h-14 flex items-center justify-center gap-2 bg-primary/10 text-primary rounded-full font-medium text-base">
           <CheckCircle2 className="h-5 w-5" />
-          You're in — {state.dayName}
+          You&apos;re in — {state.dayName}
         </div>
       )}
 

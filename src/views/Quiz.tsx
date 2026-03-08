@@ -337,7 +337,7 @@ export default function Quiz() {
                                     Before we start
                                 </p>
                                 <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1C1917] mb-2 leading-tight">
-                                    What's your Social Health Score?
+                                    What&apos;s your Social Health Score?
                                 </h1>
                                 <p className="text-[#57534E] mb-8 leading-relaxed">
                                     15 quick questions. See how your social life in Berlin compares — and what to do about it.

@@ -246,7 +246,7 @@ function EditCitySheet({ open, onOpenChange, currentCity, onSave }: { open: bool
       <SheetContent side="bottom" className="rounded-t-[24px] max-h-[80vh] overflow-y-auto">
         <SheetHeader className="text-left pb-2">
           <SheetTitle className="font-display text-xl font-bold text-foreground">Your city</SheetTitle>
-          <SheetDescription className="text-sm text-muted-foreground">Choose the city where you'd like to meet other doctors.</SheetDescription>
+          <SheetDescription className="text-sm text-muted-foreground">Choose the city where you&apos;d like to meet other doctors.</SheetDescription>
         </SheetHeader>
         <div className="space-y-3 pt-4 pb-2">
           <div className="space-y-1">
@@ -396,14 +396,14 @@ function VerificationSheet({ open, onOpenChange, status, onSubmit, onRetry }: { 
           {status === "pending" && (
             <div className="text-center space-y-4 py-6">
               <div className="mx-auto h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center"><Clock className="h-7 w-7 text-amber-600" /></div>
-              <div><h3 className="font-display text-lg font-semibold text-foreground mb-1">Under review</h3><p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">We're reviewing your document. This usually takes 1–2 business days.</p></div>
-              <div className="flex items-start gap-2 p-3 rounded-[12px] bg-muted/40 text-left"><BellRing className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" /><p className="text-xs text-muted-foreground">You'll receive a notification when your verification is approved.</p></div>
+              <div><h3 className="font-display text-lg font-semibold text-foreground mb-1">Under review</h3><p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">We&apos;re reviewing your document. This usually takes 1–2 business days.</p></div>
+              <div className="flex items-start gap-2 p-3 rounded-[12px] bg-muted/40 text-left"><BellRing className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" /><p className="text-xs text-muted-foreground">You&apos;ll receive a notification when your verification is approved.</p></div>
             </div>
           )}
           {status === "verified" && (
             <div className="text-center space-y-4 py-6">
               <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center"><ShieldCheck className="h-7 w-7 text-primary" /></div>
-              <div><h3 className="font-display text-lg font-semibold text-foreground mb-1">You're verified</h3><p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">Your doctor status has been confirmed. You have full access to all BeyondRounds features.</p></div>
+              <div><h3 className="font-display text-lg font-semibold text-foreground mb-1">You&apos;re verified</h3><p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">Your doctor status has been confirmed. You have full access to all BeyondRounds features.</p></div>
             </div>
           )}
         </div>
@@ -470,7 +470,7 @@ function DeleteAccountFlow({ open, onOpenChange, onConfirm }: { open: boolean; o
                 <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full h-12 rounded-[14px] border border-input bg-background px-4 text-sm text-foreground appearance-none cursor-pointer" aria-label="Reason for deleting account">
                   <option value="">Select a reason...</option>
                   <option value="not_useful">Not finding it useful</option>
-                  <option value="no_time">Don't have time</option>
+                  <option value="no_time">Don&apos;t have time</option>
                   <option value="privacy">Privacy concerns</option>
                   <option value="moving">Moving to a different city</option>
                   <option value="other">Other</option>

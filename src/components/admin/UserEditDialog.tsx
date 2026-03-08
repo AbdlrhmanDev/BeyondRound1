@@ -117,7 +117,7 @@ const UserEditDialog = ({ user, open, onClose, onSave }: UserEditDialogProps) =>
         <DialogHeader>
           <DialogTitle>Edit User Profile</DialogTitle>
           <DialogDescription>
-            Update the user's profile information. Changes will be logged in the audit log.
+            Update the user&apos;s profile information. Changes will be logged in the audit log.
           </DialogDescription>
         </DialogHeader>
         

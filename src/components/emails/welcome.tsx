@@ -30,11 +30,11 @@ export const WelcomeEmail = ({ name = 'there' }: WelcomeEmailProps) => {
                                 Welcome, {name}!
                             </Heading>
                             <Text className="text-gray-700 text-lg leading-relaxed mb-4">
-                                We're excited to have you on board. Your account has been successfully created and you're ready to start exploring.
+                                We&apos;re excited to have you on board. Your account has been successfully created and you&apos;re ready to start exploring.
                             </Text>
                             <Text className="text-gray-700 text-lg leading-relaxed mb-6">
                                 Our platform helps you connect and thrive in a professional community.
-                                Whether you're looking for projects or team members, you're in the right place.
+                                Whether you&apos;re looking for projects or team members, you&apos;re in the right place.
                             </Text>
                             <Section className="text-center">
                                 <Link

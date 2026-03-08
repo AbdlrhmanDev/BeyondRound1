@@ -103,7 +103,7 @@ const UserBanDialog = ({ user, open, onClose, onBan }: UserBanDialogProps) => {
             Ban / Suspend User
           </DialogTitle>
           <DialogDescription>
-            This action will restrict {user?.full_name || "this user"}'s access to the platform.
+            This action will restrict {user?.full_name || "this user"}&apos;s access to the platform.
           </DialogDescription>
         </DialogHeader>
         

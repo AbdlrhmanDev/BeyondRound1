@@ -43,7 +43,7 @@ export default function ContactForm() {
                     <CheckCircle className="w-10 h-10 text-primary" />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Message Sent!</h3>
-                <p className="text-slate-500 font-medium">We'll get back to you within 24 hours.</p>
+                <p className="text-slate-500 font-medium">We&apos;ll get back to you within 24 hours.</p>
                 <button
                     onClick={() => setIsSubmitted(false)}
                     className="mt-8 text-sm font-bold text-primary hover:underline"

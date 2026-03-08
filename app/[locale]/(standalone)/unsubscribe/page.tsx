@@ -57,7 +57,7 @@ function UnsubscribeContent() {
                             </h1>
                             <p className="text-[#57534E] leading-relaxed">
                                 <strong>{email}</strong> has been removed from all BeyondRounds emails.
-                                You won't hear from us again.
+                                You won&apos;t hear from us again.
                             </p>
                         </>
                     )}
@@ -69,7 +69,7 @@ function UnsubscribeContent() {
                                 Something went wrong
                             </h1>
                             <p className="text-[#57534E] leading-relaxed mb-6">
-                                We couldn't process your request. Please email us directly and we'll remove you immediately.
+                                We couldn&apos;t process your request. Please email us directly and we&apos;ll remove you immediately.
                             </p>
                             <a
                                 href="mailto:hello@beyondrounds.app?subject=Unsubscribe%20request"

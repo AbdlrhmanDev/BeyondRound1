@@ -48,7 +48,7 @@ export default function GroupModule({
           </h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          We're curating a group of verified doctors in your area.
+          We&apos;re curating a group of verified doctors in your area.
         </p>
         {/* Placeholder avatars */}
         <div className="flex -space-x-2">

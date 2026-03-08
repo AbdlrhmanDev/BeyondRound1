@@ -111,7 +111,7 @@ const PublicProfile = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-display font-bold text-foreground mb-2">Profile Not Found</h1>
-          <p className="text-muted-foreground mb-4">This user doesn't exist or their profile is private.</p>
+          <p className="text-muted-foreground mb-4">This user doesn&apos;t exist or their profile is private.</p>
           <Button onClick={() => navigate(-1)}>Go Back</Button>
         </div>
       </div>

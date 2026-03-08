@@ -70,10 +70,10 @@ const Contact = () => {
         <div className="container mx-auto px-5 sm:px-8 max-w-3xl relative z-10 text-center">
           <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#F27C5C] mb-4">Contact</p>
           <h1 className="font-display text-4xl sm:text-5xl font-bold text-[#3A0B22] tracking-tight leading-[1.15] mb-6">
-            We'd love to hear from you.
+            We&apos;d love to hear from you.
           </h1>
           <p className="text-lg text-[#5E555B] max-w-xl mx-auto leading-relaxed">
-            Questions, feedback, or just want to say hello? Drop us a line and we'll get back to you within 24 hours.
+            Questions, feedback, or just want to say hello? Drop us a line and we&apos;ll get back to you within 24 hours.
           </p>
         </div>
       </section>
@@ -134,7 +134,7 @@ const Contact = () => {
                     <CheckCircle className="w-8 h-8 text-[#F27C5C]" />
                   </div>
                   <h3 className="font-display text-2xl font-bold text-[#3A0B22] mb-3">Message sent!</h3>
-                  <p className="text-[#5E555B]">We've received your message and will get back to you within 24 hours.</p>
+                  <p className="text-[#5E555B]">We&apos;ve received your message and will get back to you within 24 hours.</p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">

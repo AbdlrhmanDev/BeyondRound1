@@ -380,7 +380,7 @@ function ReservedGroupCard({
           <Calendar className="h-4 w-4 text-[#4B0F2D] shrink-0 mt-0.5" aria-hidden="true" />
           <div>
             <p className="text-sm font-medium text-[#1A0A12]">Group reveals Thursday.</p>
-            <p className="text-xs text-[#5E555B] mt-0.5">You'll get a notification Thursday evening.</p>
+            <p className="text-xs text-[#5E555B] mt-0.5">You&apos;ll get a notification Thursday evening.</p>
           </div>
         </div>
 

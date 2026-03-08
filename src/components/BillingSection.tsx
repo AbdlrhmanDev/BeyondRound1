@@ -389,7 +389,7 @@ export const BillingSection = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-emerald-800">One-time access active</p>
-            <p className="text-xs text-emerald-600 mt-0.5">You're all set for this match cycle.</p>
+            <p className="text-xs text-emerald-600 mt-0.5">You&apos;re all set for this match cycle.</p>
           </div>
         </div>
 
@@ -425,7 +425,7 @@ export const BillingSection = () => {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-red-800">Payment failed</p>
             <p className="text-xs text-red-600 mt-0.5">
-              Your last payment couldn't be processed.
+              Your last payment couldn&apos;t be processed.
               {subscription?.next_payment_attempt && (
                 <> Stripe retries on {fmt(subscription.next_payment_attempt)}.</>
               )}
@@ -499,7 +499,7 @@ export const BillingSection = () => {
           {subscription.status === 'trialing' && subscription.trial_end && (
             <div className="mt-3 pt-3 border-t border-[rgba(58,11,34,0.08)]">
               <p className="text-xs text-blue-700">
-                Trial ends {fmt(subscription.trial_end)} — you won't be charged until then.
+                Trial ends {fmt(subscription.trial_end)} — you won&apos;t be charged until then.
               </p>
             </div>
           )}
@@ -514,7 +514,7 @@ export const BillingSection = () => {
             <p className="text-sm font-semibold text-amber-800">Cancellation scheduled</p>
             <p className="text-xs text-amber-600 mt-0.5">
               Your subscription ends on <strong>{fmt(subscription.current_period_end)}</strong>.
-              You'll lose access to matching and group chats after that.
+              You&apos;ll lose access to matching and group chats after that.
             </p>
           </div>
         </div>
@@ -648,9 +648,9 @@ export const BillingSection = () => {
           <DialogHeader>
             <DialogTitle>Cancel subscription?</DialogTitle>
             <DialogDescription>
-              You'll keep full access until{' '}
+              You&apos;ll keep full access until{' '}
               <strong>{fmt(subscription?.current_period_end)}</strong>.
-              After that you won't be matched or have group chat access.
+              After that you won&apos;t be matched or have group chat access.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -676,7 +676,7 @@ export const BillingSection = () => {
           <DialogHeader>
             <DialogTitle>Request a refund?</DialogTitle>
             <DialogDescription>
-              We'll refund your most recent payment in full and cancel your subscription immediately.
+              We&apos;ll refund your most recent payment in full and cancel your subscription immediately.
               Please allow <strong>5–10 business days</strong> for the amount to appear on your statement.
             </DialogDescription>
           </DialogHeader>
