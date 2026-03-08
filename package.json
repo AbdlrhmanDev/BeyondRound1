@@ -23,6 +23,8 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "check-env": "node scripts/check-env.mjs",
+    "check-rls": "node scripts/check-rls.mjs",
     "optimize:hero": "node scripts/optimize-hero.mjs",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "test": "jest --watch",

@@ -63,6 +63,9 @@ const Settings = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<{ current?: string; new?: string; confirm?: string }>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [pushNotifications, setPushNotifications] = useState(true);
   const { isSupported: pushSupported, isIOS, isStandalone, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications();
   const [matchNotifications, setMatchNotifications] = useState(true);
@@ -122,6 +125,26 @@ const Settings = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch("/api/user/delete", { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error ?? "Failed to delete account");
+        setDeleteLoading(false);
+        return;
+      }
+      toast.success("Account deleted");
+      await signOut();
+      navigate("/");
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+      setDeleteLoading(false);
+    }
   };
 
   const openPasswordDialog = () => {
@@ -458,15 +481,53 @@ const Settings = () => {
               >
                 {t("settings.signOut")}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl h-12"
+                onClick={() => { setDeleteConfirmText(""); setDeleteDialogOpen(true); }}
               >
                 {t("settings.deleteAccount")}
               </Button>
             </CardContent>
           </Card>
         </div>
+
+        {/* Delete Account Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleteLoading) setDeleteDialogOpen(open); }}>
+          <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="font-display text-destructive">Delete account</DialogTitle>
+              <DialogDescription>
+                This is permanent and cannot be undone. Your profile, bookings, and data will be erased.
+                Type <strong>DELETE</strong> to confirm.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                disabled={deleteLoading}
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== "DELETE" || deleteLoading}
+              >
+                {deleteLoading ? "Deleting…" : "Delete my account"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Change Password Dialog */}
         <Dialog open={passwordDialogOpen} onOpenChange={(open) => !open && closePasswordDialog()}>

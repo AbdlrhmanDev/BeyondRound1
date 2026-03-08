@@ -20,11 +20,12 @@ const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '';
 
 export function ConsentedScripts() {
   const { isAllowed } = useCookieConsent();
+
   if (!GA_ID) return null;
 
   return (
     <>
-      {/* 1) Consent default = denied (قبل أي شيء) */}
+      {/* 1) Set consent defaults to denied before any script loads */}
       <Script id="ga-consent-default" strategy="beforeInteractive">{`
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
@@ -36,13 +37,13 @@ export function ConsentedScripts() {
         });
       `}</Script>
 
-      {/* 2) حمّل gtag دائمًا عشان Google يقدر "يشوف" التاغ */}
+      {/* 2) Load gtag library (always — required for consent mode to work) */}
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
         strategy="afterInteractive"
       />
 
-      {/* 3) فعّل GA فقط لما يوافق المستخدم على analytics */}
+      {/* 3) Activate GA4 only when user consented to analytics */}
       {isAllowed('analytics') && (
         <Script id="ga4-init" strategy="afterInteractive">{`
           window.dataLayer = window.dataLayer || [];
@@ -52,10 +53,8 @@ export function ConsentedScripts() {
           gtag('config', '${GA_ID}', { anonymize_ip: true });
         `}</Script>
       )}
-    
-  )
 
-      {/* ── Meta Pixel ────────────────────────────────────────────────── */}
+      {/* 4) Meta Pixel — only when user consented to marketing */}
       {isAllowed('marketing') && META_PIXEL_ID && (
         <Script id="meta-pixel" strategy="afterInteractive">{`
           !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){
@@ -69,5 +68,5 @@ export function ConsentedScripts() {
         `}</Script>
       )}
     </>
-  )
+  );
 }

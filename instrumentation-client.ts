@@ -31,6 +31,20 @@ Sentry.init({
     "AbortError",
     "NEXT_REDIRECT",
     "NEXT_NOT_FOUND",
+    // Browser extension noise
+    "MetaMask extension not found",
+    "Failed to connect to MetaMask",
+    /^Extension context invalidated/,
+    /^chrome-extension/,
+    /^moz-extension/,
+  ],
+
+  // Drop errors that originate from browser extensions entirely
+  denyUrls: [
+    /^app:\/\/\/scripts\//,
+    /chrome-extension:\/\//i,
+    /moz-extension:\/\//i,
+    /extensions\//i,
   ],
 
   enabled: process.env.NODE_ENV === "production",

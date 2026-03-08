@@ -36,12 +36,104 @@ function dayLabel(date: Date): 'friday' | 'saturday' | 'sunday' {
   return 'sunday';
 }
 
-function chunkArray<T>(arr: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
+// ── Compatibility scoring ────────────────────────────────────────────────────
+
+interface UserPrefs {
+  interests: string[];
+  sports: string[];
+  social_energy: string | null;
+  career_stage: string | null;
+  city: string | null;
+}
+
+function compatibilityScore(
+  aId: string,
+  bId: string,
+  prefsMap: Map<string, UserPrefs>,
+): number {
+  const a = prefsMap.get(aId);
+  const b = prefsMap.get(bId);
+  if (!a || !b) return 0;
+
+  let score = 0;
+
+  // Shared interests: +3 each, capped at +9
+  const sharedInterests = a.interests.filter(i => b.interests.includes(i)).length;
+  score += Math.min(sharedInterests * 3, 9);
+
+  // Shared sports: +2 each
+  const sharedSports = a.sports.filter(s => b.sports.includes(s)).length;
+  score += sharedSports * 2;
+
+  // Social energy
+  if (a.social_energy && b.social_energy) {
+    if (a.social_energy === b.social_energy) {
+      score += 2;
+    } else {
+      const levels = ['introvert', 'ambivert', 'extrovert'];
+      const diff = Math.abs(levels.indexOf(a.social_energy) - levels.indexOf(b.social_energy));
+      if (diff === 1) score += 1;
+    }
   }
-  return chunks;
+
+  // Career stage
+  if (a.career_stage && b.career_stage) {
+    if (a.career_stage === b.career_stage) {
+      score += 2;
+    } else {
+      const stages = ['student', 'resident', 'attending', 'senior'];
+      const diff = Math.abs(stages.indexOf(a.career_stage) - stages.indexOf(b.career_stage));
+      if (diff === 1) score += 1;
+    }
+  }
+
+  // Same city: +1
+  if (a.city && b.city && a.city === b.city) score += 1;
+
+  return score;
+}
+
+/**
+ * Greedy group formation using compatibility scores.
+ * Each group is seeded with the next user in the pool, then filled
+ * by picking the highest-scoring candidate against the current group average.
+ */
+function formScoredGroups(
+  users: string[],
+  prefsMap: Map<string, UserPrefs>,
+  size = 4,
+): string[][] {
+  const pool = [...users];
+  const groups: string[][] = [];
+
+  while (pool.length >= 2) {
+    const group: string[] = [pool.shift()!];
+
+    while (group.length < size && pool.length > 0) {
+      let bestIdx = 0;
+      let bestScore = -Infinity;
+
+      for (let i = 0; i < pool.length; i++) {
+        const total = group.reduce((s, gm) => s + compatibilityScore(gm, pool[i], prefsMap), 0);
+        const avg = total / group.length;
+        if (avg > bestScore) {
+          bestScore = avg;
+          bestIdx = i;
+        }
+      }
+
+      group.push(pool.splice(bestIdx, 1)[0]);
+    }
+
+    groups.push(group);
+  }
+
+  // Absorb a lone remaining user into the last group
+  if (pool.length === 1 && groups.length > 0) {
+    groups[groups.length - 1].push(pool[0]);
+  }
+
+  return groups;
 }
 
 // ── Auth helper ─────────────────────────────────────────────────────────────
@@ -219,7 +311,48 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 5. Create groups of 3–4 per day
+  // 5. Fetch preferences + city for all eligible users (single batch per table)
+  const allEligibleUsers = [
+    ...new Set([...usersByDay.friday, ...usersByDay.saturday, ...usersByDay.sunday]),
+  ];
+
+  const prefsMap = new Map<string, UserPrefs>();
+
+  if (allEligibleUsers.length > 0) {
+    const [{ data: onboardingRows }, { data: profileRows }] = await Promise.all([
+      supabase
+        .from('onboarding_preferences')
+        .select('user_id, interests, sports, social_energy, career_stage')
+        .in('user_id', allEligibleUsers),
+      supabase
+        .from('profiles')
+        .select('id, city')
+        .in('id', allEligibleUsers),
+    ]);
+
+    const cityByUser = new Map<string, string | null>();
+    for (const p of (profileRows ?? []) as { id: string; city: string | null }[]) {
+      cityByUser.set(p.id, p.city);
+    }
+
+    for (const row of (onboardingRows ?? []) as {
+      user_id: string;
+      interests: string[] | null;
+      sports: string[] | null;
+      social_energy: string | null;
+      career_stage: string | null;
+    }[]) {
+      prefsMap.set(row.user_id, {
+        interests: row.interests ?? [],
+        sports: row.sports ?? [],
+        social_energy: row.social_energy,
+        career_stage: row.career_stage,
+        city: cityByUser.get(row.user_id) ?? null,
+      });
+    }
+  }
+
+  // 6. Create scored groups per day
   const groupsCreated: { day: string; groupId: string; memberCount: number }[] = [];
   const skippedUsers: string[] = [];
 
@@ -230,11 +363,7 @@ export async function POST(request: NextRequest) {
       continue;
     }
 
-    const chunks = chunkArray(users, 4);
-    if (chunks.length > 1 && chunks[chunks.length - 1].length === 1) {
-      const lonely = chunks.pop()!;
-      chunks[chunks.length - 1].push(...lonely);
-    }
+    const chunks = formScoredGroups(users, prefsMap, 4);
 
     for (let i = 0; i < chunks.length; i++) {
       const members = chunks[i];

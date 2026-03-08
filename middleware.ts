@@ -33,6 +33,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // ── Coming soon gate — rewrite home route to /coming-soon ────────────────────
+  // Toggle: set COMING_SOON=true in Vercel env vars. Remove the var on launch day.
+  if (process.env.COMING_SOON === 'true') {
+    const segments = pathname.split('/').filter(Boolean);
+    const locale = KNOWN_LOCALES.has(segments[0]) ? segments[0] : 'de';
+    const isHome = segments.length === 0 || (segments.length === 1 && KNOWN_LOCALES.has(segments[0]));
+    if (isHome) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}/coming-soon`;
+      return NextResponse.rewrite(url);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // ── Domain gate: whitelist subdomain only serves the waitlist page ──────────
   const hostname = request.headers.get('host') ?? '';
   if (hostname === 'whitelist.beyondrounds.app') {
