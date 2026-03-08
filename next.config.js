@@ -250,6 +250,8 @@ const sentryWebpackPluginOptions = {
   org: 'personal-b27',
   project: 'beyondrounds',
   authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Skip source map upload if auth token is not set (e.g. preview/CI builds)
+  dryRun: !process.env.SENTRY_AUTH_TOKEN,
   // Upload more client files for better stack trace resolution
   widenClientFileUpload: true,
   // Proxy tunnel to bypass ad-blockers
