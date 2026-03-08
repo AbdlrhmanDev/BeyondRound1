@@ -841,7 +841,7 @@ export const getGroupDetail = async (groupId: string): Promise<any | null> => {
       const scoreMap: Record<string, { sum: number; count: number }> = {};
       (evals || []).forEach((e: any) => {
         if (!scoreMap[e.user_id]) scoreMap[e.user_id] = { sum: 0, count: 0 };
-        scoreMap[e.user_id].sum += e.meeting_rating;
+        scoreMap[e.user_id].sum += e.meeting_rating ?? 0;
         scoreMap[e.user_id].count += 1;
       });
       userIds.forEach((uid: string) => {
@@ -975,7 +975,7 @@ export const searchUsers = async (query: string): Promise<any[]> => {
     const scoreMap: Record<string, { sum: number; count: number }> = {};
     (evals || []).forEach((e) => {
       if (!scoreMap[e.user_id]) scoreMap[e.user_id] = { sum: 0, count: 0 };
-      scoreMap[e.user_id].sum += e.meeting_rating;
+      scoreMap[e.user_id].sum += e.meeting_rating ?? 0;
       scoreMap[e.user_id].count += 1;
     });
 
@@ -1049,7 +1049,7 @@ export const getUserScore = async (userId: string): Promise<number | null> => {
       .eq('user_id', userId)
       .not('meeting_rating', 'is', null);
     if (error || !data?.length) return null;
-    const avg = data.reduce((s, e) => s + e.meeting_rating, 0) / data.length;
+    const avg = data.reduce((s, e) => s + (e.meeting_rating ?? 0), 0) / data.length;
     return Math.round(avg * 10) / 10;
   } catch (error) {
     console.error('Error getting user score:', error);

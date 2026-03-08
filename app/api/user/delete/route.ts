@@ -25,7 +25,7 @@ export async function DELETE() {
     if (sub?.stripe_subscription_id) {
       try {
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-          apiVersion: '2026-01-28.clover',
+          apiVersion: '2026-02-25.clover',
         });
         await stripe.subscriptions.cancel(sub.stripe_subscription_id);
       } catch (stripeErr) {
