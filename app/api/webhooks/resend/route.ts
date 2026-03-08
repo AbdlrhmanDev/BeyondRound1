@@ -50,7 +50,8 @@ export async function POST(req: NextRequest) {
         console.log(`[resend-webhook] Suppressing ${email} — reason: ${reason}`);
 
         // Upsert into email_suppressions table so we never send to this address again
-        const { error } = await admin
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (admin as any)
             .from('email_suppressions')
             .upsert(
                 { email: email.toLowerCase(), reason, suppressed_at: new Date().toISOString() },

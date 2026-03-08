@@ -503,7 +503,7 @@ const Onboarding = () => {
     setIsLoading(true);
 
     try {
-      const { error, data: signUpData } = await signUp(signupData.email, signupData.password, personalInfo.name);
+      const { error, data: signUpData } = await signUp(signupData.email, signupData.password, personalInfo.name) as { error: Error | null; data?: { user: import('@supabase/supabase-js').User | null } };
 
       if (error) {
         toast({ title: "Sign up failed", description: error.message, variant: "destructive" });

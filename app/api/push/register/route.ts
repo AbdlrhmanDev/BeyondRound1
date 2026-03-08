@@ -30,7 +30,8 @@ export async function POST(req: Request) {
       typeof subscription === 'string' ? subscription : JSON.stringify(subscription);
 
     // Upsert via SECURITY DEFINER RPC to bypass RLS
-    const { data: id, error } = await supabase.rpc('register_push_subscription', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: id, error } = await (supabase as any).rpc('register_push_subscription', {
       p_user_id:              user.id,
       p_platform:             platform,
       p_token_or_subscription: tokenOrJson,

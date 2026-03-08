@@ -46,9 +46,9 @@ export function createClient(): SupabaseClient<Database> {
 }
 
 // Legacy export for backward compatibility
-// Note: This is null on server-side, but all uses are client-side
-// Using non-null assertion since client components always have access
-export const supabase: SupabaseClient<Database> | null = typeof window !== 'undefined' ? createClient() : null;
+// Note: This is null on server-side, but all uses are client-side components.
+// Cast to non-null — services using this are only ever called from browser context.
+export const supabase = (typeof window !== 'undefined' ? createClient() : null) as SupabaseClient<Database>;
 
 /**
  * Get the Supabase client with non-null assertion

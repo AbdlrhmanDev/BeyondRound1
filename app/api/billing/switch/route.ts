@@ -32,11 +32,12 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = createAdminClient();
-    const { data: sub } = await admin
+    type SubRow = { stripe_subscription_id: string | null; stripe_subscription_item_id: string | null; stripe_price_id: string | null; status: string | null };
+    const { data: sub } = await (admin
       .from('subscriptions')
       .select('stripe_subscription_id, stripe_subscription_item_id, stripe_price_id, status')
       .eq('user_id', user.id)
-      .maybeSingle();
+      .maybeSingle() as unknown as Promise<{ data: SubRow | null; error: unknown }>);
 
     if (!sub?.stripe_subscription_id || !sub?.stripe_subscription_item_id) {
       return NextResponse.json({ error: 'No active subscription found.' }, { status: 400 });
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
     const updated = await stripe.subscriptions.update(sub.stripe_subscription_id, {
       items: [{ id: sub.stripe_subscription_item_id, price: newPriceId }],
       proration_behavior: 'create_prorations',
-    });
+    }) as Stripe.Subscription & { current_period_end?: number | null };
 
     const newItem     = updated.items.data[0];
     const newPriceObj = newItem?.price;

@@ -17,7 +17,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'token is required' }, { status: 400 });
     }
 
-    const { error } = await supabase.rpc('unregister_push_subscription', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc('unregister_push_subscription', {
       p_user_id:              user.id,
       p_token_or_subscription: token,
     });

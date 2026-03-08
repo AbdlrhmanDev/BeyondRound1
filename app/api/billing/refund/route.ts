@@ -60,7 +60,7 @@ export async function POST() {
       if (dbInvoice.status === 'refunded') {
         return NextResponse.json({ error: 'This invoice has already been refunded.' }, { status: 400 });
       }
-      const stripeInvoice = await stripe.invoices.retrieve(dbInvoice.stripe_invoice_id);
+      const stripeInvoice = await stripe.invoices.retrieve(dbInvoice.stripe_invoice_id) as Stripe.Invoice & { payment_intent?: string | Stripe.PaymentIntent | null };
       if (!stripeInvoice.payment_intent) {
         return NextResponse.json({ error: 'No payment found to refund.' }, { status: 400 });
       }
@@ -91,7 +91,7 @@ export async function POST() {
         throw stripeErr;
       }
 
-      const latestInvoice = stripeInvoicesList.data[0];
+      const latestInvoice = stripeInvoicesList.data[0] as (Stripe.Invoice & { payment_intent?: string | Stripe.PaymentIntent | null }) | undefined;
       if (latestInvoice) {
         if (!latestInvoice.payment_intent) {
           return NextResponse.json({ error: 'No payment found to refund.' }, { status: 400 });

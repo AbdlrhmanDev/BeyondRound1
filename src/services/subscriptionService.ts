@@ -98,7 +98,7 @@ export async function getSubscription(userId: string): Promise<Subscription | nu
     console.error('[subscriptionService] getSubscription:', error);
     return null;
   }
-  return (data as Subscription) ?? null;
+  return (data as unknown as Subscription) ?? null;
 }
 
 export async function getInvoices(userId: string, limit = 10): Promise<Invoice[]> {
