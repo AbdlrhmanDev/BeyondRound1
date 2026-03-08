@@ -50,5 +50,3 @@ Sentry.init({
   enabled: process.env.NODE_ENV === "production",
 });
 
-// Hook into App Router navigation transitions
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
