@@ -54,22 +54,23 @@ async function fetchStates(countryIso2: string): Promise<State[]> {
   return Array.isArray(data) ? data : [];
 }
 
-async function fetchCities(countryIso2: string, stateIso2: string): Promise<City[]> {
-  if (!countryIso2?.trim() || !stateIso2?.trim()) return [];
+async function fetchCities(countryIso2: string, stateIso2?: string): Promise<City[]> {
+  if (!countryIso2?.trim()) return [];
   if (useProxy) {
-    const res = await fetch(
-      `/api/location/cities?country=${encodeURIComponent(countryIso2)}&state=${encodeURIComponent(stateIso2)}`
-    );
+    const params = stateIso2?.trim()
+      ? `/api/location/cities?country=${encodeURIComponent(countryIso2)}&state=${encodeURIComponent(stateIso2)}`
+      : `/api/location/cities?country=${encodeURIComponent(countryIso2)}`;
+    const res = await fetch(params);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   }
   const headers: Record<string, string> = {};
   if (API_KEY) headers["X-CSCAPI-KEY"] = API_KEY;
-  const res = await fetch(
-    `https://api.countrystatecity.in/v1/countries/${countryIso2}/states/${stateIso2}/cities`,
-    { headers }
-  );
+  const url = stateIso2?.trim()
+    ? `https://api.countrystatecity.in/v1/countries/${countryIso2}/states/${stateIso2}/cities`
+    : `https://api.countrystatecity.in/v1/countries/${countryIso2}/cities`;
+  const res = await fetch(url, { headers });
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? data : [];
@@ -91,7 +92,7 @@ export const getStates = async (countryIso2: string): Promise<State[]> => {
   }
 };
 
-export const getCities = async (countryIso2: string, stateIso2: string): Promise<City[]> => {
+export const getCities = async (countryIso2: string, stateIso2?: string): Promise<City[]> => {
   try {
     return await fetchCities(countryIso2, stateIso2);
   } catch {

@@ -24,9 +24,9 @@ export async function GET(request: NextRequest) {
   const country = searchParams.get('country');
   const state = searchParams.get('state');
 
-  if (!country?.trim() || !state?.trim()) {
+  if (!country?.trim()) {
     return NextResponse.json(
-      { error: 'country and state query params required' },
+      { error: 'country query param required' },
       { status: 400, headers: CORS_HEADERS }
     );
   }
@@ -39,8 +39,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const url = state?.trim()
+      ? `https://api.countrystatecity.in/v1/countries/${encodeURIComponent(country)}/states/${encodeURIComponent(state)}/cities`
+      : `https://api.countrystatecity.in/v1/countries/${encodeURIComponent(country)}/cities`;
     const response = await fetch(
-      `https://api.countrystatecity.in/v1/countries/${encodeURIComponent(country)}/states/${encodeURIComponent(state)}/cities`,
+      url,
       {
         headers: { 'X-CSCAPI-KEY': API_KEY },
         next: { revalidate: 86400 },

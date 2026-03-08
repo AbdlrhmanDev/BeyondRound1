@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
-import { getCountries, getStates, getCities, type Country, type State, type City } from "@/services/locationService";
+import { getCountries, getCities, type Country, type City } from "@/services/locationService";
 
 interface LocationSelectProps {
   country?: string;
@@ -26,12 +26,10 @@ interface LocationSelectProps {
 
 export const LocationSelect = ({
   country: initialCountry = "",
-  state: initialState = "",
   city: initialCity = "",
   neighborhood: initialNeighborhood = "",
   nationality: initialNationality = "",
   onCountryChange,
-  onStateChange,
   onCityChange,
   onNeighborhoodChange,
   onNationalityChange,
@@ -46,25 +44,21 @@ export const LocationSelect = ({
     ? "text-sm font-medium text-foreground"
     : "text-base font-medium text-primary-foreground";
   const [countries, setCountries] = useState<Country[]>([]);
-  const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [selectedCountry, setSelectedCountry] = useState(initialCountry);
-  const [selectedState, setSelectedState] = useState(initialState);
   const [selectedCity, setSelectedCity] = useState(initialCity);
   const [neighborhood, setNeighborhood] = useState(initialNeighborhood);
   const [nationality, setNationality] = useState(initialNationality);
   const [loadingCountries, setLoadingCountries] = useState(false);
-  const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
 
   // Sync with prop changes
   useEffect(() => {
     setSelectedCountry(initialCountry);
-    setSelectedState(initialState);
     setSelectedCity(initialCity);
     setNeighborhood(initialNeighborhood);
     setNationality(initialNationality);
-  }, [initialCountry, initialState, initialCity, initialNeighborhood, initialNationality]);
+  }, [initialCountry, initialCity, initialNeighborhood, initialNationality]);
 
   // Fetch countries on mount
   useEffect(() => {
@@ -77,83 +71,41 @@ export const LocationSelect = ({
     fetchCountries();
   }, []);
 
-  // Fetch states if initial country is provided (only on mount or when countries are loaded)
+  // Fetch cities when country is set on mount
   useEffect(() => {
-    if (initialCountry && countries.length > 0 && states.length === 0 && !loadingStates) {
-      const fetchStates = async () => {
-        setLoadingStates(true);
-        const data = await getStates(initialCountry);
-        setStates(data);
-        setLoadingStates(false);
-      };
-      fetchStates();
-    }
-  }, [initialCountry, countries.length]);
-
-  // Fetch cities if initial country and state are provided (only on mount or when states are loaded)
-  useEffect(() => {
-    if (initialCountry && initialState && states.length > 0 && cities.length === 0 && !loadingCities) {
+    if (initialCountry && countries.length > 0 && cities.length === 0 && !loadingCities) {
       const fetchCities = async () => {
         setLoadingCities(true);
-        const data = await getCities(initialCountry, initialState);
+        const data = await getCities(initialCountry);
         setCities(data);
         setLoadingCities(false);
       };
       fetchCities();
     }
-  }, [initialCountry, initialState, states.length]);
+  }, [initialCountry, countries.length]);
 
-  // Fetch states when country changes
+  // Fetch cities when country changes
   useEffect(() => {
     if (selectedCountry) {
-      const fetchStates = async () => {
-        setLoadingStates(true);
-        setStates([]);
+      const fetchCities = async () => {
+        setLoadingCities(true);
         setCities([]);
-        setSelectedState("");
         setSelectedCity("");
-        onStateChange?.("");
         onCityChange?.("");
-        const data = await getStates(selectedCountry);
-        setStates(data);
-        setLoadingStates(false);
+        const data = await getCities(selectedCountry);
+        setCities(data);
+        setLoadingCities(false);
       };
-      fetchStates();
+      fetchCities();
     } else {
-      setStates([]);
       setCities([]);
-      setSelectedState("");
       setSelectedCity("");
     }
   }, [selectedCountry]);
 
-  // Fetch cities when state changes
-  useEffect(() => {
-    if (selectedCountry && selectedState) {
-      const fetchCities = async () => {
-        setLoadingCities(true);
-        setCities([]);
-        setSelectedCity("");
-        onCityChange?.("");
-        const data = await getCities(selectedCountry, selectedState);
-        setCities(data);
-        setLoadingCities(false);
-      };
-      fetchCities();
-    } else {
-      setCities([]);
-      setSelectedCity("");
-    }
-  }, [selectedCountry, selectedState]);
-
   const handleCountryChange = (value: string) => {
     setSelectedCountry(value);
     onCountryChange?.(value);
-  };
-
-  const handleStateChange = (value: string) => {
-    setSelectedState(value);
-    onStateChange?.(value);
   };
 
   const handleCityChange = (value: string) => {
@@ -173,7 +125,7 @@ export const LocationSelect = ({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className={labelClass}>{t("common.countryRequired")}</Label>
           <SearchableSelect
@@ -189,29 +141,15 @@ export const LocationSelect = ({
         </div>
 
         <div className="space-y-2">
-          <Label className={labelClass}>{t("common.stateRequired")}</Label>
-          <SearchableSelect
-            value={selectedState}
-            onValueChange={handleStateChange}
-            options={states.map((s) => ({ value: s.iso2, label: s.name }))}
-            placeholder={loadingStates ? t("common.loading") : selectedCountry ? t("common.selectState") : t("common.selectCountryFirst")}
-            searchPlaceholder={t("common.searchState")}
-            emptyMessage={t("common.noResults")}
-            disabled={!selectedCountry || loadingStates}
-            variant={isProfile ? "profile" : "default"}
-          />
-        </div>
-
-        <div className="space-y-2">
           <Label className={labelClass}>{t("common.cityRequired")}</Label>
           <SearchableSelect
             value={selectedCity}
             onValueChange={handleCityChange}
-            options={cities.map((c, i) => ({ value: c.name, label: c.name }))}
-            placeholder={loadingCities ? t("common.loading") : selectedState ? t("common.selectCity") : t("common.selectStateFirst")}
+            options={cities.map((c) => ({ value: c.name, label: c.name }))}
+            placeholder={loadingCities ? t("common.loading") : selectedCountry ? t("common.selectCity") : t("common.selectCountryFirst")}
             searchPlaceholder={t("common.searchCity")}
             emptyMessage={t("common.noResults")}
-            disabled={!selectedState || loadingCities}
+            disabled={!selectedCountry || loadingCities}
             variant={isProfile ? "profile" : "default"}
           />
         </div>
