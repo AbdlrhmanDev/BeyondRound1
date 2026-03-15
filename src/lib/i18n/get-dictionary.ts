@@ -1,4 +1,5 @@
 import 'server-only';
+import { defaultLocale, isValidLocale } from './settings';
 import type { Locale } from './settings';
 
 type Dictionary = Record<string, any>;
@@ -22,7 +23,8 @@ const nsLoaders: Record<string, Record<Locale, () => Promise<Dictionary>>> = {
   faq:        { en: () => import('@/locales/en/faq.json').then((m) => m.default),        de: () => import('@/locales/de/faq.json').then((m) => m.default) },
 };
 
-export const getDictionary = async (locale: Locale): Promise<Dictionary> => {
+export const getDictionary = async (rawLocale: string): Promise<Dictionary> => {
+  const locale: Locale = isValidLocale(rawLocale) ? rawLocale : defaultLocale;
   const nsKeys = Object.keys(nsLoaders);
 
   const [main, ...nsMaps] = await Promise.all([
